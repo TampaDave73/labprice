@@ -1,65 +1,117 @@
-export default function Home() {
+import { prisma } from '@labprice/database';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import SearchBar from './components/SearchBar';
+import TestCard from './components/TestCard';
+import HomeTestList from './components/HomeTestList';
+
+async function getHomeData() {
+  const [categories, popularTests, allTests] = await Promise.all([
+    prisma.category.findMany({ orderBy: { displayOrder: 'asc' } }),
+    prisma.test.findMany({
+      where: { isPopular: true, deletedAt: null },
+      include: {
+        category: true,
+        offerings: {
+          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+          select: { currentPrice: true },
+        },
+      },
+      orderBy: { displayOrder: 'asc' },
+      take: 6,
+    }),
+    prisma.test.findMany({
+      where: { deletedAt: null },
+      include: {
+        category: true,
+        offerings: {
+          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+          select: { currentPrice: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    }),
+  ]);
+
+  const withMinPrice = (tests: typeof allTests) =>
+    tests.map((t) => {
+      const prices = t.offerings.map((o) => Number(o.currentPrice));
+      return {
+        id: t.id,
+        name: t.name,
+        shortName: t.shortName,
+        slug: t.slug,
+        category: t.category.name,
+        categorySlug: t.category.slug,
+        questCode: t.questCode,
+        labcorpCode: t.labcorpCode,
+        minPrice: prices.length > 0 ? Math.min(...prices) : null,
+        vendorCount: t.offerings.length,
+      };
+    });
+
+  return {
+    categories: categories.map((c) => ({ name: c.name, slug: c.slug })),
+    popularTests: withMinPrice(popularTests),
+    allTests: withMinPrice(allTests),
+    testCount: allTests.length,
+  };
+}
+
+export default async function Home() {
+  const { categories, popularTests, allTests, testCount } = await getHomeData();
+
   return (
-    <div className="min-h-screen">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[oklch(0.17_0.1_280/0.9)] border-b border-white/10">
-        <div className="max-w-[1240px] mx-auto px-6 h-16 flex items-center">
-          <div className="flex items-center gap-2.5">
-            <div className="w-[34px] h-[34px] bg-gradient-to-br from-brand-500 to-brand-600 rounded-[9px] flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <circle cx="9" cy="9" r="3" fill="white"/>
-                <line x1="9" y1="2" x2="9" y2="5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="9" y1="13" x2="9" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="2" y1="9" x2="5" y2="9" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="13" y1="9" x2="16" y2="9" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight text-white">LabPrice</span>
-          </div>
-          <div className="flex-1" />
-          <div className="px-5 py-2 bg-gradient-to-br from-brand-500 to-brand-600 text-white rounded-pill text-sm font-semibold cursor-pointer">
-            Free Account
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+      <Navbar variant="dark" />
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-brand-900 via-brand-800 to-[oklch(0.19_0.09_265)] px-6 py-24 text-center relative overflow-hidden">
+      <div
+        className="px-6 text-center relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(155deg,oklch(0.17 0.1 280) 0%,oklch(0.21 0.12 295) 55%,oklch(0.19 0.09 265) 100%)',
+          padding: '90px 24px 110px',
+        }}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_-5%,oklch(0.55_0.18_280/0.2),transparent)] pointer-events-none" />
         <div className="relative max-w-[700px] mx-auto animate-[fadeUp_0.6s_ease]">
           <div className="inline-flex items-center gap-2 bg-[oklch(0.95_0.06_280/0.12)] border border-[oklch(0.8_0.1_280/0.22)] rounded-pill px-3.5 py-1 mb-6">
             <span className="w-[7px] h-[7px] rounded-full bg-success-500 inline-block" />
-            <span className="text-[13px] text-[oklch(0.85_0.06_280)] font-medium">Live prices from 10 ordering services</span>
+            <span className="text-[13px] text-[oklch(0.85_0.06_280)] font-medium">
+              Live prices from 10 ordering services
+            </span>
           </div>
-          <h1 className="text-5xl font-bold text-white leading-tight tracking-tighter mb-4">
-            Compare blood test prices{' '}
-            <span className="bg-gradient-to-r from-brand-500 to-[oklch(0.78_0.18_315)] bg-clip-text text-transparent">
+          <h1 className="text-[54px] font-bold text-white leading-[1.1] tracking-[-1.8px] mb-[18px]">
+            Compare blood test prices
+            <br />
+            <span className="bg-gradient-to-r from-[oklch(0.75_0.2_280)] to-[oklch(0.78_0.18_315)] bg-clip-text text-transparent">
               instantly
             </span>
           </h1>
           <p className="text-lg text-[oklch(0.7_0.05_280)] mb-11 leading-relaxed">
             Stop overpaying for lab tests. Search by test name or Quest/LabCorp test number.
           </p>
-          <div className="relative max-w-[570px] mx-auto">
-            <div className="flex items-center bg-white rounded-[14px] p-[5px] pl-[18px] shadow-[0_24px_64px_rgba(0,0,0,0.32)]">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-                <circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.1 280)" strokeWidth="1.8"/>
-                <path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.1 280)" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-              <input
-                placeholder="Test name — Vitamin D, Testosterone, TSH…"
-                className="flex-1 border-none outline-none bg-transparent text-base px-3.5 py-3 text-brand-900"
-              />
-              <button className="shrink-0 bg-gradient-to-br from-brand-500 to-brand-600 text-white border-none rounded-btn px-6 py-3 text-[15px] font-semibold cursor-pointer">
-                Compare
-              </button>
-            </div>
+
+          <SearchBar />
+
+          {/* Popular chips */}
+          <div className="flex items-center justify-center flex-wrap gap-2 mt-[22px]">
+            <span className="text-[13px] text-[oklch(0.6_0.04_280)]">Popular:</span>
+            {popularTests.map((t) => (
+              <a
+                key={t.slug}
+                href={`/test/${t.slug}`}
+                className="px-[15px] py-1.5 bg-[oklch(0.95_0.06_280/0.12)] border border-[oklch(0.8_0.1_280/0.28)] rounded-pill text-[13px] text-[oklch(0.85_0.07_280)] font-medium no-underline hover:bg-[oklch(0.95_0.06_280/0.22)] transition-colors"
+              >
+                {t.shortName}
+              </a>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Stats bar */}
-      <div className="bg-[oklch(0.22_0.1_280)] px-6 py-3.5">
+      <div className="px-6 py-3.5" style={{ background: 'oklch(0.22 0.1 280)' }}>
         <div className="max-w-[1240px] mx-auto flex items-center justify-center gap-12 flex-wrap">
           <div className="flex items-center gap-2.5">
             <span className="text-[22px] font-bold text-white">10</span>
@@ -67,12 +119,12 @@ export default function Home() {
           </div>
           <div className="w-px h-7 bg-[oklch(0.4_0.08_280)]" />
           <div className="flex items-center gap-2.5">
-            <span className="text-[22px] font-bold text-white">12+</span>
+            <span className="text-[22px] font-bold text-white">{testCount > 0 ? `${testCount}+` : '12+'}</span>
             <span className="text-[13px] text-[oklch(0.72_0.06_280)]">Common Tests</span>
           </div>
           <div className="w-px h-7 bg-[oklch(0.4_0.08_280)]" />
           <div className="flex items-center gap-2.5">
-            <span className="text-[22px] font-bold text-success-500">Up to 70%</span>
+            <span className="text-[22px] font-bold text-[oklch(0.78_0.18_145)]">Up to 70%</span>
             <span className="text-[13px] text-[oklch(0.72_0.06_280)]">Savings vs retail</span>
           </div>
           <div className="w-px h-7 bg-[oklch(0.4_0.08_280)]" />
@@ -83,26 +135,31 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Placeholder content */}
-      <div className="max-w-[1240px] mx-auto px-6 py-14">
-        <h2 className="text-2xl font-bold tracking-tight text-brand-900 mb-4">Popular Tests</h2>
-        <p className="text-brand-400">Phase 2 will build the full test catalog, search, and price comparison UI.</p>
+      {/* Browse section */}
+      <div className="max-w-[1240px] mx-auto px-6 py-14 pb-20">
+        {/* Popular Tests */}
+        <div className="mb-[52px]">
+          <h2 className="text-2xl font-bold tracking-[-0.4px] text-[oklch(0.18_0.04_280)] mb-[18px]">
+            Popular Tests
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {popularTests.map((t) => (
+              <TestCard
+                key={t.slug}
+                name={t.name}
+                slug={t.slug}
+                category={t.category}
+                minPrice={t.minPrice}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* All Tests — client component for filtering/sorting */}
+        <HomeTestList tests={allTests} categories={categories} testCount={testCount} />
       </div>
 
-      {/* Footer */}
-      <footer className="bg-brand-900 px-6 py-10 mt-auto">
-        <div className="max-w-[1240px] mx-auto flex items-center justify-between flex-wrap gap-5">
-          <div>
-            <div className="text-base font-bold text-white mb-1.5">LabPrice</div>
-            <p className="text-[13px] text-[oklch(0.65_0.05_280)] leading-relaxed">
-              Compare blood test ordering prices. Blood drawn at Quest or LabCorp patient service centers.
-            </p>
-          </div>
-          <p className="text-xs text-[oklch(0.5_0.04_280)] text-right leading-relaxed">
-            Prices for informational purposes only.<br />© 2025 LabPrice. Not medical advice.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
