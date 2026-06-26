@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --color-brand-50: oklch(0.97 0.01 280);
+  --color-brand-100: oklch(0.95 0.03 280);
+  --color-brand-200: oklch(0.9 0.05 280);
+  --color-brand-300: oklch(0.8 0.1 280);
+  --color-brand-400: oklch(0.65 0.15 280);
+  --color-brand-500: oklch(0.58 0.18 220);
+  --color-brand-600: oklch(0.52 0.18 232);
+  --color-brand-700: oklch(0.4 0.14 220);
+  --color-brand-800: oklch(0.21 0.12 295);
+  --color-brand-900: oklch(0.17 0.1 280);
+  --color-success-50: oklch(0.97 0.05 145);
+  --color-success-500: oklch(0.52 0.17 145);
+  --color-success-700: oklch(0.38 0.17 145);
+  --radius-card: 14px;
+  --radius-pill: 20px;
+  --radius-btn: 10px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::placeholder {
+  color: oklch(0.6 0.04 280 / 0.5);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.58 0.18 220 / 0.25);
+  border-radius: 3px;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

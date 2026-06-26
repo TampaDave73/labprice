@@ -1,0 +1,669 @@
+// LabPrice — Prisma schema (PostgreSQL 16)
+// Deliverable #2. This is the authoritative data model; ddl.sql adds
+// partitioning, generated columns (search_vector), CHECK constraints,
+// and citext extensions that Prisma cannot express directly.
+//
+// Conventions: CUID2 string PKs (@default(cuid())); created_at/updated_at
+// on every model; deleted_at on mutable domain tables; NUMERIC(10,2) money
+// via Decimal; native Postgres enums; snake_case via @map.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────── Enums ─────────────────────────
+
+enum Role {
+  USER
+  EDITOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum CodeType {
+  QUEST
+  LABCORP
+}
+
+enum TrustLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum PriceSource {
+  SCRAPE
+  MANUAL
+  IMPORT
+}
+
+enum ScrapeEngine {
+  PLAYWRIGHT
+  SELENIUM
+  HTTP
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum ResultStatus {
+  MATCHED
+  UNMATCHED
+  PRICE_CHANGED
+  PRICE_SAME
+  ERROR
+}
+
+enum ScrapeErrorType {
+  NAV_TIMEOUT
+  BLOCKED
+  SELECTOR_MISS
+  PARSE_FAIL
+  HTTP_ERROR
+  ANOMALY
+  OTHER
+}
+
+enum ChangeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  AUTO_APPROVED
+}
+
+enum JobTrigger {
+  SCHEDULE
+  MANUAL
+  RETRY
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+}
+
+enum ProxyType {
+  DATACENTER
+  RESIDENTIAL
+}
+
+// ───────────────────────── Identity / Auth.js ─────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique // citext in ddl.sql
+  name            String?
+  role            Role      @default(USER)
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  image           String?
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  accounts        Account[]
+  sessions        Session[]
+  priceAlerts     PriceAlert[]
+  affiliateClicks AffiliateClick[]
+  auditLogs       AuditLog[]
+  searchLogs      SearchLog[]
+  pageViews       PageView[]
+  reviewedChanges StagedPriceChange[] @relation("ChangeReviewer")
+  systemSettings  SystemSetting[]     @relation("SettingUpdater")
+
+  @@index([role])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refreshToken      String? @map("refresh_token")
+  accessToken       String? @map("access_token")
+  expiresAt         Int?    @map("expires_at")
+  tokenType         String? @map("token_type")
+  scope             String?
+  idToken           String? @map("id_token")
+  sessionState      String? @map("session_state")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ───────────────────────── Catalog ─────────────────────────
+
+model Category {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  slug         String   @unique
+  displayOrder Int      @default(0) @map("display_order")
+  colorBg      String?  @map("color_bg")
+  colorText    String?  @map("color_text")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tests    Test[]
+  seoPages SeoPage[]
+
+  @@index([displayOrder])
+  @@map("categories")
+}
+
+model Test {
+  id           String    @id @default(cuid())
+  name         String
+  shortName    String    @map("short_name")
+  slug         String    @unique
+  categoryId   String    @map("category_id")
+  description  String?
+  purpose      String?
+  procedure    String?
+  preparation  String?
+  normalRange  String?   @map("normal_range")
+  questCode    String?   @map("quest_code")
+  labcorpCode  String?   @map("labcorp_code")
+  isPopular    Boolean   @default(false) @map("is_popular")
+  displayOrder Int       @default(0) @map("display_order")
+  // search_vector tsvector is a GENERATED ALWAYS column in ddl.sql; Prisma cannot model it.
+  // GIN index on search_vector is also defined in ddl.sql.
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  codes         TestCode[]
+  biomarkers    TestBiomarker[]
+  offerings     Offering[]
+  priceAlerts   PriceAlert[]
+  scrapeResults ScrapeResult[]
+  pageViews     PageView[]
+  seoPages      SeoPage[]
+
+  @@index([categoryId])
+  @@index([isPopular])
+  @@index([displayOrder])
+  @@map("tests")
+}
+
+model TestCode {
+  id        String   @id @default(cuid())
+  testId    String   @map("test_id")
+  codeType  CodeType @map("code_type")
+  codeValue String   @map("code_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, codeType])
+  @@index([codeType, codeValue])
+  @@map("test_codes")
+}
+
+model Biomarker {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  unit        String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tests TestBiomarker[]
+
+  @@map("biomarkers")
+}
+
+model TestBiomarker {
+  testId      String   @map("test_id")
+  biomarkerId String   @map("biomarker_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  test      Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  biomarker Biomarker @relation(fields: [biomarkerId], references: [id], onDelete: Cascade)
+
+  @@id([testId, biomarkerId])
+  @@index([biomarkerId])
+  @@map("test_biomarkers")
+}
+
+// ───────────────────────── Vendors & Offerings ─────────────────────────
+
+model Vendor {
+  id                   String     @id @default(cuid())
+  name                 String     @unique
+  slug                 String     @unique
+  websiteUrl           String?    @map("website_url")
+  affiliateUrlTemplate String?    @map("affiliate_url_template")
+  logoUrl              String?    @map("logo_url")
+  isActive             Boolean    @default(true) @map("is_active")
+  trustLevel           TrustLevel @default(MEDIUM) @map("trust_level")
+  deletedAt            DateTime?  @map("deleted_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  offerings    Offering[]
+  scrapeConfig ScrapeVendorConfig?
+  scrapeJobs   ScrapeJob[]
+  scrapeRuns   ScrapeRun[]
+  priceAlerts  PriceAlert[]
+
+  @@index([isActive])
+  @@map("vendors")
+}
+
+model Offering {
+  id             String    @id @default(cuid())
+  testId         String    @map("test_id")
+  vendorId       String    @map("vendor_id")
+  currentPrice   Decimal?  @map("current_price") @db.Decimal(10, 2)
+  previousPrice  Decimal?  @map("previous_price") @db.Decimal(10, 2)
+  priceUpdatedAt DateTime? @map("price_updated_at")
+  externalUrl    String?   @map("external_url")
+  isActive       Boolean   @default(true) @map("is_active")
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  test               Test                @relation(fields: [testId], references: [id], onDelete: Restrict)
+  vendor             Vendor              @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  priceHistory       PriceHistory[]
+  stagedPriceChanges StagedPriceChange[]
+  scrapeResults      ScrapeResult[]
+  affiliateClicks    AffiliateClick[]
+  alertNotifications AlertNotification[]
+
+  @@unique([testId, vendorId])
+  @@index([testId])
+  @@index([vendorId])
+  @@index([priceUpdatedAt])
+  @@map("offerings")
+}
+
+/// Append-only, partitioned by RANGE(observed_at) monthly — see ddl.sql.
+/// PK is (id, observed_at) composite in ddl.sql for partition support.
+model PriceHistory {
+  id          BigInt      @id @default(autoincrement())
+  offeringId  String      @map("offering_id")
+  oldPrice    Decimal?    @map("old_price") @db.Decimal(10, 2)
+  newPrice    Decimal     @map("new_price") @db.Decimal(10, 2)
+  observedAt  DateTime    @map("observed_at")
+  source      PriceSource
+  scrapeRunId String?     @map("scrape_run_id")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  offering  Offering   @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  scrapeRun ScrapeRun? @relation(fields: [scrapeRunId], references: [id], onDelete: SetNull)
+
+  @@index([offeringId, observedAt(sort: Desc)])
+  @@index([source])
+  @@map("price_history")
+}
+
+// ───────────────────────── Scraping Infrastructure ─────────────────────────
+
+model ScrapeVendorConfig {
+  id           String       @id @default(cuid())
+  vendorId     String       @unique @map("vendor_id")
+  engine       ScrapeEngine
+  baseUrl      String?      @map("base_url")
+  selectors    Json         @default("{}")
+  authConfig   Json?        @map("auth_config")
+  scheduleCron String?      @map("schedule_cron")
+  isEnabled    Boolean      @default(true) @map("is_enabled")
+  maxRetries   Int          @default(3) @map("max_retries")
+  timeoutMs    Int          @default(30000) @map("timeout_ms")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+
+  @@map("scrape_vendor_configs")
+}
+
+model ScrapeJob {
+  id           String     @id @default(cuid())
+  vendorId     String?    @map("vendor_id")
+  triggeredBy  JobTrigger @map("triggered_by")
+  status       JobStatus  @default(PENDING)
+  scheduledAt  DateTime?  @map("scheduled_at")
+  startedAt    DateTime?  @map("started_at")
+  completedAt  DateTime?  @map("completed_at")
+  errorMessage String?    @map("error_message")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  vendor Vendor?     @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  runs   ScrapeRun[]
+
+  @@index([vendorId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("scrape_jobs")
+}
+
+model ScrapeRun {
+  id              String    @id @default(cuid())
+  jobId           String    @map("job_id")
+  vendorId        String    @map("vendor_id")
+  status          RunStatus @default(QUEUED)
+  testsFound      Int?      @map("tests_found")
+  pricesUpdated   Int?      @map("prices_updated")
+  pricesUnchanged Int?      @map("prices_unchanged")
+  errorsCount     Int?      @map("errors_count")
+  durationMs      Int?      @map("duration_ms")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  job          ScrapeJob          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  vendor       Vendor             @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  results      ScrapeResult[]
+  errors       ScrapeError[]
+  priceHistory PriceHistory[]
+  stagedChanges StagedPriceChange[]
+
+  @@index([vendorId, startedAt(sort: Desc)])
+  @@index([jobId])
+  @@index([status])
+  @@map("scrape_runs")
+}
+
+model ScrapeResult {
+  id                String       @id @default(cuid())
+  runId             String       @map("run_id")
+  testId            String       @map("test_id")
+  scrapedPrice      Decimal?     @map("scraped_price") @db.Decimal(10, 2)
+  matchedOfferingId String?      @map("matched_offering_id")
+  status            ResultStatus
+  rawHtml           String?      @map("raw_html")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  run      ScrapeRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  test     Test      @relation(fields: [testId], references: [id], onDelete: Restrict)
+  offering Offering? @relation(fields: [matchedOfferingId], references: [id], onDelete: SetNull)
+
+  @@index([runId])
+  @@index([matchedOfferingId])
+  @@index([testId])
+  @@map("scrape_results")
+}
+
+model ScrapeError {
+  id             String         @id @default(cuid())
+  runId          String         @map("run_id")
+  errorType      ScrapeErrorType @map("error_type")
+  message        String
+  stackTrace     String?        @map("stack_trace")
+  url            String?
+  screenshotPath String?        @map("screenshot_path")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  run ScrapeRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([errorType])
+  @@map("scrape_errors")
+}
+
+model StagedPriceChange {
+  id           String       @id @default(cuid())
+  offeringId   String       @map("offering_id")
+  oldPrice     Decimal?     @map("old_price") @db.Decimal(10, 2)
+  newPrice     Decimal      @map("new_price") @db.Decimal(10, 2)
+  scrapedAt    DateTime     @map("scraped_at")
+  scrapeRunId  String       @map("scrape_run_id")
+  status       ChangeStatus @default(PENDING)
+  reviewedById String?      @map("reviewed_by")
+  reviewedAt   DateTime?    @map("reviewed_at")
+  reviewNote   String?      @map("review_note")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  offering   Offering  @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  scrapeRun  ScrapeRun @relation(fields: [scrapeRunId], references: [id], onDelete: Restrict)
+  reviewedBy User?     @relation("ChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([offeringId])
+  @@index([scrapeRunId])
+  @@map("staged_price_changes")
+}
+
+model Proxy {
+  id           String    @id @default(cuid())
+  url          String
+  provider     String?
+  type         ProxyType
+  isActive     Boolean   @default(true) @map("is_active")
+  successCount Int       @default(0) @map("success_count")
+  failCount    Int       @default(0) @map("fail_count")
+  lastUsedAt   DateTime? @map("last_used_at")
+  lastFailedAt DateTime? @map("last_failed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([isActive, lastUsedAt])
+  @@index([type])
+  @@map("proxies")
+}
+
+// ───────────────────────── Engagement ─────────────────────────
+
+model PriceAlert {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  testId           String    @map("test_id")
+  vendorId         String?   @map("vendor_id")
+  targetPrice      Decimal?  @map("target_price") @db.Decimal(10, 2)
+  thresholdPercent Int?      @map("threshold_percent")
+  isActive         Boolean   @default(true) @map("is_active")
+  lastTriggeredAt  DateTime? @map("last_triggered_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // CHECK constraint in ddl.sql: exactly one of target_price / threshold_percent must be non-null.
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test          Test                @relation(fields: [testId], references: [id], onDelete: Cascade)
+  vendor        Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  notifications AlertNotification[]
+
+  @@index([userId])
+  @@index([testId])
+  @@index([vendorId])
+  @@map("price_alerts")
+}
+
+model AlertNotification {
+  id             String              @id @default(cuid())
+  alertId        String              @map("alert_id")
+  offeringId     String              @map("offering_id")
+  triggeredPrice Decimal             @map("triggered_price") @db.Decimal(10, 2)
+  sentAt         DateTime            @map("sent_at")
+  channel        NotificationChannel
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  alert    PriceAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  offering Offering   @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+
+  @@index([alertId, sentAt(sort: Desc)])
+  @@index([offeringId])
+  @@map("alert_notifications")
+}
+
+/// Partitioned by RANGE(clicked_at) monthly — see ddl.sql.
+/// Uses BIGSERIAL PK for high-volume storage efficiency.
+model AffiliateClick {
+  id          BigInt   @id @default(autoincrement())
+  offeringId  String   @map("offering_id")
+  userId      String?  @map("user_id")
+  sessionId   String?  @map("session_id")
+  ipHash      String?  @map("ip_hash")
+  userAgentHash String? @map("user_agent_hash")
+  referrer    String?
+  clickedAt   DateTime @default(now()) @map("clicked_at")
+
+  offering Offering @relation(fields: [offeringId], references: [id], onDelete: Restrict)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([clickedAt])
+  @@index([offeringId, clickedAt])
+  @@index([userId])
+  @@map("affiliate_clicks")
+}
+
+// ───────────────────────── Analytics & Operations ─────────────────────────
+
+/// Partitioned by RANGE(created_at) monthly — see ddl.sql.
+model SearchLog {
+  id           BigInt   @id @default(autoincrement())
+  query        String
+  resultsCount Int      @map("results_count")
+  userId       String?  @map("user_id")
+  sessionId    String?  @map("session_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("search_logs")
+}
+
+/// Partitioned by RANGE(created_at) monthly — see ddl.sql.
+model PageView {
+  id        BigInt   @id @default(autoincrement())
+  path      String
+  testId    String?  @map("test_id")
+  userId    String?  @map("user_id")
+  sessionId String?  @map("session_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  test Test? @relation(fields: [testId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([testId, createdAt])
+  @@index([path])
+  @@map("page_views")
+}
+
+model SeoPage {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  metaDescription String?  @map("meta_description")
+  heading         String?
+  bodyHtml        String?  @map("body_html")
+  testId          String?  @map("test_id")
+  categoryId      String?  @map("category_id")
+  isPublished     Boolean  @default(false) @map("is_published")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  test     Test?     @relation(fields: [testId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([testId])
+  @@index([categoryId])
+  @@index([isPublished])
+  @@map("seo_pages")
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?
+  isEnabled   Boolean  @default(false) @map("is_enabled")
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  updater User? @relation("SettingUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,5 @@
+{
+  "name": "@labprice/config",
+  "private": true,
+  "files": ["eslint", "tsconfig", "tailwind"]
+}
