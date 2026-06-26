@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: labprice
+      POSTGRES_PASSWORD: labprice
+      POSTGRES_DB: labprice
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - labprice-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U labprice"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - labprice-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: >
+      sh -c "pnpm --filter @labprice/database exec prisma migrate deploy &&
+             pnpm --filter @labprice/database db:seed"
+    environment:
+      DATABASE_URL: postgresql://labprice:labprice@postgres:5432/labprice
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - labprice-net
+
+  web:
+    build:
+      context: .
+      target: web
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://labprice:labprice@postgres:5432/labprice
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - labprice-net
+
+  worker:
+    build:
+      context: .
+      target: worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://labprice:labprice@postgres:5432/labprice
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - labprice-net
+
+networks:
+  labprice-net:
+
+volumes:
+  postgres-data:
+  redis-data:
