@@ -1,0 +1,100 @@
+import { notFound } from 'next/navigation';
+import { prisma } from '@labprice/database';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
+import TestCard from '../../components/TestCard';
+
+interface Props {
+  params: Promise<{ slug: string }>;
+}
+
+async function getCategory(slug: string) {
+  const category = await prisma.category.findUnique({
+    where: { slug },
+    include: {
+      tests: {
+        where: { deletedAt: null },
+        include: {
+          offerings: {
+            where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+            select: { currentPrice: true },
+          },
+        },
+        orderBy: { name: 'asc' },
+      },
+    },
+  });
+  return category;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getCategory(slug);
+  if (!category) return { title: 'Category Not Found' };
+  return {
+    title: `${category.name} Tests — Compare Prices`,
+    description: `Compare prices for ${category.name} blood tests across ordering services. Find the cheapest ${category.name.toLowerCase()} lab tests.`,
+  };
+}
+
+export default async function CategoryPage({ params }: Props) {
+  const { slug } = await params;
+  const category = await getCategory(slug);
+  if (!category) notFound();
+
+  const tests = category.tests.map((t) => {
+    const prices = t.offerings.map((o) => Number(o.currentPrice));
+    return {
+      name: t.name,
+      slug: t.slug,
+      category: category.name,
+      minPrice: prices.length > 0 ? Math.min(...prices) : null,
+    };
+  });
+
+  return (
+    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+      <Navbar variant="light" />
+      <div className="max-w-[1240px] mx-auto px-6 py-10">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_280)] mb-6">
+          <Link href="/" className="hover:text-[oklch(0.35_0.04_280)] no-underline text-inherit">
+            Home
+          </Link>
+          <span>/</span>
+          <span className="text-[oklch(0.3_0.04_280)] font-medium">{category.name}</span>
+        </nav>
+
+        {/* Header */}
+        <h1 className="text-[32px] font-bold text-[oklch(0.18_0.04_280)] tracking-[-0.5px] mb-2">
+          {category.name}
+        </h1>
+        <p className="text-[oklch(0.5_0.04_280)] mb-8">
+          Compare prices for {tests.length} {category.name.toLowerCase()} test{tests.length !== 1 ? 's' : ''} across ordering services.
+        </p>
+
+        {/* Test grid */}
+        {tests.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {tests.map((t) => (
+              <TestCard
+                key={t.slug}
+                name={t.name}
+                slug={t.slug}
+                category={t.category}
+                minPrice={t.minPrice}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-[oklch(0.5_0.04_280)] text-center py-12">
+            No tests available in this category yet.
+          </p>
+        )}
+      </div>
+      <Footer />
+    </div>
+  );
+}

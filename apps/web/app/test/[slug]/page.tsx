@@ -73,8 +73,31 @@ export default async function TestDetailPage({ params }: Props) {
     description: tb.biomarker.description,
   }));
 
+  const prices = offerings.map((o) => o.price);
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalTest',
+    name: test.name,
+    description: test.description,
+    url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labprice.com'}/test/${test.slug}`,
+    ...(test.category && { bodyLocation: test.category.name }),
+    ...(offerings.length > 0 && {
+      offers: {
+        '@type': 'AggregateOffer',
+        lowPrice: Math.min(...prices).toFixed(2),
+        highPrice: Math.max(...prices).toFixed(2),
+        priceCurrency: 'USD',
+        offerCount: offerings.length,
+      },
+    }),
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar variant="light" />
       {session?.user && (
         <div className="max-w-[1240px] mx-auto px-6 pt-4 flex items-center gap-2 justify-end">

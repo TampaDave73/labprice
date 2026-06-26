@@ -1,5 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#3b1f8e',
+};
 
 export const metadata: Metadata = {
   title: {
@@ -8,6 +14,20 @@ export const metadata: Metadata = {
   },
   description: 'Compare self-pay blood test prices across ordering services. Find the cheapest Vitamin D, Testosterone, CBC, and more.',
   keywords: ['blood test prices', 'lab test comparison', 'self-pay lab tests', 'cheap blood tests'],
+  openGraph: {
+    title: 'LabPrice — Compare Blood Test Prices',
+    description: 'Compare self-pay blood test prices across ordering services. Find the cheapest lab tests.',
+    url: 'https://labprice.com',
+    siteName: 'LabPrice',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'LabPrice' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LabPrice — Compare Blood Test Prices',
+    description: 'Compare self-pay blood test prices across ordering services.',
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
