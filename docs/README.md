@@ -1,52 +1,72 @@
-# LabPrice — Architecture & Implementation Docs
+# LabPrice — Architecture Documentation
 
-> Status: **Phase 0 — Design (awaiting approval).** No application code has been written yet.
-> These documents are Deliverables #1–#10 requested in the architecture brief. Once approved,
-> implementation proceeds incrementally per the roadmap (Deliverable #10).
+> Complete software architecture and implementation plan for a lab test price comparison platform.
+>
+> **Status:** Phase 0 — Design complete. Awaiting approval to begin Phase 1 implementation.
 
-LabPrice is a price-comparison platform for self-pay (cash-pay) blood lab tests. Consumers search
-for a test, see its clinical explainer, and compare current prices across multiple **online
-ordering services** (Quest, LabCorp, Ulta Lab Tests, Life Extension, etc.). The blood draw itself
-happens at a Quest or LabCorp patient service center — the platform compares the *requisition*
-price, not the draw site.
+## Product
 
-## How these docs were derived
+LabPrice helps consumers compare self-pay blood test prices across **ordering services** — companies that write requisitions for lab tests. Users search by test name or Quest/LabCorp code, compare prices from 10+ services, and order through affiliate links. Blood draws happen at Quest or LabCorp patient service centers.
 
-The source of truth is the exported Claude Design prototype in `project/Lab Test Price
-Comparison.dc.html` plus the two design transcripts in `chats/`. The prototype encodes 12 tests, 5
-categories, and 10 ordering services with per-vendor pricing. Decisions locked during the design
-iterations (and honored here):
+**Monetization:** Affiliate commissions from ordering service links.
 
-- These are **ordering services**, not draw sites.
-- **CPT codes removed** (copyright) — only Quest & LabCorp test numbers are shown.
-- **Vendor ratings removed** from v1 (deferred to v2; schema is ready for them).
-- **Turnaround time** removed from the Normal Ranges section.
-- Accent theme + best-price highlight are presentation tweaks (Indigo/Emerald/Sky, Green/Gold/Accent).
+## Derived From
 
-## Reading order
+Claude Design prototype (`project/Lab Test Price Comparison.dc.html`):
+- **12 tests** across 5 categories
+- **10 ordering services** (Life Extension, Ulta Lab Tests, True Health Labs, DirectLabs, Walk-In Lab, Request A Test, Quest Diagnostics, LabCorp, Health Testing Centers, Any Lab Test Now)
+- **Design system:** DM Sans typography, oklch color system, Sky/Indigo/Emerald accent themes
+- **Two views:** Home (hero + search + popular cards + all tests list) and Test Detail (accordion + price comparison table)
 
-| #  | Document | Deliverable |
-|----|----------|-------------|
-| 1  | [`01-prd.md`](./01-prd.md) | Product Requirements Document |
-| 2  | [`02-database-design.md`](./02-database-design.md) | Database design + ERD; schema in [`database/`](./database/) |
-| 3  | [`03-backend-architecture.md`](./03-backend-architecture.md) | Backend architecture & stack rationale |
-| 4  | [`04-api-design.md`](./04-api-design.md) | REST API design; spec in [`api/openapi.yaml`](./api/openapi.yaml) |
-| 5  | [`05-scraper-architecture.md`](./05-scraper-architecture.md) | Scraper framework |
-| 6  | [`06-admin-panel.md`](./06-admin-panel.md) | Admin panel screens |
-| 7  | [`07-security.md`](./07-security.md) | Security model |
-| 8  | [`08-deployment.md`](./08-deployment.md) | Deployment & infrastructure |
-| 9  | [`09-project-structure.md`](./09-project-structure.md) | Repository structure |
-| 10 | [`10-implementation-roadmap.md`](./10-implementation-roadmap.md) | Phased roadmap |
+## Reading Order
 
-## Chosen stack (confirmed)
+| # | Document | Description |
+|---|----------|-------------|
+| 1 | [Product Requirements](01-prd.md) | Personas, user flows, business rules, functional & non-functional requirements |
+| 2 | [Database Design](02-database-design.md) | PostgreSQL schema, ERD, 27 tables, partitioning strategy |
+| 3 | [Backend Architecture](03-backend-architecture.md) | Stack justification, service layer, caching, scaling plan |
+| 4 | [API Design](04-api-design.md) | ~50 REST endpoints with request/response specs, rate limiting |
+| 5 | [Scraper Architecture](05-scraper-architecture.md) | Vendor adapters, engines, proxy management, change detection |
+| 6 | [Admin Panel](06-admin-panel.md) | 16 admin screens, workflows, role-based access |
+| 7 | [Security](07-security.md) | Auth, RBAC, OWASP Top 10, GDPR/CCPA, secrets management |
+| 8 | [Deployment](08-deployment.md) | Docker, CI/CD, monitoring, backups, disaster recovery |
+| 9 | [Project Structure](09-project-structure.md) | Monorepo layout, package boundaries, import rules |
+| 10 | [Implementation Roadmap](10-implementation-roadmap.md) | 6-phase plan (~10-14 weeks) with estimates and acceptance criteria |
 
-- **Topology:** Next.js full-stack (App Router) with versioned `/api/v1` route handlers; a
-  **separate** standalone worker process for scraping and background jobs.
-- **Frontend:** Next.js 15, React 18, TypeScript, Tailwind CSS.
-- **Data:** PostgreSQL 16 + Prisma ORM; Redis for cache, rate limiting, and the BullMQ queue.
-- **Jobs:** BullMQ workers (scraping, change detection, alerts, analytics rollups).
-- **Auth:** Auth.js (NextAuth v5) with Prisma adapter, RBAC.
-- **Scraping:** Playwright-first, config-driven, per-vendor adapters, proxy pool, admin approval gate.
-- **Infra:** Docker + Docker Compose; Cloudflare in front of a VPS (or AWS) for caching/WAF/CDN.
+## Supporting Artifacts
 
-See Deliverable #3 for the rationale behind each choice.
+| File | Description |
+|------|-------------|
+| [database/schema.prisma](database/schema.prisma) | Prisma ORM schema (27 models, 13 enums) |
+| [database/ddl.sql](database/ddl.sql) | Raw SQL: extensions, partitioning, generated columns, CHECK constraints |
+| [database/migrations.md](database/migrations.md) | Migration strategy, seed data, partition maintenance |
+| [api/openapi.yaml](api/openapi.yaml) | OpenAPI 3.1 specification |
+
+## Stack Summary
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS | SSR/ISR for SEO, React Server Components |
+| Backend | Next.js API Routes (`/api/v1`) | Single deployment, shared types |
+| Database | PostgreSQL 16, Prisma ORM | Robust, full-text search, partitioning |
+| Cache | Redis 7 | Cache-aside for catalog data, BullMQ backing |
+| Background Jobs | BullMQ | Reliable job queue for scraping, alerts, email |
+| Auth | Auth.js v5 (magic link + Google OAuth) | Passwordless, low friction |
+| Scraping | Playwright (primary), config-driven adapters | Handles JS-rendered vendor sites |
+| Email | Resend | Developer-friendly transactional email |
+| Monitoring | Sentry, OpenTelemetry, Prometheus, Grafana | Full observability stack |
+| Deployment | Docker Compose → AWS ECS/Fargate | Start simple, scale later |
+| Monorepo | pnpm + Turborepo | Fast builds, shared packages |
+
+## Design Decisions Log
+
+| Decision | Rationale |
+|----------|-----------|
+| No CPT codes | Copyrighted by the AMA — removed per product owner directive |
+| No ratings in v1 | No user rating mechanism yet — deferred to v2 |
+| No bookmarks in v1 | No persistent user features beyond alerts in v1 |
+| Ordering services, not labs | These companies write requisitions; blood draws happen at Quest/LabCorp |
+| Quest + LabCorp codes only | Vendor-specific codes, not copyrighted |
+| Passwordless auth | Lower friction for health-conscious consumers |
+| Config-driven scrapers | Add new vendors without code changes |
+| Admin approval queue | Human review of scraped price changes protects data integrity |
