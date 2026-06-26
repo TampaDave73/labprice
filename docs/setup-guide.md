@@ -3,7 +3,7 @@
 This guide walks you through getting LabPrice live on the internet, step by step. Each step tells you exactly what to click and what to type. No programming experience needed — just follow along.
 
 **Total time:** About 2-3 hours if this is your first time.
-**Total cost:** About $6/month + $12/year for a domain name.
+**Total cost:** About $7-24/month (depending on server location) + $12/year for a domain name.
 
 ---
 
@@ -25,22 +25,37 @@ Don't worry — most of these are free or very cheap, and this guide covers each
 
 You need a server (called a "VPS") to run your website. Think of it as renting a computer that's always on and connected to the internet.
 
-### Sign up with Hetzner (cheapest good option — about $5/month)
+### Pick a provider
 
-1. Go to https://www.hetzner.com/cloud
-2. Click **"Sign Up"** and create an account with your email
-3. You'll need to verify your identity (they may ask for a credit card or PayPal)
-4. Once logged in, click **"New Project"** and name it "LabPrice"
-5. Click into your project, then click **"Add Server"**
-6. Choose these settings:
-   - **Location:** Pick whichever is closest to your users (Ashburn, VA if you're in the US)
+Here are your best options:
+
+| Provider | Plan | US Servers? | Monthly Cost | Sign Up |
+|----------|------|-------------|-------------|---------|
+| **Hetzner** (EU only at this price) | CX22 (2 CPU, 4GB) | No — Germany only | ~$7/mo | https://www.hetzner.com/cloud |
+| **Hetzner** (US server) | CPX21 (2 CPU, 4GB) | Yes — Ashburn, VA | ~$23/mo | https://www.hetzner.com/cloud |
+| **DigitalOcean** | Basic Droplet (2 CPU, 4GB) | Yes — NYC, SF, etc. | $24/mo | https://www.digitalocean.com |
+| **Vultr** | Cloud Compute (2 CPU, 4GB) | Yes — multiple US | $18/mo | https://www.vultr.com |
+
+**Which should you pick?**
+- If your users are mostly in the **US**, go with **Vultr** ($18/mo) or **DigitalOcean** ($24/mo, most beginner-friendly dashboard)
+- If your users are in **Europe** or you want the cheapest option and don't mind EU servers, **Hetzner CX22** at ~$7/mo is great
+- A server in Germany still works fine for US users — pages will just load about 100ms slower
+
+### Sign up and create a server
+
+These instructions use DigitalOcean as an example, but the process is similar on any provider:
+
+1. Go to your chosen provider's website and **create an account**
+2. You'll need to verify your identity (credit card or PayPal)
+3. Create a new server (called a "Droplet" on DigitalOcean, "Instance" on Vultr, "Server" on Hetzner)
+4. Choose these settings:
+   - **Location:** Pick a US location closest to your users (or EU for Hetzner budget option)
    - **Image:** Ubuntu 24.04
-   - **Type:** Shared vCPU, **CX22** (2 vCPU, 4 GB RAM) — this is plenty to start
-   - **Networking:** Leave defaults
+   - **Size:** 2 vCPU, 4 GB RAM (the cheapest plan that meets this is fine)
    - **SSH Keys:** Click "Add SSH Key" (see below if you don't have one)
-   - **Name:** `labprice`
-7. Click **"Create & Buy Now"**
-8. **Write down the IP address** that appears — you'll need it later (it looks like `123.45.67.89`)
+   - **Hostname/Name:** `labprice`
+5. Create the server
+6. **Write down the IP address** that appears — you'll need it later (it looks like `123.45.67.89`)
 
 ### Don't have an SSH key? Here's how to make one:
 
@@ -574,7 +589,7 @@ Here's what you'll actually pay:
 
 | Service | What it does | Cost |
 |---------|-------------|------|
-| **Hetzner VPS** | Runs your website | ~$5-6/month |
+| **Server (VPS)** | Runs your website | ~$7/mo (EU) or ~$18-24/mo (US) |
 | **Domain name** | Your web address | ~$12/year |
 | **Cloudflare** | Security & speed | Free |
 | **Resend** | Sign-in emails | Free (up to 3,000 emails/month) |
@@ -582,7 +597,7 @@ Here's what you'll actually pay:
 | **UptimeRobot** | Alerts if site is down | Free |
 | **Sentry** | Error tracking | Free (up to 5,000 errors/month) |
 
-**Total: About $6/month + $12/year**
+**Total: About $7-24/month + $12/year** (depending on server provider and location)
 
 ---
 
