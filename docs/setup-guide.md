@@ -1,669 +1,602 @@
-# LabPrice Setup & Deployment Guide
+# LabPrice Setup Guide
 
-This guide takes you from zero to a running LabPrice instance, both locally and in production.
+This guide walks you through getting LabPrice live on the internet, step by step. Each step tells you exactly what to click and what to type. No programming experience needed — just follow along.
 
-LabPrice is a Turborepo monorepo with:
-
-- **apps/web** -- Next.js frontend (port 3000)
-- **apps/worker** -- Background job runner (port 3001)
-- **packages/database** -- Prisma schema and migrations
-- **packages/scrapers** -- Vendor price scrapers
-- **packages/shared, ui, config** -- Shared libraries
+**Total time:** About 2-3 hours if this is your first time.
+**Total cost:** About $6/month + $12/year for a domain name.
 
 ---
 
-## 1. Prerequisites
+## What You're Setting Up
 
-### Software
+LabPrice needs a few things to work:
 
-| Tool | Version | Install |
-|------|---------|---------|
-| Node.js | 22.x | https://nodejs.org or `nvm install 22` |
-| pnpm | 9.x | Enabled automatically via `corepack enable` |
-| Docker + Compose | Latest | https://docs.docker.com/get-docker/ |
-| Git | Latest | `apt install git` / `brew install git` |
+- **A server** — a computer in the cloud that runs your website 24/7
+- **A database** — where all your test prices, vendor info, and user accounts are stored
+- **A domain name** — your website address (like labprice.com)
+- **An email service** — so users can sign in with magic links
+- **Google sign-in** — so users can sign in with their Google account
 
-### Accounts (for production)
-
-- **GitHub** -- repository hosting and CI/CD
-- **Domain registrar** -- any registrar (Namecheap, Cloudflare Registrar, etc.)
-- **Cloudflare** -- DNS and CDN (free plan)
-- **Resend** -- transactional email (free tier: 3,000 emails/month)
-- **Google Cloud Console** -- OAuth credentials (free)
+Don't worry — most of these are free or very cheap, and this guide covers each one.
 
 ---
 
-## 2. Local Development Setup
+## Step 1: Get a Server
 
-```bash
-# Clone the repo
-git clone git@github.com:YOUR_ORG/labprice.git
-cd labprice
+You need a server (called a "VPS") to run your website. Think of it as renting a computer that's always on and connected to the internet.
 
-# Enable pnpm via corepack
-corepack enable
+### Sign up with Hetzner (cheapest good option — about $5/month)
 
-# Install dependencies
-pnpm install
+1. Go to https://www.hetzner.com/cloud
+2. Click **"Sign Up"** and create an account with your email
+3. You'll need to verify your identity (they may ask for a credit card or PayPal)
+4. Once logged in, click **"New Project"** and name it "LabPrice"
+5. Click into your project, then click **"Add Server"**
+6. Choose these settings:
+   - **Location:** Pick whichever is closest to your users (Ashburn, VA if you're in the US)
+   - **Image:** Ubuntu 24.04
+   - **Type:** Shared vCPU, **CX22** (2 vCPU, 4 GB RAM) — this is plenty to start
+   - **Networking:** Leave defaults
+   - **SSH Keys:** Click "Add SSH Key" (see below if you don't have one)
+   - **Name:** `labprice`
+7. Click **"Create & Buy Now"**
+8. **Write down the IP address** that appears — you'll need it later (it looks like `123.45.67.89`)
 
-# Copy environment file
+### Don't have an SSH key? Here's how to make one:
+
+An SSH key is like a special password that lets you connect to your server securely.
+
+**On Mac:**
+1. Open the **Terminal** app (search for "Terminal" in Spotlight)
+2. Paste this and press Enter:
+   ```
+   ssh-keygen -t ed25519 -C "labprice"
+   ```
+3. Press Enter three times (to accept the default location and skip the passphrase)
+4. Now show your public key:
+   ```
+   cat ~/.ssh/id_ed25519.pub
+   ```
+5. Copy everything that appears — that's what you paste into Hetzner
+
+**On Windows:**
+1. Open **PowerShell** (search for it in the Start menu)
+2. Paste this and press Enter:
+   ```
+   ssh-keygen -t ed25519 -C "labprice"
+   ```
+3. Press Enter three times
+4. Show your public key:
+   ```
+   cat $env:USERPROFILE\.ssh\id_ed25519.pub
+   ```
+5. Copy everything that appears
+
+---
+
+## Step 2: Get a Domain Name
+
+A domain name is your website's address (like `labprice.com`).
+
+1. Go to https://www.cloudflare.com/products/registrar/
+2. Create a free Cloudflare account if you don't have one
+3. Search for a domain name you want (e.g., `labprice.com`, `labpricecompare.com`)
+4. Pick one and purchase it (usually $10-15/year for a `.com`)
+5. **Write down your domain name** — you'll need it in later steps
+
+> **Tip:** If `labprice.com` is taken, try variations like `labprices.com`, `labpriceguide.com`, or use a different extension like `.io` or `.co`.
+
+> **Already have a domain elsewhere?** That works too. You'll just need to change your domain's nameservers to Cloudflare's in Step 3.
+
+---
+
+## Step 3: Set Up Cloudflare (Free)
+
+Cloudflare protects your site from attacks, makes it faster, and handles your SSL certificate (the padlock icon in browsers). It's free.
+
+### If you bought your domain from Cloudflare:
+It's already there! Skip to "Add DNS Records" below.
+
+### If your domain is elsewhere:
+1. Log into https://dash.cloudflare.com
+2. Click **"Add a Site"**
+3. Type your domain name and click **"Add Site"**
+4. Choose the **Free** plan and click **"Continue"**
+5. Cloudflare will show you two nameservers (they look like `ada.ns.cloudflare.com`)
+6. Go to wherever you bought your domain (GoDaddy, Namecheap, etc.)
+7. Find the "Nameservers" or "DNS" setting
+8. Replace the existing nameservers with the two Cloudflare gave you
+9. Save and wait — this can take up to 24 hours, but usually works in about 30 minutes
+
+### Add DNS Records
+
+This tells the internet that your domain should point to your server.
+
+1. In Cloudflare, click on your domain
+2. Click **"DNS"** in the left sidebar
+3. Click **"Add Record"** and fill in:
+   - **Type:** A
+   - **Name:** `@`
+   - **IPv4 address:** Your server's IP address (from Step 1)
+   - **Proxy status:** Orange cloud (Proxied) — this is important!
+4. Click **"Save"**
+5. Add one more record:
+   - **Type:** A
+   - **Name:** `www`
+   - **IPv4 address:** Same IP address
+   - **Proxy status:** Orange cloud (Proxied)
+6. Click **"Save"**
+
+### Turn on SSL
+
+1. Click **"SSL/TLS"** in the left sidebar
+2. Set encryption mode to **"Full (strict)"**
+3. Click **"Edge Certificates"** in the sub-menu
+4. Turn on **"Always Use HTTPS"**
+
+---
+
+## Step 4: Set Up Email (Resend — Free)
+
+Resend sends the magic link emails that let users sign in without a password.
+
+1. Go to https://resend.com and click **"Sign Up"**
+2. Create an account with your email
+3. Once logged in, click **"Domains"** in the left sidebar
+4. Click **"Add Domain"** and type your domain (e.g., `labprice.com`)
+5. Resend will show you DNS records you need to add. For each one:
+   - Go back to **Cloudflare > DNS**
+   - Click **"Add Record"**
+   - Copy the type, name, and value from Resend
+   - **Important:** Set Proxy status to **"DNS only"** (grey cloud) for these records
+6. Back in Resend, click **"Verify"** — it may take a few minutes
+7. Once verified, click **"API Keys"** in the left sidebar
+8. Click **"Create API Key"**
+   - Name it "LabPrice"
+   - Leave permissions as "Full Access"
+9. **Copy the API key** (starts with `re_`) — you'll need it later. You can only see it once!
+
+---
+
+## Step 5: Set Up Google Sign-In (Free)
+
+This lets users sign in with their Google account.
+
+1. Go to https://console.cloud.google.com
+2. Sign in with any Google account
+3. Click the project dropdown at the top and click **"New Project"**
+   - Name: `LabPrice`
+   - Click **"Create"**
+4. Make sure your new project is selected in the dropdown
+5. In the search bar at the top, type **"OAuth consent screen"** and click it
+6. Click **"Get Started"**
+   - App name: `LabPrice`
+   - User support email: your email
+   - Audience: **External**
+   - Contact information: your email
+   - Click through and **"Save"**
+7. In the search bar, type **"Credentials"** and click **"Credentials"** under "APIs & Services"
+8. Click **"Create Credentials"** at the top, then **"OAuth client ID"**
+   - Application type: **"Web application"**
+   - Name: `LabPrice`
+   - Under **"Authorized redirect URIs"**, click **"Add URI"** and add:
+     ```
+     https://YOUR-DOMAIN.com/api/auth/callback/google
+     ```
+     (Replace `YOUR-DOMAIN.com` with your actual domain)
+   - Click **"Create"**
+9. A popup appears with your **Client ID** and **Client Secret**
+10. **Copy both** — you'll need them in the next step
+
+---
+
+## Step 6: Connect to Your Server and Deploy
+
+Now you'll connect to your server and set everything up. This is the biggest step, but just follow along command by command.
+
+### Connect to your server
+
+**On Mac:** Open Terminal
+**On Windows:** Open PowerShell
+
+Type this (replace with your actual IP):
+```
+ssh root@YOUR_SERVER_IP
+```
+
+If it asks "Are you sure you want to continue connecting?", type `yes` and press Enter.
+
+You're now controlling your server! Everything you type runs on that remote computer.
+
+### Install Docker
+
+Docker is the tool that runs all the pieces of LabPrice. Copy and paste these commands one at a time:
+
+```
+curl -fsSL https://get.docker.com | sh
+```
+
+Wait for it to finish (about 1-2 minutes), then:
+
+```
+docker --version
+```
+
+You should see something like `Docker version 27.x.x`. If you do, it worked!
+
+### Install Git and clone the code
+
+```
+apt update && apt install -y git
+```
+
+```
+git clone https://github.com/TampaDave73/labprice.git /opt/labprice
+```
+
+```
+cd /opt/labprice
+```
+
+### Create your settings file
+
+This is where you put all your passwords and API keys:
+
+```
 cp .env.example .env
 ```
 
-### Start infrastructure (Postgres + Redis)
+Now open the file for editing:
 
-```bash
-pnpm docker:dev
-# or equivalently:
-# docker compose -f docker-compose.dev.yml up -d
+```
+nano .env
 ```
 
-This starts:
-- **PostgreSQL 16** on `localhost:5432` (user: `labprice`, password: `labprice`, db: `labprice`)
-- **Redis 7** on `localhost:6379`
+You'll see a file with settings. Use your arrow keys to move around. Update these values:
 
-### Run database migrations and seed
+```
+# Replace the items in quotes with your actual values
 
-```bash
-# Generate Prisma client
-pnpm db:generate
+DATABASE_URL="postgresql://labprice:PICK_A_STRONG_PASSWORD@postgres:5432/labprice?schema=public"
+REDIS_URL="redis://redis:6379"
 
-# Push schema to database (for dev, fast iteration)
-pnpm db:push
+AUTH_URL="https://YOUR-DOMAIN.com"
+NEXT_PUBLIC_APP_URL="https://YOUR-DOMAIN.com"
+NODE_ENV="production"
 
-# Or run migrations (mirrors production)
-pnpm --filter @labprice/database exec prisma migrate deploy
+GOOGLE_CLIENT_ID="paste-your-google-client-id-here"
+GOOGLE_CLIENT_SECRET="paste-your-google-client-secret-here"
 
-# Seed initial data
-pnpm db:seed
+RESEND_API_KEY="re_paste_your_resend_key_here"
+EMAIL_FROM="LabPrice <noreply@YOUR-DOMAIN.com>"
+
+SEED_ADMIN_EMAIL="your-personal-email@gmail.com"
 ```
 
-### Start the dev server
+For `AUTH_SECRET`, you need a random string. Press Ctrl+Z to pause the editor, then run:
 
-```bash
-pnpm dev
 ```
-
-### Verify
-
-- Open http://localhost:3000 -- you should see the LabPrice homepage
-- Check http://localhost:3000/api/health -- should return a 200 JSON response
-
-### Useful dev commands
-
-```bash
-pnpm lint          # ESLint across all packages
-pnpm typecheck     # TypeScript type checking
-pnpm test          # Run test suites
-pnpm db:studio     # Open Prisma Studio (visual DB browser)
-pnpm clean         # Clean all build artifacts
-```
-
----
-
-## 3. Environment Variables
-
-All variables are defined in `.env.example`. Here is every variable with its purpose:
-
-### Database
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string. In Docker Compose production, the hostname is `postgres` (the service name). Locally, use `localhost`. | `postgresql://labprice:labprice@localhost:5432/labprice?schema=public` |
-
-### Redis
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `REDIS_URL` | Redis connection string. In Docker Compose production, the hostname is `redis`. | `redis://localhost:6379` |
-
-### Authentication
-
-| Variable | Description | How to get it |
-|----------|-------------|---------------|
-| `AUTH_SECRET` | Secret used by Auth.js to sign/encrypt tokens. Must be a random 32+ character string. | Run: `openssl rand -base64 32` |
-| `AUTH_URL` | The canonical URL of your app. Used for OAuth callback URLs. | `http://localhost:3000` (dev) or `https://labprice.com` (prod) |
-
-### Google OAuth
-
-| Variable | Description | How to get it |
-|----------|-------------|---------------|
-| `GOOGLE_CLIENT_ID` | OAuth 2.0 client ID from Google Cloud Console. | See [Section 5: Authentication Setup](#5-authentication-setup) |
-| `GOOGLE_CLIENT_SECRET` | OAuth 2.0 client secret. | Same as above |
-
-### Email (Resend)
-
-| Variable | Description | How to get it |
-|----------|-------------|---------------|
-| `RESEND_API_KEY` | API key from Resend dashboard. | https://resend.com/api-keys |
-| `EMAIL_FROM` | The "From" address for outgoing emails. Must use a verified domain. | `LabPrice <noreply@labprice.com>` |
-
-### App Configuration
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_APP_URL` | Public-facing URL of the app. Used for links in emails, meta tags, etc. | `http://localhost:3000` (dev) or `https://labprice.com` (prod) |
-| `NODE_ENV` | Node environment. | `development` or `production` |
-
-> **Note:** In production Docker Compose, `DATABASE_URL` and `REDIS_URL` are overridden in `docker-compose.yml` to use internal Docker networking hostnames (`postgres` and `redis`). You do NOT need to change these in your `.env` file for Docker deployments.
-
----
-
-## 4. Database Setup
-
-### Requirements
-
-- PostgreSQL 16 (the Docker image `postgres:16-alpine` handles this)
-- Required extensions (installed by migrations): `citext`, `pg_trgm`, `btree_gin`
-- Prisma uses the `fullTextSearchPostgres` preview feature
-
-### Migrations
-
-```bash
-# Development -- push schema directly (fast, no migration files)
-pnpm db:push
-
-# Production -- apply migration files
-pnpm --filter @labprice/database exec prisma migrate deploy
-```
-
-In Docker Compose production, the `migrate` service runs automatically before the app starts:
-```bash
-docker compose run --rm migrate
-```
-
-### Seeding
-
-```bash
-pnpm db:seed
-```
-
-### Backup strategy
-
-For production, set up automated backups:
-
-```bash
-# Manual backup
-docker compose exec postgres pg_dump -U labprice labprice > backup_$(date +%Y%m%d_%H%M%S).sql
-
-# Restore from backup
-docker compose exec -T postgres psql -U labprice labprice < backup_20240101_120000.sql
-```
-
-Recommended: run `pg_dump` daily via cron and upload to S3 (see [Section 10](#10-s3-storage-optional)).
-
----
-
-## 5. Authentication Setup
-
-### Resend (Email)
-
-1. Create an account at https://resend.com
-2. Add and verify your domain (e.g., `labprice.com`) -- Resend will give you DNS records to add
-3. Go to **API Keys** and create a new key
-4. Set in `.env`:
-   ```
-   RESEND_API_KEY="re_xxxxxxxxxxxx"
-   EMAIL_FROM="LabPrice <noreply@labprice.com>"
-   ```
-
-### Google OAuth
-
-1. Go to https://console.cloud.google.com
-2. Create a new project (or use an existing one)
-3. Navigate to **APIs & Services > OAuth consent screen**
-   - Choose "External" user type
-   - Fill in app name ("LabPrice"), user support email, developer email
-   - Add scopes: `email`, `profile`, `openid`
-   - Add your domain to authorized domains
-4. Navigate to **APIs & Services > Credentials**
-   - Click **Create Credentials > OAuth 2.0 Client ID**
-   - Application type: "Web application"
-   - Authorized redirect URIs:
-     - Development: `http://localhost:3000/api/auth/callback/google`
-     - Production: `https://labprice.com/api/auth/callback/google`
-5. Copy the Client ID and Client Secret into `.env`:
-   ```
-   GOOGLE_CLIENT_ID="xxxx.apps.googleusercontent.com"
-   GOOGLE_CLIENT_SECRET="GOCSPX-xxxx"
-   ```
-
-### AUTH_SECRET
-
-Generate a secure random secret:
-
-```bash
 openssl rand -base64 32
 ```
 
-Copy the output into your `.env`:
+Copy the output, then type `fg` to go back to the editor. Paste it as the value:
+
 ```
-AUTH_SECRET="your-generated-secret-here"
-```
-
-> **Warning:** Never reuse AUTH_SECRET across environments. Generate a unique one for each deployment.
-
----
-
-## 6. Domain & Cloudflare Setup
-
-### Register a domain
-
-Use any registrar. Cloudflare Registrar offers at-cost pricing.
-
-### Add domain to Cloudflare
-
-1. Create a free Cloudflare account at https://cloudflare.com
-2. Add your domain and follow the setup wizard
-3. Update your domain's nameservers at your registrar to the ones Cloudflare provides
-
-### Configure DNS
-
-Add an **A record** pointing to your VPS IP:
-
-| Type | Name | Content | Proxy |
-|------|------|---------|-------|
-| A | `@` | `YOUR_VPS_IP` | Proxied (orange cloud) |
-| A | `www` | `YOUR_VPS_IP` | Proxied (orange cloud) |
-
-### SSL/TLS
-
-- Go to **SSL/TLS** and set encryption mode to **Full (Strict)**
-- Under **Edge Certificates**, enable **Always Use HTTPS**
-
-### Recommended settings
-
-- **Caching > Tiered Cache**: Enable
-- **Speed > Auto Minify**: Enable for JavaScript, CSS, HTML
-- **Security > Security Level**: Medium
-- **Security > Bot Fight Mode**: Enable
-- **Rules > Page Rules** (optional): Cache static assets aggressively
-
-> **Note:** Since Cloudflare proxies traffic, your VPS only needs to expose ports 80 and 443 to Cloudflare IPs, plus port 22 for SSH.
-
----
-
-## 7. VPS Deployment
-
-### Recommended specs
-
-| Traffic level | CPU | RAM | Disk | Monthly cost |
-|--------------|-----|-----|------|-------------|
-| Small (< 1k users) | 2 vCPU | 4 GB | 80 GB SSD | ~$12-24/mo |
-| Medium (1k-10k users) | 4 vCPU | 8 GB | 160 GB SSD | ~$24-48/mo |
-
-### Recommended providers
-
-- **Hetzner** (best value, EU/US) -- 2 vCPU / 4 GB from ~EUR 4.50/mo
-- **DigitalOcean** -- 2 vCPU / 4 GB from $24/mo
-- **Linode (Akamai)** -- 2 vCPU / 4 GB from $24/mo
-
-### Initial server setup
-
-```bash
-# SSH into your new server
-ssh root@YOUR_VPS_IP
-
-# Create a deploy user
-adduser deploy
-usermod -aG sudo deploy
-
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-usermod -aG docker deploy
-
-# Switch to deploy user
-su - deploy
-
-# Clone the repo
-git clone git@github.com:YOUR_ORG/labprice.git /opt/labprice
-cd /opt/labprice
-
-# Create your production .env
-cp .env.example .env
-nano .env  # Fill in all production values
+AUTH_SECRET="paste-the-random-string-here"
 ```
 
-### Production `.env` checklist
+**Also update docker-compose.yml** if you changed the database password:
 
-```env
-DATABASE_URL="postgresql://labprice:STRONG_PASSWORD_HERE@postgres:5432/labprice?schema=public"
-AUTH_SECRET="<output of openssl rand -base64 32>"
-AUTH_URL="https://labprice.com"
-GOOGLE_CLIENT_ID="your-client-id"
-GOOGLE_CLIENT_SECRET="your-client-secret"
-RESEND_API_KEY="re_your_api_key"
-EMAIL_FROM="LabPrice <noreply@labprice.com>"
-REDIS_URL="redis://redis:6379"
-NEXT_PUBLIC_APP_URL="https://labprice.com"
-NODE_ENV="production"
+Press Ctrl+X, then Y, then Enter to save and exit nano.
+
+```
+nano docker-compose.yml
 ```
 
-> **Warning:** If you change the PostgreSQL password from the default `labprice`, also update the `POSTGRES_PASSWORD` environment variable in `docker-compose.yml`.
+Find the line that says `POSTGRES_PASSWORD: labprice` and change `labprice` to match the password you used in DATABASE_URL above. Save and exit (Ctrl+X, Y, Enter).
 
-### Deploy
+### Build and start everything
 
-```bash
-# Build and start all services
+This will take about 3-5 minutes the first time:
+
+```
 docker compose build
-docker compose run --rm migrate
-docker compose up -d web worker
+```
 
-# Verify
+Set up the database:
+
+```
+docker compose run --rm migrate
+```
+
+Start the website:
+
+```
+docker compose up -d
+```
+
+### Check if it's working
+
+```
 curl http://localhost:3000/api/health
 ```
 
-### Using the deploy script for updates
+You should see something like: `{"status":"ok","timestamp":"...","version":"1.0.0"}`
 
-The included `scripts/deploy.sh` automates pulling, building, migrating, and restarting:
+If you do — congratulations! Your site is running!
 
-```bash
-# Make it executable
-chmod +x /opt/labprice/scripts/deploy.sh
+### Set up the firewall
 
-# Run a deploy
-/opt/labprice/scripts/deploy.sh
-```
-
-What it does:
-1. `git pull origin main`
-2. `docker compose build`
-3. `docker compose run --rm migrate` (runs Prisma migrations + seed)
-4. `docker compose up -d web worker`
-5. Health check via `wget`
-
-### Configure firewall
-
-```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp   # HTTPS
-sudo ufw enable
-```
-
-### Reverse proxy (Caddy -- recommended)
-
-If you are not using Cloudflare's proxy, you need a reverse proxy for HTTPS. Caddy is the simplest option:
-
-```bash
-sudo apt install -y caddy
-```
-
-Create `/etc/caddy/Caddyfile`:
+This protects your server by only allowing web traffic and SSH:
 
 ```
-labprice.com {
+ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw enable
+```
+
+Type `y` when it asks to confirm.
+
+### Install Caddy (handles HTTPS)
+
+Caddy is a simple web server that sits in front of LabPrice and handles the secure HTTPS connection:
+
+```
+apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+apt update
+apt install -y caddy
+```
+
+Now configure it:
+
+```
+nano /etc/caddy/Caddyfile
+```
+
+Delete everything in the file and replace it with (use your actual domain):
+
+```
+YOUR-DOMAIN.com {
     reverse_proxy localhost:3000
 }
 ```
 
-```bash
-sudo systemctl reload caddy
+Save (Ctrl+X, Y, Enter), then restart Caddy:
+
+```
+systemctl reload caddy
 ```
 
-Caddy automatically provisions and renews Let's Encrypt certificates.
+### Visit your site!
 
-If you ARE using Cloudflare proxy with Full (Strict) SSL, you can use a Cloudflare Origin Certificate instead.
+Open your browser and go to `https://YOUR-DOMAIN.com` — you should see the LabPrice homepage!
 
 ---
 
-## 8. CI/CD Pipeline
+## Step 7: Set Up Your Admin Account
 
-### How it works
+1. Go to your site and click **"Free Account"**
+2. Sign in with the email you put in `SEED_ADMIN_EMAIL` — this account was created as a Super Admin during the database setup
+3. Go to `https://YOUR-DOMAIN.com/admin` — you should see the admin dashboard
 
-Two GitHub Actions workflows are included:
+---
 
-1. **CI** (`.github/workflows/ci.yml`) -- Runs on every push/PR to `main`:
-   - Lint + type checking
-   - Tests (with Postgres 16 and Redis 7 service containers)
-   - Build verification
+## Step 8: Keeping Your Site Updated
 
-2. **Deploy** (`.github/workflows/deploy.yml`) -- Runs on push to `main` (ignoring docs changes):
-   - Runs the full CI pipeline first
-   - SSHes into the VPS and runs `scripts/deploy.sh`
-   - Performs a health check
+When there are code updates, connect to your server and run:
 
-### Setting up GitHub Actions secrets
+```
+ssh root@YOUR_SERVER_IP
+cd /opt/labprice
+./scripts/deploy.sh
+```
 
-Go to your GitHub repo > **Settings > Secrets and variables > Actions** and add:
+This pulls the latest code, rebuilds, runs any new database migrations, and restarts the site. It takes about 2-3 minutes.
 
-| Secret | Value |
-|--------|-------|
-| `DEPLOY_HOST` | Your VPS IP address or hostname |
-| `DEPLOY_USER` | `deploy` (or whichever user) |
-| `DEPLOY_KEY` | Private SSH key (see below) |
+---
 
-### SSH key setup
+## Optional: Set Up Automatic Deployments
 
-```bash
-# On your local machine, generate a deploy key
+If you want the site to automatically update when code is pushed to GitHub:
+
+### Create a deploy SSH key
+
+On your local computer (not the server):
+
+```
 ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/labprice_deploy
+```
 
-# Copy the public key to the server
-ssh-copy-id -i ~/.ssh/labprice_deploy.pub deploy@YOUR_VPS_IP
+Press Enter twice (no passphrase).
 
-# Copy the PRIVATE key contents -- this goes into the DEPLOY_KEY secret
+Copy the public key to your server:
+
+```
+ssh-copy-id -i ~/.ssh/labprice_deploy.pub root@YOUR_SERVER_IP
+```
+
+Now copy the private key:
+
+**Mac:**
+```
 cat ~/.ssh/labprice_deploy
 ```
 
-Paste the entire private key (including `-----BEGIN` and `-----END` lines) into the `DEPLOY_KEY` GitHub secret.
+**Windows:**
+```
+cat $env:USERPROFILE\.ssh\labprice_deploy
+```
+
+### Add secrets to GitHub
+
+1. Go to your GitHub repository
+2. Click **"Settings"** > **"Secrets and variables"** > **"Actions"**
+3. Click **"New repository secret"** and add these three:
+
+| Name | Value |
+|------|-------|
+| `DEPLOY_HOST` | Your server IP address |
+| `DEPLOY_USER` | `root` |
+| `DEPLOY_KEY` | The entire private key you copied (including the BEGIN and END lines) |
+
+Now whenever you push code to the `main` branch, it will automatically deploy!
 
 ---
 
-## 9. Monitoring & Error Tracking (Optional)
+## Optional: Error Monitoring with Sentry (Free)
 
-### Sentry
+Sentry tells you when something breaks on your site, so you can fix it before users complain.
 
-1. Create a project at https://sentry.io (free tier: 5k errors/month)
-2. Get your DSN from **Settings > Projects > [your project] > Client Keys**
-3. Add to `.env`:
+1. Go to https://sentry.io and create a free account
+2. Create a new project:
+   - Platform: **Next.js**
+   - Name: `labprice`
+3. Copy the **DSN** (it looks like `https://xxx@xxx.ingest.sentry.io/xxx`)
+4. SSH into your server and add it to your `.env`:
    ```
-   SENTRY_DSN="https://xxxx@xxx.ingest.sentry.io/xxxx"
+   ssh root@YOUR_SERVER_IP
+   cd /opt/labprice
+   nano .env
+   ```
+   Add this line:
+   ```
+   SENTRY_DSN="paste-your-dsn-here"
+   ```
+   Save and restart:
+   ```
+   docker compose up -d
    ```
 
-### Uptime monitoring
+---
 
-Free options:
-- **UptimeRobot** (https://uptimerobot.com) -- 50 monitors, 5-min interval
-- **BetterUptime** (https://betterstack.com/uptime) -- generous free tier
+## Optional: Uptime Monitoring (Free)
 
-Monitor these endpoints:
-- `https://labprice.com/api/health`
-- `https://labprice.com`
+Get a text or email if your site goes down.
 
-### Analytics
-
-Self-hosted options (no cookie banners needed):
-- **Umami** (https://umami.is) -- self-host alongside LabPrice
-- **Plausible** (https://plausible.io) -- hosted ($9/mo) or self-hosted
+1. Go to https://uptimerobot.com and create a free account
+2. Click **"Add New Monitor"**
+   - Monitor Type: HTTP(s)
+   - Friendly Name: LabPrice
+   - URL: `https://YOUR-DOMAIN.com/api/health`
+   - Monitoring Interval: 5 minutes
+3. Set up alert contacts (your email and/or phone number)
+4. Click **"Create Monitor"**
 
 ---
 
-## 10. S3 Storage (Optional)
+## Optional: Database Backups
 
-For partition archives and database backups.
+It's a good idea to automatically back up your database every night.
 
-### AWS S3
+SSH into your server:
 
-1. Create an S3 bucket (e.g., `labprice-backups`)
-2. Create an IAM user with S3 write access
-3. Add credentials to `.env` (if supported by your backup script)
-
-### Backblaze B2 (cheaper alternative)
-
-1. Create a bucket at https://backblaze.com/b2
-2. Create an application key
-3. Use the S3-compatible API endpoint
-
-### Automated backup cron
-
-```bash
-# Add to crontab (crontab -e) on the VPS
-0 3 * * * /opt/labprice/scripts/backup-db.sh
+```
+ssh root@YOUR_SERVER_IP
 ```
 
-Example backup script (`scripts/backup-db.sh`):
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-docker compose -f /opt/labprice/docker-compose.yml exec -T postgres \
-  pg_dump -U labprice labprice | gzip > /opt/labprice/backups/labprice_${TIMESTAMP}.sql.gz
-# Upload to S3 (requires aws cli)
-# aws s3 cp /opt/labprice/backups/labprice_${TIMESTAMP}.sql.gz s3://labprice-backups/
-# Clean up local backups older than 7 days
-find /opt/labprice/backups -name "*.sql.gz" -mtime +7 -delete
+Create a backups folder:
+
 ```
+mkdir -p /opt/labprice/backups
+```
+
+Set up a daily automatic backup:
+
+```
+crontab -e
+```
+
+If asked which editor, choose `1` (nano). Add this line at the bottom:
+
+```
+0 3 * * * docker compose -f /opt/labprice/docker-compose.yml exec -T postgres pg_dump -U labprice labprice | gzip > /opt/labprice/backups/backup_$(date +\%Y\%m\%d).sql.gz && find /opt/labprice/backups -name "*.sql.gz" -mtime +30 -delete
+```
+
+Save and exit (Ctrl+X, Y, Enter). This backs up your database every night at 3 AM and keeps the last 30 days.
 
 ---
 
-## 11. Scraper Proxies (Optional)
+## Troubleshooting
 
-### When you need proxies
+### "I can't connect to my server"
+- Double-check the IP address
+- Make sure you're using the right SSH key
+- Try: `ssh -v root@YOUR_SERVER_IP` (the `-v` flag shows what's happening)
 
-Vendor websites may rate-limit or block your server's IP if scrapers run frequently. Proxies distribute requests across multiple IPs.
+### "The site shows an error page"
+Check the logs:
+```
+ssh root@YOUR_SERVER_IP
+cd /opt/labprice
+docker compose logs web --tail 50
+```
+This shows the last 50 lines of output from the web server.
 
-### Recommended providers
+### "The database won't start"
+```
+docker compose logs postgres --tail 50
+```
+Common fix: make sure the password in `.env` matches what's in `docker-compose.yml`.
 
-- **BrightData** -- residential and datacenter proxies
-- **Oxylabs** -- residential proxies
-- **SmartProxy** -- good pricing for smaller volumes
-- **Free rotation** -- use rotating datacenter proxies from providers like ProxyScrape for testing
-
-### Configuration
-
-Add proxies through the LabPrice admin panel. The scraper worker will automatically rotate through configured proxies.
-
----
-
-## 12. Maintenance
-
-### Partition maintenance
-
-The worker service handles partition maintenance automatically (creating new partitions, detaching old ones). No manual intervention needed.
-
-### Database backups
-
-See [Section 10](#10-s3-storage-optional) for automated backup setup.
-
-### Updating dependencies
-
-```bash
-# Update all dependencies
-pnpm update
-
-# Update a specific package
-pnpm update <package-name> --filter <workspace>
-
-# Check for outdated packages
-pnpm outdated -r
+### "I changed my .env but nothing happened"
+You need to restart after changing settings:
+```
+docker compose down
+docker compose up -d
 ```
 
-### Monitoring disk space
-
-```bash
-# Check disk usage
-df -h
-
-# Check Docker disk usage
-docker system df
-
-# Clean up unused Docker resources
-docker system prune -a --volumes
+### "Docker build is failing"
+Try a clean build:
 ```
-
-> **Warning:** `docker system prune --volumes` will delete unused volumes including data. Only run this if you have backups or are sure the volumes are not needed.
-
-### Checking logs
-
-```bash
-# All services
-docker compose logs -f
-
-# Specific service
-docker compose logs -f web
-docker compose logs -f worker
-docker compose logs -f postgres
-
-# Last 100 lines
-docker compose logs --tail 100 web
-```
-
----
-
-## 13. Troubleshooting
-
-### Port conflicts
-
-```bash
-# Check what's using a port
-sudo lsof -i :3000
-sudo lsof -i :5432
-sudo lsof -i :6379
-```
-
-Fix: stop the conflicting process, or change the port mapping in `docker-compose.dev.yml`.
-
-### Database connection errors
-
-- **Locally:** Make sure Docker containers are running: `docker compose -f docker-compose.dev.yml ps`
-- **In production:** Check `docker compose logs postgres` for errors
-- Verify `DATABASE_URL` matches the credentials in `docker-compose.yml`
-
-### Redis connection errors
-
-- Check Redis is running: `docker compose -f docker-compose.dev.yml ps`
-- Test connection: `docker compose exec redis redis-cli ping` (should return `PONG`)
-
-### Prisma migration errors
-
-```bash
-# Check migration status
-pnpm --filter @labprice/database exec prisma migrate status
-
-# Reset database (DESTROYS ALL DATA)
-pnpm --filter @labprice/database exec prisma migrate reset
-
-# Regenerate Prisma client after schema changes
-pnpm db:generate
-```
-
-### Docker build failures
-
-```bash
-# Clean build (no cache)
 docker compose build --no-cache
-
-# Check available disk space
-df -h
-docker system df
-
-# Prune unused images and build cache
-docker system prune
-docker builder prune
 ```
 
-### Health check endpoints
+If you're running out of disk space:
+```
+docker system prune -a
+```
+(This deletes old unused images to free up space)
 
-- `GET /api/health` -- returns 200 if the web app is running and can reach the database
+### "I forgot my admin email"
+Check your `.env` file:
+```
+grep SEED_ADMIN_EMAIL /opt/labprice/.env
+```
 
 ---
 
-## 14. Cost Summary
+## Cost Summary
 
-| Service | Free tier | Paid option | Monthly cost |
-|---------|-----------|-------------|-------------|
-| **VPS (Hetzner)** | -- | 2 vCPU / 4 GB | ~$5-6 |
-| **VPS (DigitalOcean)** | -- | 2 vCPU / 4 GB | ~$24 |
-| **Cloudflare** | DNS, CDN, SSL, DDoS protection | Pro plan | Free |
-| **Resend** | 3,000 emails/month | 50k emails/month | Free / $20 |
-| **Google OAuth** | Unlimited | -- | Free |
-| **GitHub** | Public repos, Actions (2,000 min/mo) | Private repos, more minutes | Free / $4/user |
-| **Sentry** | 5,000 errors/month | More volume | Free / $26 |
-| **UptimeRobot** | 50 monitors | More monitors, 1-min interval | Free / $7 |
-| **Backblaze B2** | 10 GB storage | Per GB | Free / ~$1 |
-| **Domain** | -- | .com registration | ~$10/year |
+Here's what you'll actually pay:
 
-**Minimum production cost: ~$5-6/month** (Hetzner VPS + free tiers for everything else, plus ~$10/year for the domain).
+| Service | What it does | Cost |
+|---------|-------------|------|
+| **Hetzner VPS** | Runs your website | ~$5-6/month |
+| **Domain name** | Your web address | ~$12/year |
+| **Cloudflare** | Security & speed | Free |
+| **Resend** | Sign-in emails | Free (up to 3,000 emails/month) |
+| **Google OAuth** | Google sign-in | Free |
+| **UptimeRobot** | Alerts if site is down | Free |
+| **Sentry** | Error tracking | Free (up to 5,000 errors/month) |
+
+**Total: About $6/month + $12/year**
+
+---
+
+## Quick Reference
+
+| Task | Command |
+|------|---------|
+| Connect to server | `ssh root@YOUR_SERVER_IP` |
+| Go to project folder | `cd /opt/labprice` |
+| Deploy updates | `./scripts/deploy.sh` |
+| View web logs | `docker compose logs web --tail 50` |
+| View worker logs | `docker compose logs worker --tail 50` |
+| View database logs | `docker compose logs postgres --tail 50` |
+| Restart everything | `docker compose down && docker compose up -d` |
+| Check site health | `curl http://localhost:3000/api/health` |
+| Edit settings | `nano .env` (then restart) |
+| Manual backup | `docker compose exec postgres pg_dump -U labprice labprice > backup.sql` |
