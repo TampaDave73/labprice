@@ -127,6 +127,8 @@ model User {
   auditLogs       AuditLog[]
   searchLogs      SearchLog[]
   pageViews       PageView[]
+  savedTests      SavedTest[]
+  notifications   Notification[]
   reviewedChanges StagedPriceChange[] @relation("ChangeReviewer")
   systemSettings  SystemSetting[]     @relation("SettingUpdater")
 
@@ -224,6 +226,7 @@ model Test {
   codes         TestCode[]
   biomarkers    TestBiomarker[]
   offerings     Offering[]
+  savedByUsers  SavedTest[]
   priceAlerts   PriceAlert[]
   scrapeResults ScrapeResult[]
   pageViews     PageView[]
@@ -501,6 +504,38 @@ model Proxy {
 }
 
 // ───────────────────────── Engagement ─────────────────────────
+
+model SavedTest {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  testId    String   @map("test_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, testId])
+  @@index([userId])
+  @@index([testId])
+  @@map("saved_tests")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  message   String
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
 
 model PriceAlert {
   id               String    @id @default(cuid())

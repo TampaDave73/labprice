@@ -1,9 +1,12 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@labprice/database';
 import type { Metadata } from 'next';
+import { auth } from '@/lib/auth';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import TestDetailClient from './TestDetailClient';
+import SaveTestButton from './SaveTestButton';
+import PriceAlertButton from './PriceAlertButton';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -43,6 +46,16 @@ export default async function TestDetailPage({ params }: Props) {
   const test = await getTest(slug);
   if (!test) notFound();
 
+  const session = await auth();
+  let savedTestId: string | null = null;
+  if (session?.user) {
+    const saved = await prisma.savedTest.findUnique({
+      where: { userId_testId: { userId: session.user.id, testId: test.id } },
+      select: { id: true },
+    });
+    savedTestId = saved?.id ?? null;
+  }
+
   const offerings = test.offerings.map((o) => ({
     id: o.id,
     vendorName: o.vendor.name,
@@ -63,6 +76,12 @@ export default async function TestDetailPage({ params }: Props) {
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
       <Navbar variant="light" />
+      {session?.user && (
+        <div className="max-w-[1240px] mx-auto px-6 pt-4 flex items-center gap-2 justify-end">
+          <SaveTestButton testId={test.id} initialSavedId={savedTestId} />
+          <PriceAlertButton testId={test.id} />
+        </div>
+      )}
       <TestDetailClient
         test={{
           name: test.name,
