@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', system-ui, sans-serif; }
+input, button, select { font-family: inherit; }
+::placeholder { color: rgba(100,110,155,0.5); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 3px; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:oklch(0.97 0.01 280);">
+
+  <!-- NAV -->
+  <nav style="position:sticky;top:0;z-index:200;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:{{ navBg }};border-bottom:1px solid {{ navBorderColor }};transition:background 0.35s,border-color 0.35s;">
+    <div style="max-width:1240px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;">
+      <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;">
+        <div style="width:34px;height:34px;background:{{ accentGradient }};border-radius:9px;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="3" fill="white"/><line x1="9" y1="2" x2="9" y2="5" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="13" x2="9" y2="16" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="9" x2="5" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/><line x1="13" y1="9" x2="16" y2="9" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <span style="font-size:18px;font-weight:700;letter-spacing:-0.3px;color:{{ navTextColor }};">LabPrice</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="padding:8px 20px;background:{{ accentGradient }};color:#fff;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;">Free Account</div>
+    </div>
+  </nav>
+
+  <!-- ═══ HOME ═══ -->
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+
+    <!-- HERO -->
+    <div style="background:linear-gradient(155deg,oklch(0.17 0.1 280) 0%,oklch(0.21 0.12 295) 55%,oklch(0.19 0.09 265) 100%);padding:90px 24px 110px;text-align:center;position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse 70% 55% at 50% -5%,oklch(0.55 0.18 280 / 0.2),transparent);pointer-events:none;"></div>
+      <div style="position:relative;max-width:700px;margin:0 auto;animation:fadeUp 0.6s ease;">
+        <div style="display:inline-flex;align-items:center;gap:8px;background:oklch(0.95 0.06 280 / 0.12);border:1px solid oklch(0.8 0.1 280 / 0.22);border-radius:20px;padding:5px 14px;margin-bottom:26px;">
+          <span style="width:7px;height:7px;border-radius:50%;background:oklch(0.72 0.18 145);flex-shrink:0;display:inline-block;"></span>
+          <span style="font-size:13px;color:oklch(0.85 0.06 280);font-weight:500;">Live prices from 10 ordering services</span>
+        </div>
+        <h1 style="font-size:54px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:-1.8px;margin-bottom:18px;text-wrap:pretty;">Compare blood test prices<br><span style="background:linear-gradient(90deg,oklch(0.75 0.2 280),oklch(0.78 0.18 315));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">instantly</span></h1>
+        <p style="font-size:18px;color:oklch(0.7 0.05 280);margin-bottom:44px;line-height:1.55;">Stop overpaying for lab tests. Search by test name or Quest/LabCorp test number.</p>
+
+        <!-- Search -->
+        <div style="position:relative;max-width:570px;margin:0 auto;">
+          <div style="display:flex;align-items:center;background:#fff;border-radius:14px;padding:5px 5px 5px 18px;box-shadow:0 24px 64px rgba(0,0,0,0.32);">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="flex-shrink:0;"><circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.1 280)" stroke-width="1.8"/><path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.1 280)" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input value="{{ searchQuery }}" onInput="{{ onSearchInput }}" onKeyDown="{{ onSearchKeyDown }}" placeholder="Test name — Vitamin D, Testosterone, TSH…" style="flex:1;border:none;outline:none;background:transparent;font-size:16px;padding:11px 14px;color:oklch(0.18 0.04 280);" />
+            <button onClick="{{ onHeroSearch }}" style="flex-shrink:0;background:{{ accentGradient }};color:#fff;border:none;border-radius:10px;padding:13px 24px;font-size:15px;font-weight:600;cursor:pointer;">Compare</button>
+          </div>
+          <!-- Autocomplete -->
+          <sc-if value="{{ hasSuggestions }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:calc(100% + 8px);left:0;right:0;background:#fff;border-radius:13px;box-shadow:0 16px 48px rgba(0,0,0,0.18);overflow:hidden;z-index:50;animation:slideDown 0.15s ease;">
+              <sc-for list="{{ suggestions }}" as="sug" hint-placeholder-count="3">
+                <div onClick="{{ sug.onSelect }}" style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;cursor:pointer;border-bottom:1px solid oklch(0.95 0.01 280);" style-hover="background:oklch(0.97 0.03 280);">
+                  <div style="text-align:left;">
+                    <div style="font-size:14px;font-weight:600;color:oklch(0.18 0.04 280);">{{ sug.name }}</div>
+                    <div style="font-size:11px;color:oklch(0.58 0.05 280);margin-top:2px;">{{ sug.codeStr }}</div>
+                  </div>
+                  <div style="font-size:14px;font-weight:700;color:oklch(0.4 0.17 145);">from {{ sug.minPriceStr }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Popular chips -->
+        <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:22px;">
+          <span style="font-size:13px;color:oklch(0.6 0.04 280);">Popular:</span>
+          <sc-for list="{{ popularChips }}" as="pt" hint-placeholder-count="6">
+            <button onClick="{{ pt.onSelect }}" style="padding:6px 15px;background:oklch(0.95 0.06 280 / 0.12);border:1px solid oklch(0.8 0.1 280 / 0.28);border-radius:20px;font-size:13px;color:oklch(0.85 0.07 280);cursor:pointer;font-weight:500;" style-hover="background:oklch(0.95 0.06 280 / 0.22);">{{ pt.shortName }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div style="background:oklch(0.22 0.1 280);padding:14px 24px;">
+      <div style="max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;font-weight:700;color:#fff;">10</span><span style="font-size:13px;color:oklch(0.72 0.06 280);">Ordering Services</span></div>
+        <div style="width:1px;height:28px;background:oklch(0.4 0.08 280);"></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;font-weight:700;color:#fff;">12+</span><span style="font-size:13px;color:oklch(0.72 0.06 280);">Common Tests</span></div>
+        <div style="width:1px;height:28px;background:oklch(0.4 0.08 280);"></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;font-weight:700;color:oklch(0.78 0.18 145);">Up to 70%</span><span style="font-size:13px;color:oklch(0.72 0.06 280);">Savings vs retail</span></div>
+        <div style="width:1px;height:28px;background:oklch(0.4 0.08 280);"></div>
+        <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;font-weight:700;color:#fff;">No</span><span style="font-size:13px;color:oklch(0.72 0.06 280);">Insurance required</span></div>
+      </div>
+    </div>
+
+    <!-- BROWSE -->
+    <div style="max-width:1240px;margin:0 auto;padding:56px 24px 80px;">
+
+      <!-- Popular Tests cards -->
+      <div style="margin-bottom:52px;">
+        <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.4px;color:oklch(0.18 0.04 280);margin-bottom:18px;">Popular Tests</h2>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+          <sc-for list="{{ popularCards }}" as="card" hint-placeholder-count="6">
+            <div onClick="{{ card.onSelect }}" style="background:#fff;border-radius:14px;padding:20px;cursor:pointer;border:1.5px solid oklch(0.92 0.02 280);transition:transform 0.18s,box-shadow 0.18s,border-color 0.18s;" style-hover="transform:translateY(-2px);box-shadow:0 8px 28px oklch(0.55 0.15 280 / 0.11);border-color:oklch(0.75 0.12 280);">
+              <span style="padding:3px 10px;background:{{ card.catBg }};color:{{ card.catColor }};border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:inline-block;margin-bottom:10px;">{{ card.category }}</span>
+              <h3 style="font-size:15px;font-weight:600;color:oklch(0.18 0.04 280);margin-bottom:5px;line-height:1.35;">{{ card.name }}</h3>
+              <div style="display:flex;align-items:baseline;gap:5px;">
+                <span style="font-size:11px;color:oklch(0.6 0.04 280);">from</span>
+                <span style="font-size:22px;font-weight:700;color:oklch(0.38 0.17 145);">{{ card.minPriceStr }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- All Tests compact list -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:16px;">
+          <div>
+            <h2 style="font-size:24px;font-weight:700;letter-spacing:-0.4px;color:oklch(0.18 0.04 280);">All Tests</h2>
+            <p style="font-size:14px;color:oklch(0.52 0.03 280);margin-top:4px;">{{ testCount }} tests · search by name or code above</p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <!-- Category filter -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <sc-for list="{{ categories }}" as="cat" hint-placeholder-count="5">
+                <button onClick="{{ cat.onSelect }}" style="padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;background:{{ cat.bg }};color:{{ cat.color }};border:1.5px solid {{ cat.border }};transition:all 0.15s;">{{ cat.label }}</button>
+              </sc-for>
+            </div>
+            <!-- Sort -->
+            <div style="display:flex;background:#fff;border:1.5px solid oklch(0.9 0.02 280);border-radius:9px;padding:2px;gap:2px;">
+              <button onClick="{{ setBrowseSortName }}" style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;background:{{ browseNameBg }};color:{{ browseNameColor }};transition:all 0.15s;">A – Z</button>
+              <button onClick="{{ setBrowseSortPrice }}" style="padding:5px 12px;border-radius:6px;border:none;font-size:12px;font-weight:500;cursor:pointer;background:{{ browsePriceBg }};color:{{ browsePriceColor }};transition:all 0.15s;">Price ↑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Compact list -->
+        <div style="background:#fff;border-radius:14px;border:1.5px solid oklch(0.92 0.02 280);overflow:hidden;">
+          <!-- List header -->
+          <div style="display:grid;grid-template-columns:1fr 140px 90px 28px;align-items:center;padding:10px 18px;background:oklch(0.97 0.015 280);border-bottom:1.5px solid oklch(0.92 0.02 280);">
+            <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;">Test</span>
+            <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;">Category</span>
+            <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">From</span>
+            <span></span>
+          </div>
+          <sc-for list="{{ visibleBrowseTests }}" as="row" hint-placeholder-count="8">
+            <div onClick="{{ row.onSelect }}" style="display:grid;grid-template-columns:1fr 140px 90px 28px;align-items:center;padding:13px 18px;border-bottom:1px solid oklch(0.96 0.01 280);cursor:pointer;transition:background 0.1s;" style-hover="background:oklch(0.97 0.02 280);">
+              <div>
+                <div style="font-size:14px;font-weight:600;color:oklch(0.18 0.04 280);">{{ row.name }}</div>
+                <div style="font-size:11px;color:oklch(0.6 0.04 280);margin-top:2px;">Quest {{ row.questCode }} · LabCorp {{ row.labCorpCode }}</div>
+              </div>
+              <div>
+                <span style="padding:3px 9px;background:{{ row.catBg }};color:{{ row.catColor }};border-radius:20px;font-size:10px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;white-space:nowrap;">{{ row.category }}</span>
+              </div>
+              <div style="text-align:right;">
+                <span style="font-size:16px;font-weight:700;color:oklch(0.38 0.17 145);">{{ row.minPriceStr }}</span>
+              </div>
+              <div style="text-align:right;color:oklch(0.65 0.06 280);">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 3l5 4-5 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="text-align:center;padding:48px 24px;color:oklch(0.55 0.04 280);">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="margin:0 auto 12px;display:block;"><circle cx="17" cy="17" r="10" stroke="oklch(0.75 0.05 280)" stroke-width="2.5"/><path d="M24 24l8 8" stroke="oklch(0.75 0.05 280)" stroke-width="2.5" stroke-linecap="round"/></svg>
+              <div style="font-size:16px;font-weight:600;color:oklch(0.35 0.04 280);margin-bottom:6px;">No tests found</div>
+              <div style="font-size:14px;">Try a different search term, code, or category</div>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- Show more / less -->
+        <sc-if value="{{ showMoreVisible }}" hint-placeholder-val="{{ false }}">
+          <div style="text-align:center;margin-top:14px;">
+            <button onClick="{{ toggleShowAll }}" style="padding:9px 22px;background:#fff;border:1.5px solid oklch(0.88 0.03 280);border-radius:9px;font-size:14px;font-weight:500;color:oklch(0.45 0.12 280);cursor:pointer;" style-hover="border-color:oklch(0.72 0.1 280);color:oklch(0.38 0.15 280);">{{ showMoreLabel }}</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ RESULTS ═══ -->
+  <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:1240px;margin:0 auto;padding:28px 24px 80px;">
+
+      <!-- Breadcrumb -->
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:20px;font-size:13px;color:oklch(0.58 0.04 280);">
+        <span onClick="{{ goHome }}" style="color:oklch(0.52 0.15 280);font-weight:500;cursor:pointer;" style-hover="text-decoration:underline;">Home</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span>{{ selectedTestCategory }}</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span style="color:oklch(0.2 0.04 280);font-weight:600;">{{ selectedTestName }}</span>
+      </div>
+
+      <!-- Test header -->
+      <div style="margin-bottom:10px;">
+        <h1 style="font-size:36px;font-weight:700;letter-spacing:-0.8px;color:oklch(0.15 0.04 280);margin-bottom:8px;">{{ selectedTestName }}</h1>
+        <!-- Codes row -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 12px;background:oklch(0.95 0.02 280);border-radius:20px;border:1px solid oklch(0.9 0.03 280);">
+            <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.08 280);text-transform:uppercase;letter-spacing:0.4px;">Quest</span>
+            <span style="font-size:13px;font-weight:600;color:oklch(0.25 0.04 280);">#{{ selectedTestQuestCode }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 12px;background:oklch(0.95 0.02 280);border-radius:20px;border:1px solid oklch(0.9 0.03 280);">
+            <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.08 280);text-transform:uppercase;letter-spacing:0.4px;">LabCorp</span>
+            <span style="font-size:13px;font-weight:600;color:oklch(0.25 0.04 280);">#{{ selectedTestLabCorpCode }}</span>
+          </div>
+          <span style="font-size:13px;color:oklch(0.55 0.04 280);">{{ selectedTestLabCount }} ordering services compared</span>
+        </div>
+        <p style="font-size:15px;color:oklch(0.5 0.03 280);line-height:1.65;max-width:680px;">{{ selectedTestDesc }}</p>
+      </div>
+
+      <!-- Two-column -->
+      <div style="display:grid;grid-template-columns:360px 1fr;gap:28px;align-items:start;margin-top:28px;">
+
+        <!-- LEFT: Accordion -->
+        <div style="position:sticky;top:80px;">
+          <sc-for list="{{ accordionSections }}" as="sec" hint-placeholder-count="4">
+            <div style="background:#fff;border-radius:13px;margin-bottom:10px;border:1.5px solid oklch(0.92 0.02 280);overflow:hidden;">
+              <div onClick="{{ sec.onToggle }}" style="display:flex;align-items:center;justify-content:space-between;padding:15px 18px;cursor:pointer;" style-hover="background:oklch(0.99 0.008 280);">
+                <div style="display:flex;align-items:center;gap:11px;">
+                  <div style="width:32px;height:32px;border-radius:8px;background:{{ sec.iconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="{{ sec.iconPath }}" stroke="{{ sec.iconColor }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </div>
+                  <span style="font-size:14px;font-weight:600;color:oklch(0.2 0.04 280);">{{ sec.title }}</span>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;transition:transform 0.2s;transform:{{ sec.chevronTransform }};"><path d="M4 6l4 4 4-4" stroke="oklch(0.6 0.04 280)" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <sc-if value="{{ sec.isOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:4px 18px 18px;border-top:1px solid oklch(0.94 0.01 280);">
+                  <p style="font-size:14px;color:oklch(0.42 0.03 280);line-height:1.75;margin-top:14px;">{{ sec.content }}</p>
+                  <sc-if value="{{ sec.hasExtra }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:14px;padding:11px 14px;background:{{ bestRangeBg }};border-radius:9px;border-left:3px solid {{ bestRangeBorder }};">
+                      <div style="font-size:11px;font-weight:700;color:{{ bestRangeTitleColor }};text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Turnaround</div>
+                      <div style="font-size:13px;font-weight:500;color:{{ bestRangeTextColor }};">{{ sec.extra }}</div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- RIGHT: Price comparison -->
+        <div>
+          <!-- Sort controls -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:500;color:oklch(0.52 0.04 280);">Sort by:</span>
+            <div style="display:flex;background:#fff;border:1.5px solid oklch(0.9 0.02 280);border-radius:10px;padding:3px;gap:2px;">
+              <button onClick="{{ setSortPrice }}" style="display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:7px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:{{ priceSortBg }};color:{{ priceSortColor }};transition:all 0.15s;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M2 7l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                Price
+              </button>
+              <button onClick="{{ setSortAlpha }}" style="display:flex;align-items:center;gap:6px;padding:7px 16px;border-radius:7px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:{{ alphaSortBg }};color:{{ alphaSortColor }};transition:all 0.15s;">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 9l3-6 3 6M2.5 7h3M8 3v6M8 9h3M8 6h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                A – Z
+              </button>
+
+            </div>
+          </div>
+
+          <!-- Best price banner -->
+          <div style="display:flex;align-items:center;gap:14px;background:{{ bestBannerBg }};border:1.5px solid {{ bestBannerBorder }};border-radius:13px;padding:15px 20px;margin-bottom:16px;">
+            <div style="width:40px;height:40px;background:{{ bestCircleBg }};border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:#fff;line-height:1;">★</div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:{{ bestTitleColor }};text-transform:uppercase;letter-spacing:0.6px;">Best Price</div>
+              <div style="font-size:17px;font-weight:700;color:{{ bestNameColor }};margin-top:2px;">{{ cheapestLab }} · {{ cheapestPrice }}</div>
+            </div>
+            <div style="margin-left:auto;text-align:right;">
+              <div style="font-size:11px;color:{{ bestVsColor }};">vs. most expensive</div>
+              <div style="font-size:16px;font-weight:700;color:{{ bestSavingsColor }};margin-top:2px;">Save {{ savingsStr }}</div>
+            </div>
+          </div>
+
+          <!-- TABLE -->
+          <div style="background:#fff;border-radius:14px;border:1.5px solid oklch(0.92 0.02 280);overflow:hidden;">
+            <!-- Header -->
+            <div style="display:grid;grid-template-columns:1fr 90px 80px;padding:11px 20px;background:oklch(0.97 0.015 280);border-bottom:1.5px solid oklch(0.92 0.02 280);">
+              <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;">Ordering Service</span>
+              <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Price</span>
+              <span style="font-size:11px;font-weight:700;color:oklch(0.55 0.05 280);text-transform:uppercase;letter-spacing:0.6px;text-align:right;">Order</span>
+            </div>
+            <!-- Rows -->
+            <sc-for list="{{ sortedPrices }}" as="row" hint-placeholder-count="10">
+              <div style="display:grid;grid-template-columns:1fr 90px 80px;align-items:center;padding:13px 20px;border-bottom:1px solid oklch(0.96 0.01 280);background:{{ row.rowBg }};transition:background 0.1s;" style-hover="background:{{ row.hoverBg }};">
+                <div>
+                  <div style="font-size:15px;font-weight:{{ row.fontWeight }};color:{{ row.labelColor }};">{{ row.lab }}</div>
+                  <sc-if value="{{ row.isCheapest }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:10px;font-weight:700;color:{{ bestTitleColor }};letter-spacing:0.4px;text-transform:uppercase;margin-top:1px;">✓ Best Price</div>
+                  </sc-if>
+                </div>
+                <div style="text-align:right;">
+                  <span style="font-size:18px;font-weight:700;color:{{ row.priceColor }};">{{ row.priceStr }}</span>
+                </div>
+                <div style="text-align:right;">
+                  <button style="padding:6px 12px;background:{{ row.btnBg }};color:{{ row.btnColor }};border:1.5px solid {{ row.btnBorder }};border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">Order</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- Disclaimer -->
+          <div style="margin-top:14px;padding:12px 16px;background:oklch(0.97 0.01 280);border-radius:10px;border:1px solid oklch(0.92 0.01 280);display:flex;align-items:flex-start;gap:9px;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0;margin-top:2px;"><circle cx="7" cy="7" r="6" stroke="oklch(0.62 0.04 280)" stroke-width="1.4"/><path d="M7 6v4M7 4.5h0" stroke="oklch(0.62 0.04 280)" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <p style="font-size:12px;color:oklch(0.55 0.03 280);line-height:1.6;">These are online lab ordering services — not the physical draw site. Once you purchase a requisition, you visit a nearby Quest or LabCorp patient service center for your blood draw. Prices are self-pay cash rates and may vary by location.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- FOOTER -->
+  <footer style="background:oklch(0.17 0.09 280);padding:40px 24px;margin-top:auto;">
+    <div style="max-width:1240px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">LabPrice</div>
+        <p style="font-size:13px;color:oklch(0.65 0.05 280);line-height:1.6;">Compare blood test ordering prices. Blood drawn at Quest or LabCorp patient service centers.</p>
+      </div>
+      <p style="font-size:12px;color:oklch(0.5 0.04 280);text-align:right;line-height:1.6;">Prices for informational purposes only.<br>© 2025 LabPrice. Not medical advice.</p>
+    </div>
+  </footer>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900},&quot;accentTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Indigo&quot;,&quot;Emerald&quot;,&quot;Sky&quot;],&quot;default&quot;:&quot;Sky&quot;,&quot;tsType&quot;:&quot;\&quot;Indigo\&quot; | \&quot;Emerald\&quot; | \&quot;Sky\&quot;&quot;},&quot;bestPriceStyle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Green&quot;,&quot;Gold&quot;,&quot;Accent&quot;],&quot;default&quot;:&quot;Gold&quot;,&quot;tsType&quot;:&quot;\&quot;Green\&quot; | \&quot;Gold\&quot; | \&quot;Accent\&quot;&quot;}}">
+
+const TESTS = [
+  {
+    id: 'vitamin-d', name: 'Vitamin D, 25-Hydroxy', shortName: 'Vitamin D', category: 'Vitamins & Minerals',
+    cptCode: '82306', questCode: '17306', labCorpCode: '081950', tags: ['popular'],
+    description: 'Measures 25-hydroxyvitamin D, the main circulating form of vitamin D. Essential for bone health, immune function, and mood regulation.',
+    purpose: 'Used to diagnose vitamin D deficiency or toxicity, monitor supplementation, and assess risk for bone loss.',
+    procedure: 'A standard blood draw from a vein in your arm at a Quest or LabCorp patient service center.',
+    preparation: 'No fasting required. Continue taking supplements unless your doctor advises otherwise.',
+    normalRange: '20–50 ng/mL (adults)',
+    turnaround: '1–3 business days',
+    prices: [
+      { lab: 'Life Extension', price: 29.00 }, { lab: 'Ulta Lab Tests', price: 34.00 },
+      { lab: 'True Health Labs', price: 36.00 }, { lab: 'DirectLabs', price: 41.00 },
+      { lab: 'Walk-In Lab', price: 44.00 }, { lab: 'Request A Test', price: 47.00 },
+      { lab: 'Quest Diagnostics', price: 49.00 }, { lab: 'LabCorp', price: 54.00 },
+      { lab: 'Health Testing Centers', price: 59.00 }, { lab: 'Any Lab Test Now', price: 79.00 },
+    ]
+  },
+  {
+    id: 'testosterone-total', name: 'Testosterone, Total', shortName: 'Testosterone', category: 'Hormones',
+    cptCode: '84403', questCode: '873', labCorpCode: '004226', tags: ['popular'],
+    description: 'Measures the total amount of testosterone in your blood, including both free and protein-bound forms.',
+    purpose: 'Evaluates testosterone deficiency in men; assesses PCOS and virilization in women.',
+    procedure: 'Blood draw from a vein at a patient service center. Best collected 7–10 AM when levels peak.',
+    preparation: 'Morning collection recommended. No strict fasting required.',
+    normalRange: 'Men: 300–1000 ng/dL · Women: 15–70 ng/dL',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 27.00 }, { lab: 'Life Extension', price: 31.00 },
+      { lab: 'DirectLabs', price: 39.00 }, { lab: 'True Health Labs', price: 42.00 },
+      { lab: 'Walk-In Lab', price: 49.00 }, { lab: 'Request A Test', price: 52.00 },
+      { lab: 'Quest Diagnostics', price: 58.00 }, { lab: 'LabCorp', price: 63.00 },
+      { lab: 'Health Testing Centers', price: 69.00 }, { lab: 'Any Lab Test Now', price: 89.00 },
+    ]
+  },
+  {
+    id: 'cbc', name: 'Complete Blood Count (CBC)', shortName: 'CBC', category: 'Blood Count',
+    cptCode: '85025', questCode: '6399', labCorpCode: '005009', tags: ['popular'],
+    description: 'A broad panel measuring red blood cells, white blood cells, hemoglobin, hematocrit, and platelets.',
+    purpose: 'Screens for anemia, infections, leukemia, and other blood disorders.',
+    procedure: 'Blood draw from a vein. A hematology analyzer counts and characterizes blood cell populations.',
+    preparation: 'No special preparation. You may eat and drink normally.',
+    normalRange: 'Multiple parameters compared against age/sex-specific reference ranges.',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 18.00 }, { lab: 'Life Extension', price: 21.00 },
+      { lab: 'DirectLabs', price: 24.00 }, { lab: 'True Health Labs', price: 26.00 },
+      { lab: 'Walk-In Lab', price: 29.00 }, { lab: 'Request A Test', price: 34.00 },
+      { lab: 'Quest Diagnostics', price: 39.00 }, { lab: 'LabCorp', price: 42.00 },
+      { lab: 'Health Testing Centers', price: 49.00 }, { lab: 'Any Lab Test Now', price: 59.00 },
+    ]
+  },
+  {
+    id: 'lipid-panel', name: 'Lipid Panel', shortName: 'Lipid Panel', category: 'Metabolic',
+    cptCode: '80061', questCode: '7600', labCorpCode: '303756', tags: ['popular'],
+    description: 'Measures cholesterol and triglycerides: total cholesterol, LDL ("bad"), HDL ("good"), and triglycerides.',
+    purpose: 'Assesses cardiovascular risk and guides treatment of high cholesterol.',
+    procedure: 'Blood draw from a vein at a patient service center.',
+    preparation: 'Fasting for 9–12 hours typically required for accurate triglyceride measurements.',
+    normalRange: 'Total < 200 · LDL < 100 · HDL > 60 · Triglycerides < 150 (mg/dL)',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 24.00 }, { lab: 'Life Extension', price: 28.00 },
+      { lab: 'DirectLabs', price: 32.00 }, { lab: 'True Health Labs', price: 35.00 },
+      { lab: 'Walk-In Lab', price: 39.00 }, { lab: 'Request A Test', price: 44.00 },
+      { lab: 'Quest Diagnostics', price: 48.00 }, { lab: 'LabCorp', price: 52.00 },
+      { lab: 'Health Testing Centers', price: 58.00 }, { lab: 'Any Lab Test Now', price: 74.00 },
+    ]
+  },
+  {
+    id: 'tsh', name: 'Thyroid Stimulating Hormone (TSH)', shortName: 'TSH', category: 'Hormones',
+    cptCode: '84443', questCode: '867', labCorpCode: '004259', tags: ['popular'],
+    description: 'Measures TSH, the pituitary hormone regulating thyroid activity. The most sensitive test for thyroid disorders.',
+    purpose: 'Screens for and monitors hypothyroidism and hyperthyroidism.',
+    procedure: 'Blood draw from a vein. No special sample handling required.',
+    preparation: 'No fasting required. Test at the same time of day for consistent monitoring.',
+    normalRange: '0.4–4.0 mIU/L',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 22.00 }, { lab: 'Life Extension', price: 26.00 },
+      { lab: 'DirectLabs', price: 31.00 }, { lab: 'True Health Labs', price: 34.00 },
+      { lab: 'Walk-In Lab', price: 38.00 }, { lab: 'Request A Test', price: 43.00 },
+      { lab: 'Quest Diagnostics', price: 47.00 }, { lab: 'LabCorp', price: 52.00 },
+      { lab: 'Health Testing Centers', price: 55.00 }, { lab: 'Any Lab Test Now', price: 69.00 },
+    ]
+  },
+  {
+    id: 'hba1c', name: 'Hemoglobin A1c (HbA1c)', shortName: 'HbA1c', category: 'Metabolic',
+    cptCode: '83036', questCode: '496', labCorpCode: '001453', tags: ['popular'],
+    description: 'Reflects your average blood sugar over the past 2–3 months by measuring glycated hemoglobin.',
+    purpose: 'Diagnoses and monitors type 2 diabetes and prediabetes.',
+    procedure: 'Blood draw from a vein or fingerstick. Measures the % of hemoglobin coated with glucose.',
+    preparation: 'No fasting required — HbA1c reflects a long-term average, not immediate intake.',
+    normalRange: 'Normal < 5.7% · Prediabetes 5.7–6.4% · Diabetes ≥ 6.5%',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 20.00 }, { lab: 'Life Extension', price: 24.00 },
+      { lab: 'DirectLabs', price: 28.00 }, { lab: 'True Health Labs', price: 32.00 },
+      { lab: 'Walk-In Lab', price: 37.00 }, { lab: 'Request A Test', price: 41.00 },
+      { lab: 'Quest Diagnostics', price: 45.00 }, { lab: 'LabCorp', price: 49.00 },
+      { lab: 'Health Testing Centers', price: 54.00 }, { lab: 'Any Lab Test Now', price: 65.00 },
+    ]
+  },
+  {
+    id: 'cmp', name: 'Comprehensive Metabolic Panel', shortName: 'Metabolic Panel', category: 'Metabolic',
+    cptCode: '80053', questCode: '10231', labCorpCode: '322000', tags: [],
+    description: 'A panel of 14 tests covering kidney function, liver function, electrolytes, blood glucose, and protein levels.',
+    purpose: 'Broad health screening and monitoring of chronic conditions like diabetes, kidney, and liver disease.',
+    procedure: 'Single blood draw analyzed simultaneously for all 14 components.',
+    preparation: 'Fasting 10–12 hours recommended for accurate glucose and electrolyte readings.',
+    normalRange: 'Multiple parameters, each with its own reference range.',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 26.00 }, { lab: 'Life Extension', price: 30.00 },
+      { lab: 'DirectLabs', price: 35.00 }, { lab: 'True Health Labs', price: 39.00 },
+      { lab: 'Walk-In Lab', price: 44.00 }, { lab: 'Request A Test', price: 49.00 },
+      { lab: 'Quest Diagnostics', price: 53.00 }, { lab: 'LabCorp', price: 57.00 },
+      { lab: 'Health Testing Centers', price: 62.00 }, { lab: 'Any Lab Test Now', price: 79.00 },
+    ]
+  },
+  {
+    id: 'psa', name: 'Prostate-Specific Antigen (PSA)', shortName: 'PSA', category: 'Cancer Markers',
+    cptCode: '86316', questCode: '34', labCorpCode: '070234', tags: [],
+    description: 'Measures PSA, a protein produced by prostate cells. Elevated levels may indicate prostate issues.',
+    purpose: 'Prostate cancer screening, monitoring treatment response, and detecting recurrence.',
+    procedure: 'Blood draw from a vein. Avoid strenuous exercise and ejaculation 24–48 hours beforehand.',
+    preparation: 'Avoid strenuous activity and ejaculation for 48 hours before the test.',
+    normalRange: '0–4.0 ng/mL (age-dependent; discuss with your doctor)',
+    turnaround: '1–3 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 28.00 }, { lab: 'Life Extension', price: 33.00 },
+      { lab: 'DirectLabs', price: 38.00 }, { lab: 'True Health Labs', price: 42.00 },
+      { lab: 'Walk-In Lab', price: 47.00 }, { lab: 'Request A Test', price: 53.00 },
+      { lab: 'Quest Diagnostics', price: 58.00 }, { lab: 'LabCorp', price: 62.00 },
+      { lab: 'Health Testing Centers', price: 68.00 }, { lab: 'Any Lab Test Now', price: 85.00 },
+    ]
+  },
+  {
+    id: 'ferritin', name: 'Ferritin', shortName: 'Ferritin', category: 'Vitamins & Minerals',
+    cptCode: '82728', questCode: '457', labCorpCode: '004598', tags: [],
+    description: 'Measures ferritin, the protein that stores iron in your body. The most sensitive marker of total iron stores.',
+    purpose: 'Diagnoses iron deficiency anemia or iron overload (hemochromatosis) and monitors iron therapy.',
+    procedure: 'Blood draw from a vein. No special sample handling required.',
+    preparation: 'Fasting not required; recent illness can temporarily elevate results.',
+    normalRange: 'Men: 20–500 ng/mL · Women: 20–200 ng/mL',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 25.00 }, { lab: 'Life Extension', price: 29.00 },
+      { lab: 'DirectLabs', price: 34.00 }, { lab: 'True Health Labs', price: 37.00 },
+      { lab: 'Walk-In Lab', price: 42.00 }, { lab: 'Request A Test', price: 46.00 },
+      { lab: 'Quest Diagnostics', price: 52.00 }, { lab: 'LabCorp', price: 55.00 },
+      { lab: 'Health Testing Centers', price: 61.00 }, { lab: 'Any Lab Test Now', price: 78.00 },
+    ]
+  },
+  {
+    id: 'cortisol', name: 'Cortisol', shortName: 'Cortisol', category: 'Hormones',
+    cptCode: '82533', questCode: '395', labCorpCode: '004341', tags: [],
+    description: 'Measures cortisol, the primary stress hormone produced by the adrenal glands.',
+    purpose: 'Diagnoses adrenal disorders including Cushing\'s syndrome and Addison\'s disease.',
+    procedure: 'Blood draw from a vein. Best collected at 8 AM when cortisol naturally peaks.',
+    preparation: 'Avoid strenuous exercise the day before. Morning draw (7–9 AM) is standard.',
+    normalRange: 'AM: 6–23 mcg/dL · PM: 3–15 mcg/dL',
+    turnaround: '1–2 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 30.00 }, { lab: 'Life Extension', price: 35.00 },
+      { lab: 'DirectLabs', price: 40.00 }, { lab: 'True Health Labs', price: 44.00 },
+      { lab: 'Walk-In Lab', price: 49.00 }, { lab: 'Request A Test', price: 55.00 },
+      { lab: 'Quest Diagnostics', price: 59.00 }, { lab: 'LabCorp', price: 64.00 },
+      { lab: 'Health Testing Centers', price: 70.00 }, { lab: 'Any Lab Test Now', price: 89.00 },
+    ]
+  },
+  {
+    id: 'vitamin-b12', name: 'Vitamin B12', shortName: 'Vitamin B12', category: 'Vitamins & Minerals',
+    cptCode: '82607', questCode: '927', labCorpCode: '000429', tags: [],
+    description: 'Measures cobalamin in your blood. B12 is essential for nerve function, DNA synthesis, and red blood cell formation.',
+    purpose: 'Diagnoses B12 deficiency and related anemia; investigates neurological symptoms like numbness or fatigue.',
+    procedure: 'Standard blood draw from a vein. No special handling required.',
+    preparation: 'Avoid B12 supplements 24–48 hours before testing if possible.',
+    normalRange: '200–900 pg/mL',
+    turnaround: '1–3 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 23.00 }, { lab: 'Life Extension', price: 27.00 },
+      { lab: 'DirectLabs', price: 32.00 }, { lab: 'True Health Labs', price: 36.00 },
+      { lab: 'Walk-In Lab', price: 40.00 }, { lab: 'Request A Test', price: 44.00 },
+      { lab: 'Quest Diagnostics', price: 48.00 }, { lab: 'LabCorp', price: 53.00 },
+      { lab: 'Health Testing Centers', price: 57.00 }, { lab: 'Any Lab Test Now', price: 72.00 },
+    ]
+  },
+  {
+    id: 'estradiol', name: 'Estradiol (E2)', shortName: 'Estradiol', category: 'Hormones',
+    cptCode: '82670', questCode: '30289', labCorpCode: '004515', tags: [],
+    description: 'Measures estradiol, the primary form of estrogen. Important for reproductive health and bone density.',
+    purpose: 'Evaluates fertility, menopause, ovarian function, and hormone therapy.',
+    procedure: 'Blood draw from a vein. Timing relative to the menstrual cycle matters for premenopausal women.',
+    preparation: 'Note the day of your menstrual cycle when scheduling. No fasting required.',
+    normalRange: 'Varies by sex and menstrual phase — discuss results with your doctor.',
+    turnaround: '1–3 business days',
+    prices: [
+      { lab: 'Ulta Lab Tests', price: 28.00 }, { lab: 'Life Extension', price: 33.00 },
+      { lab: 'DirectLabs', price: 38.00 }, { lab: 'True Health Labs', price: 42.00 },
+      { lab: 'Walk-In Lab', price: 48.00 }, { lab: 'Request A Test', price: 54.00 },
+      { lab: 'Quest Diagnostics', price: 59.00 }, { lab: 'LabCorp', price: 64.00 },
+      { lab: 'Health Testing Centers', price: 69.00 }, { lab: 'Any Lab Test Now', price: 85.00 },
+    ]
+  },
+];
+
+const LAB_RATINGS = {
+  'Quest Diagnostics': 4.5, 'LabCorp': 4.4, 'Life Extension': 4.3,
+  'Ulta Lab Tests': 4.2, 'Walk-In Lab': 4.2, 'True Health Labs': 4.1,
+  'DirectLabs': 4.0, 'Request A Test': 3.9, 'Health Testing Centers': 3.8,
+  'Any Lab Test Now': 3.7,
+};
+
+const CAT_COLORS = {
+  'Vitamins & Minerals': { bg: 'oklch(0.95 0.06 145)', color: 'oklch(0.35 0.14 145)' },
+  'Hormones':           { bg: 'oklch(0.95 0.06 310)', color: 'oklch(0.38 0.14 310)' },
+  'Metabolic':          { bg: 'oklch(0.95 0.05 220)', color: 'oklch(0.38 0.12 220)' },
+  'Blood Count':        { bg: 'oklch(0.95 0.06 30)',  color: 'oklch(0.4 0.14 30)' },
+  'Cancer Markers':     { bg: 'oklch(0.95 0.05 15)',  color: 'oklch(0.4 0.14 15)' },
+};
+
+const ACC_ICONS = {
+  about:     { path: 'M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 2v4h4M5 8h6M5 11h4', bg: 'oklch(0.93 0.05 280)', color: 'oklch(0.45 0.15 280)' },
+  procedure: { path: 'M8 3v10M3 8h10', bg: 'oklch(0.93 0.05 220)', color: 'oklch(0.4 0.12 220)' },
+  prep:      { path: 'M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM8 5v3.5l2.5 1.5', bg: 'oklch(0.93 0.05 145)', color: 'oklch(0.4 0.14 145)' },
+  ranges:    { path: 'M2 12l3-4 3 2.5 3-6 3 2', bg: 'oklch(0.93 0.05 300)', color: 'oklch(0.4 0.14 300)' },
+};
+
+const ACCENT_THEMES = {
+  'Indigo':  { h: 280, primary: 'oklch(0.58 0.22 280)', secondary: 'oklch(0.52 0.22 305)', light: 'oklch(0.95 0.06 280)', mid: 'oklch(0.42 0.18 280)' },
+  'Emerald': { h: 155, primary: 'oklch(0.56 0.18 155)', secondary: 'oklch(0.5 0.18 168)',  light: 'oklch(0.95 0.06 155)', mid: 'oklch(0.4 0.14 155)' },
+  'Sky':     { h: 220, primary: 'oklch(0.58 0.18 220)', secondary: 'oklch(0.52 0.18 232)', light: 'oklch(0.95 0.05 220)', mid: 'oklch(0.4 0.14 220)' },
+};
+
+const BROWSE_LIMIT = 8;
+
+class Component extends DCLogic {
+  state = {
+    view: 'home',
+    searchQuery: '',
+    selectedTest: null,
+    sortBy: 'price',
+    browseSortBy: 'name',
+    openAccordion: 'about',
+    activeCategory: 'All',
+    showAll: false,
+  };
+
+  selectTest(test) {
+    this.setState({ view: 'results', selectedTest: test, openAccordion: 'about', sortBy: 'price' });
+    window.scrollTo(0, 0);
+  }
+
+  renderVals() {
+    const { view, searchQuery, selectedTest, sortBy, browseSortBy, openAccordion, activeCategory, showAll } = this.state;
+    const isHome = view === 'home';
+    const isResults = view === 'results';
+
+    // PROPS — accent + best price highlight
+    const acc = ACCENT_THEMES[this.props.accentTheme ?? 'Indigo'] || ACCENT_THEMES['Indigo'];
+    const accentGradient = `linear-gradient(135deg,${acc.primary},${acc.secondary})`;
+    const bestPriceStyle = this.props.bestPriceStyle ?? 'Green';
+    const bestH = bestPriceStyle === 'Gold' ? 75 : bestPriceStyle === 'Accent' ? acc.h : 145;
+    const bp = {
+      rowBg:      `oklch(0.97 0.05 ${bestH})`, hoverBg:  `oklch(0.95 0.06 ${bestH})`,
+      label:      `oklch(0.28 0.14 ${bestH})`, price:    `oklch(0.35 0.18 ${bestH})`,
+      solid:      `oklch(0.52 0.17 ${bestH})`, title:    `oklch(0.4 0.12 ${bestH})`,
+      name:       `oklch(0.25 0.12 ${bestH})`, vs:       `oklch(0.48 0.1 ${bestH})`,
+      savings:    `oklch(0.38 0.15 ${bestH})`, rangeBg:  `oklch(0.96 0.04 ${bestH})`,
+      rangeBorder:`oklch(0.58 0.17 ${bestH})`, rangeTitleC:`oklch(0.38 0.12 ${bestH})`,
+      rangeTextC: `oklch(0.3 0.1 ${bestH})`,  bannerBg: `oklch(0.96 0.05 ${bestH})`,
+      bannerBorder:`oklch(0.86 0.1 ${bestH})`,
+    };
+
+    // NAV
+    const navBg = isHome ? 'rgba(15,12,36,0.9)' : 'rgba(255,255,255,0.96)';
+    const navBorderColor = isHome ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+    const navTextColor = isHome ? '#ffffff' : 'oklch(0.18 0.04 280)';
+
+    // SEARCH
+    const q = searchQuery.toLowerCase().trim();
+    const matchTest = (t) =>
+      t.name.toLowerCase().includes(q) ||
+      t.shortName.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q) ||
+      t.cptCode.includes(q) ||
+      t.questCode.includes(q) ||
+      t.labCorpCode.includes(q);
+
+    const suggestions = q.length > 1
+      ? TESTS.filter(matchTest).slice(0, 6).map(t => ({
+          name: t.name, category: t.category,
+          codeStr: `Quest ${t.questCode} · LabCorp ${t.labCorpCode}`,
+          minPriceStr: '$' + Math.min(...t.prices.map(p => p.price)).toFixed(0),
+          onSelect: () => this.selectTest(t),
+        }))
+      : [];
+
+    // POPULAR chips
+    const popularChips = TESTS.filter(t => t.tags.includes('popular')).map(t => ({
+      shortName: t.shortName, onSelect: () => this.selectTest(t),
+    }));
+
+    // POPULAR CARDS
+    const popularCards = TESTS.filter(t => t.tags.includes('popular')).map(t => {
+      const cc = CAT_COLORS[t.category] || { bg: '#f0f0f0', color: '#555' };
+      return {
+        name: t.name, category: t.category,
+        minPriceStr: '$' + Math.min(...t.prices.map(p => p.price)).toFixed(0),
+        catBg: cc.bg, catColor: cc.color,
+        onSelect: () => this.selectTest(t),
+      };
+    });
+
+    // CATEGORY FILTERS
+    const catList = ['All', ...Array.from(new Set(TESTS.map(t => t.category)))];
+    const categories = catList.map(cat => ({
+      label: cat,
+      onSelect: () => this.setState({ activeCategory: cat }),
+      bg: activeCategory === cat ? acc.primary : '#fff',
+      color: activeCategory === cat ? '#fff' : 'oklch(0.45 0.12 280)',
+      border: activeCategory === cat ? acc.primary : 'oklch(0.88 0.03 280)',
+    }));
+
+    // BROWSE LIST (compact)
+    let allFiltered = TESTS.filter(t =>
+      (activeCategory === 'All' || t.category === activeCategory) &&
+      (q.length < 2 || matchTest(t))
+    );
+    if (browseSortBy === 'price') {
+      allFiltered = [...allFiltered].sort((a, b) =>
+        Math.min(...a.prices.map(p => p.price)) - Math.min(...b.prices.map(p => p.price)));
+    } else {
+      allFiltered = [...allFiltered].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    const visibleBrowseTests = (showAll ? allFiltered : allFiltered.slice(0, BROWSE_LIMIT)).map(t => {
+      const cc = CAT_COLORS[t.category] || { bg: '#f0f0f0', color: '#555' };
+      return {
+        name: t.name, category: t.category,
+        cptCode: t.cptCode, questCode: t.questCode, labCorpCode: t.labCorpCode,
+        minPriceStr: '$' + Math.min(...t.prices.map(p => p.price)).toFixed(0),
+        catBg: cc.bg, catColor: cc.color,
+        onSelect: () => this.selectTest(t),
+      };
+    });
+    const showMoreVisible = allFiltered.length > BROWSE_LIMIT;
+    const showMoreLabel = showAll
+      ? `Show fewer ↑`
+      : `View all ${allFiltered.length} tests ↓`;
+
+    // BROWSE SORT
+    const isBrowseName = browseSortBy === 'name';
+    const on  = { bg: acc.primary, color: '#fff' };
+    const off = { bg: 'transparent', color: 'oklch(0.5 0.05 280)' };
+
+    // RESULTS
+    let selectedTestName = '', selectedTestCategory = '', selectedTestDesc = '';
+    let selectedTestCPT = '', selectedTestQuestCode = '', selectedTestLabCorpCode = '';
+    let selectedTestLabCount = 0;
+    let sortedPrices = [], accordionSections = [];
+    let cheapestLab = '–', cheapestPrice = '–', savingsStr = '–';
+
+    if (selectedTest) {
+      selectedTestName = selectedTest.name;
+      selectedTestCategory = selectedTest.category;
+      selectedTestDesc = selectedTest.description + ' ' + selectedTest.purpose;
+      selectedTestCPT = selectedTest.cptCode;
+      selectedTestQuestCode = selectedTest.questCode;
+      selectedTestLabCorpCode = selectedTest.labCorpCode;
+      selectedTestLabCount = selectedTest.prices.length;
+
+      const cheapestPrice_ = Math.min(...selectedTest.prices.map(p => p.price));
+      const expensivePrice_ = Math.max(...selectedTest.prices.map(p => p.price));
+      cheapestLab = selectedTest.prices.find(p => p.price === cheapestPrice_)?.lab || '';
+      cheapestPrice = '$' + cheapestPrice_.toFixed(2);
+      savingsStr = expensivePrice_ > cheapestPrice_ ? '$' + (expensivePrice_ - cheapestPrice_).toFixed(2) : '$0';
+
+      let sorted = [...selectedTest.prices];
+      if (sortBy === 'alpha')  sorted.sort((a, b) => a.lab.localeCompare(b.lab));
+      else if (sortBy === 'rating') sorted.sort((a, b) => (LAB_RATINGS[b.lab] || 0) - (LAB_RATINGS[a.lab] || 0));
+      else sorted.sort((a, b) => a.price - b.price);
+
+      sortedPrices = sorted.map((p) => {
+        const best = p.price === cheapestPrice_;
+        return {
+          lab: p.lab,
+          isCheapest: best,
+          priceStr: '$' + p.price.toFixed(2),
+          ratingStr: (LAB_RATINGS[p.lab] || 0).toFixed(1),
+          fontWeight: best ? '700' : '500',
+          rowBg:      best ? bp.rowBg  : '#fff',
+          hoverBg:    best ? bp.hoverBg : 'oklch(0.97 0.02 280)',
+          labelColor: best ? bp.label  : 'oklch(0.2 0.04 280)',
+          priceColor: best ? bp.price  : 'oklch(0.38 0.18 280)',
+          btnBg:      best ? bp.solid  : '#fff',
+          btnColor:   best ? '#fff'    : 'oklch(0.45 0.14 280)',
+          btnBorder:  best ? bp.solid  : 'oklch(0.84 0.04 280)',
+        };
+      });
+
+      // ACCORDION
+      accordionSections = [
+        { id: 'about',     title: 'About This Test',     content: selectedTest.description + ' ' + selectedTest.purpose, hasExtra: false, extra: '' },
+        { id: 'procedure', title: 'How It\'s Performed', content: selectedTest.procedure, hasExtra: false, extra: '' },
+        { id: 'prep',      title: 'How To Prepare',      content: selectedTest.preparation, hasExtra: false, extra: '' },
+        { id: 'ranges',    title: 'Normal Ranges',       content: selectedTest.normalRange, hasExtra: false, extra: '' },
+      ].map(sec => ({
+        ...sec,
+        isOpen: openAccordion === sec.id,
+        onToggle: () => this.setState({ openAccordion: openAccordion === sec.id ? null : sec.id }),
+        chevronTransform: openAccordion === sec.id ? 'rotate(180deg)' : 'rotate(0deg)',
+        iconPath: ACC_ICONS[sec.id].path, iconBg: ACC_ICONS[sec.id].bg, iconColor: ACC_ICONS[sec.id].color,
+      }));
+    }
+
+    // RESULT SORT toggles
+    const isPriceSorted  = sortBy === 'price';
+    const isAlphaSorted  = sortBy === 'alpha';
+
+    return {
+      isHome, isResults,
+      navBg, navBorderColor, navTextColor,
+      accentGradient,
+      goHome: () => { this.setState({ view: 'home', selectedTest: null, searchQuery: '' }); window.scrollTo(0, 0); },
+      // Search
+      searchQuery, hasSuggestions: suggestions.length > 0, suggestions,
+      onSearchInput: (e) => this.setState({ searchQuery: e.target.value }),
+      onSearchKeyDown: (e) => { if (e.key === 'Enter') { const m = TESTS.find(matchTest); if (m) this.selectTest(m); } },
+      onHeroSearch: () => { const m = TESTS.find(matchTest); if (m) this.selectTest(m); },
+      // Browse
+      popularChips, popularCards,
+      testCount: TESTS.length,
+      categories,
+      visibleBrowseTests,
+      noResults: visibleBrowseTests.length === 0 && allFiltered.length === 0,
+      showMoreVisible,
+      showMoreLabel,
+      showAll,
+      toggleShowAll: () => this.setState({ showAll: !showAll }),
+      // Browse sort
+      browseNameBg:  isBrowseName ? on.bg : off.bg,
+      browseNameColor: isBrowseName ? on.color : off.color,
+      browsePriceBg:  !isBrowseName ? on.bg : off.bg,
+      browsePriceColor: !isBrowseName ? on.color : off.color,
+      setBrowseSortName:  () => this.setState({ browseSortBy: 'name' }),
+      setBrowseSortPrice: () => this.setState({ browseSortBy: 'price' }),
+      // Results
+      selectedTestName, selectedTestCategory, selectedTestDesc,
+      selectedTestCPT, selectedTestQuestCode, selectedTestLabCorpCode, selectedTestLabCount,
+      sortedPrices, accordionSections,
+      cheapestLab, cheapestPrice, savingsStr,
+      // Best price colors
+      bestBannerBg: bp.bannerBg, bestBannerBorder: bp.bannerBorder,
+      bestCircleBg: bp.solid, bestTitleColor: bp.title, bestNameColor: bp.name,
+      bestVsColor: bp.vs, bestSavingsColor: bp.savings,
+      bestRangeBg: bp.rangeBg, bestRangeBorder: bp.rangeBorder,
+      bestRangeTitleColor: bp.rangeTitleC, bestRangeTextColor: bp.rangeTextC,
+      // Result sort toggles
+      setSortPrice:  () => this.setState({ sortBy: 'price' }),
+      setSortAlpha:  () => this.setState({ sortBy: 'alpha' }),
+      priceSortBg:   isPriceSorted  ? on.bg : off.bg,
+      priceSortColor: isPriceSorted  ? on.color : off.color,
+      alphaSortBg:   isAlphaSorted  ? on.bg : off.bg,
+      alphaSortColor: isAlphaSorted  ? on.color : off.color,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

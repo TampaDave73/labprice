@@ -1,0 +1,431 @@
+openapi: 3.1.0
+info:
+  title: LabPrice API
+  version: "1.0.0"
+  description: >
+    Public + authenticated REST API for the LabPrice blood-test price comparison platform.
+    Also serves the future mobile app. See docs/04-api-design.md for full conventions.
+  license:
+    name: Proprietary
+servers:
+  - url: https://labprice.example.com/api/v1
+    description: Production
+  - url: http://localhost:3000/api/v1
+    description: Local
+
+tags:
+  - name: Auth
+  - name: User
+  - name: Search
+  - name: Catalog
+  - name: Prices
+  - name: Admin
+  - name: Scraper
+  - name: Analytics
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: authjs.session-token
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, example: validation_error }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    Money:
+      type: string
+      description: Decimal string, 2 dp, USD.
+      example: "29.00"
+    Code:
+      type: object
+      properties:
+        system: { type: string, enum: [QUEST, LABCORP] }
+        code: { type: string, example: "17306" }
+    Category:
+      type: object
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        colorHint: { type: string, nullable: true }
+    Offering:
+      type: object
+      properties:
+        offeringId: { type: string }
+        vendor: { type: string }
+        vendorSlug: { type: string }
+        price: { $ref: '#/components/schemas/Money' }
+        currency: { type: string, example: USD }
+        inStock: { type: boolean }
+        isCheapest: { type: boolean }
+        priceObservedAt: { type: string, format: date-time, nullable: true }
+        stale: { type: boolean }
+        orderUrl: { type: string }
+    TestDetail:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        name: { type: string }
+        shortName: { type: string }
+        category: { $ref: '#/components/schemas/Category' }
+        codes:
+          type: array
+          items: { $ref: '#/components/schemas/Code' }
+        content:
+          type: object
+          properties:
+            description: { type: string, nullable: true }
+            purpose: { type: string, nullable: true }
+            procedure: { type: string, nullable: true }
+            preparation: { type: string, nullable: true }
+            normalRange: { type: string, nullable: true }
+        bestPrice:
+          type: object
+          properties:
+            amount: { $ref: '#/components/schemas/Money' }
+            vendor: { type: string }
+            offeringId: { type: string }
+        savings: { $ref: '#/components/schemas/Money' }
+        offerings:
+          type: array
+          items: { $ref: '#/components/schemas/Offering' }
+    TestSummary:
+      type: object
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        shortName: { type: string }
+        category: { $ref: '#/components/schemas/Category' }
+        isPopular: { type: boolean }
+        fromPrice: { $ref: '#/components/schemas/Money' }
+    Suggestion:
+      type: object
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        codeStr: { type: string }
+        fromPrice: { $ref: '#/components/schemas/Money' }
+    TrendPoint:
+      type: object
+      properties:
+        observedAt: { type: string, format: date-time }
+        price: { $ref: '#/components/schemas/Money' }
+    Alert:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [ANY_DROP, BELOW_THRESHOLD] }
+        testId: { type: string, nullable: true }
+        offeringId: { type: string, nullable: true }
+        threshold: { allOf: [{ $ref: '#/components/schemas/Money' }], nullable: true }
+        isActive: { type: boolean }
+    AlertCreate:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [ANY_DROP, BELOW_THRESHOLD] }
+        testId: { type: string, nullable: true }
+        offeringId: { type: string, nullable: true }
+        threshold: { allOf: [{ $ref: '#/components/schemas/Money' }], nullable: true }
+    StagedChange:
+      type: object
+      properties:
+        id: { type: string }
+        offeringId: { type: string }
+        vendor: { type: string }
+        test: { type: string }
+        oldPrice: { allOf: [{ $ref: '#/components/schemas/Money' }], nullable: true }
+        newPrice: { $ref: '#/components/schemas/Money' }
+        deltaPct: { type: number, nullable: true }
+        status: { type: string, enum: [PENDING, AUTO_APPROVED, APPROVED, REJECTED, ANOMALY] }
+        createdAt: { type: string, format: date-time }
+  responses:
+    NotFound:
+      description: Not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: Unauthenticated
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Forbidden
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    ValidationError:
+      description: Invalid input
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+paths:
+  /search/autocomplete:
+    get:
+      tags: [Search]
+      summary: Autocomplete suggestions
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
+      responses:
+        "200":
+          description: Up to 6 suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Suggestion' } }
+        "429": { $ref: '#/components/responses/RateLimited' }
+
+  /search:
+    get:
+      tags: [Search]
+      summary: Full search (name, code, category, biomarker)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { $ref: '#/components/parameters/cursor' }
+        - { $ref: '#/components/parameters/limit' }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TestSummary' } }
+                  nextCursor: { type: string, nullable: true }
+
+  /tests:
+    get:
+      tags: [Catalog]
+      summary: List/filter tests
+      parameters:
+        - { name: category, in: query, schema: { type: string } }
+        - { name: popular, in: query, schema: { type: boolean } }
+        - { name: sort, in: query, schema: { type: string, enum: [name, price], default: name } }
+        - { $ref: '#/components/parameters/cursor' }
+        - { $ref: '#/components/parameters/limit' }
+      responses:
+        "200":
+          description: Test list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TestSummary' } }
+                  nextCursor: { type: string, nullable: true }
+
+  /tests/{slug}:
+    get:
+      tags: [Catalog]
+      summary: Full test detail with price comparison
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [price, alpha], default: price } }
+      responses:
+        "200":
+          description: Test detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/TestDetail' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /tests/{slug}/trend:
+    get:
+      tags: [Prices]
+      summary: Cheapest-price-over-time series for a test
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+        - { name: range, in: query, schema: { type: string, enum: [30d, 90d, 1y], default: 90d } }
+      responses:
+        "200":
+          description: Trend series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TrendPoint' } }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /offerings/{id}/trend:
+    get:
+      tags: [Prices]
+      summary: One vendor offering's price history
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: range, in: query, schema: { type: string, enum: [30d, 90d, 1y], default: 90d } }
+      responses:
+        "200":
+          description: Trend series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/TrendPoint' } }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /go/{offeringId}:
+    get:
+      tags: [Prices]
+      summary: Affiliate redirect (logs click, then 302)
+      parameters:
+        - { name: offeringId, in: path, required: true, schema: { type: string } }
+      responses:
+        "302":
+          description: Redirect to vendor order page
+          headers:
+            Location: { schema: { type: string } }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /me/alerts:
+    get:
+      tags: [User]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: List the current user's price alerts
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Alert' } }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [User]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: Create a price alert
+      parameters:
+        - { name: Idempotency-Key, in: header, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertCreate' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Alert' }
+        "400": { $ref: '#/components/responses/ValidationError' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409":
+          description: Alert limit reached
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /admin/changes:
+    get:
+      tags: [Admin]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: Scraped-change approval queue
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [PENDING, AUTO_APPROVED, APPROVED, REJECTED, ANOMALY] } }
+        - { name: vendorId, in: query, schema: { type: string } }
+        - { $ref: '#/components/parameters/cursor' }
+        - { $ref: '#/components/parameters/limit' }
+      responses:
+        "200":
+          description: Pending changes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/StagedChange' } }
+                  nextCursor: { type: string, nullable: true }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/changes/{id}/approve:
+    post:
+      tags: [Admin]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: Approve and publish a staged price change
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Published }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: Already reviewed
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /admin/scrape/jobs/{id}/run:
+    post:
+      tags: [Scraper]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: Manually enqueue a scrape run for a vendor job
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "202":
+          description: Enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runId: { type: string }
+                  queuePosition: { type: integer }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409":
+          description: A run is already active for this vendor
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /admin/analytics/overview:
+    get:
+      tags: [Analytics]
+      security: [{ sessionCookie: [] }, { bearerAuth: [] }]
+      summary: KPI overview
+      responses:
+        "200":
+          description: KPIs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      searches7d: { type: integer }
+                      clicks7d: { type: integer }
+                      topTests: { type: array, items: { type: object } }
+                      topVendors: { type: array, items: { type: object } }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+security: []
