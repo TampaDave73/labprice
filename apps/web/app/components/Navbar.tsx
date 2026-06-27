@@ -25,7 +25,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
             style={{
               width: 34,
               height: 34,
-              background: 'linear-gradient(135deg, oklch(0.55 0.2 280), oklch(0.48 0.2 280))',
+              background: 'linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))',
               borderRadius: 9,
             }}
           >
@@ -52,7 +52,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
         <div
           style={{
             padding: '8px 20px',
-            background: 'linear-gradient(135deg, oklch(0.55 0.2 280), oklch(0.48 0.2 280))',
+            background: 'linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))',
             color: '#fff',
             borderRadius: 20,
             fontSize: 14,

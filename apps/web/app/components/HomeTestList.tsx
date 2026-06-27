@@ -84,7 +84,7 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 150ms',
-                background: isName ? 'oklch(0.55 0.2 280)' : 'transparent',
+                background: isName ? 'oklch(0.58 0.22 280)' : 'transparent',
                 color: isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >
@@ -100,7 +100,7 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
                 fontWeight: 500,
                 cursor: 'pointer',
                 transition: 'all 150ms',
-                background: !isName ? 'oklch(0.55 0.2 280)' : 'transparent',
+                background: !isName ? 'oklch(0.58 0.22 280)' : 'transparent',
                 color: !isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >

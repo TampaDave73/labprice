@@ -28,7 +28,7 @@ export default function ErrorPage({
         <button
           onClick={reset}
           className="px-6 py-3 rounded-btn font-semibold text-white cursor-pointer border-none text-[15px]"
-          style={{ background: 'oklch(0.48 0.2 280)' }}
+          style={{ background: 'oklch(0.52 0.22 305)' }}
         >
           Try again
         </button>

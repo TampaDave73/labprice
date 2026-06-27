@@ -1,14 +1,14 @@
 export default function Footer() {
   return (
-    <footer className="bg-brand-900 px-6 py-10 mt-auto" style={{ background: 'oklch(0.17 0.09 280)' }}>
-      <div className="max-w-[1240px] mx-auto flex items-center justify-between flex-wrap gap-5">
+    <footer style={{ background: 'oklch(0.17 0.09 280)', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
         <div>
-          <div className="text-base font-bold text-white mb-1.5">LabPrice</div>
-          <p className="text-[13px] text-[oklch(0.65_0.05_280)] leading-relaxed">
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 6 }}>LabPrice</div>
+          <p style={{ fontSize: 13, color: 'oklch(0.65 0.05 280)', lineHeight: 1.55, margin: 0 }}>
             Compare blood test ordering prices. Blood drawn at Quest or LabCorp patient service centers.
           </p>
         </div>
-        <p className="text-xs text-[oklch(0.5_0.04_280)] text-right leading-relaxed">
+        <p style={{ fontSize: 12, color: 'oklch(0.5 0.04 280)', textAlign: 'right', lineHeight: 1.55, margin: 0 }}>
           Prices for informational purposes only.
           <br />
           &copy; 2025 LabPrice. Not medical advice.
