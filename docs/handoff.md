@@ -1,127 +1,108 @@
-# Styling Handoff — Matching Prototype Pixel-for-Pixel
+# LabPrice — Session Handoff
 
-## Goal
+## Project Overview
 
-Make the LabPrice Next.js app at `apps/web` match the HTML prototype at `project/Lab Test Price Comparison.dc.html` pixel-for-pixel — fonts, colors, spacing, cards, layout — everything.
+LabPrice is a lab test price comparison app. Users compare blood test ordering prices across 10 services (Ulta Lab Tests, Life Extension, DirectLabs, Walk-In Lab, etc.) — these are ordering services where users buy requisitions online, then get blood drawn at Quest/LabCorp patient service centers.
 
-## Current State
+- **Stack**: Next.js 15 (App Router), TypeScript, Tailwind CSS v4, Prisma ORM, PostgreSQL 16, Redis 7, BullMQ
+- **Monorepo**: pnpm + Turborepo — `apps/web`, `apps/worker`, `packages/{database,shared,ui,config,scrapers}`
+- **Branch**: `claude/github-write-access-3v9dld`
+- **Prototype (source of truth)**: `project/Lab Test Price Comparison.dc.html` (808 lines)
 
-The page **structurally** renders all sections (nav, hero, search, stats bar, popular cards, all tests list, footer) but the **styling is off**:
+## What's Done
 
-- **Fonts**: The body should use `DM Sans` via Google Fonts. The `@theme` block in `globals.css` sets `--font-sans: "DM Sans", system-ui, sans-serif` and `layout.tsx` loads the font via `<link>` tag. However, Tailwind v4's `font-sans` class may not be applying the custom font properly — debug showed `sans, Arial, sans-serif` as the computed font in some cases.
-- **Sizes/weights**: The h1 should be 54px/700, h2 24px/700, etc. We converted many to inline styles but some Tailwind arbitrary value classes remain and may not be generating CSS.
-- **Colors**: Accent gradient should be `linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))` (the Indigo theme from the prototype, lines 566-569 of the HTML file).
-- **Layout spacing**: Should match prototype exactly (e.g., hero padding `90px 24px 110px`, browse section `56px 24px 80px`).
+### 1. Full App Scaffold (Phases 1–6)
+All application code is built: home page, test detail pages, search, category browsing, dashboard (saved tests, alerts, notifications), admin panel, Docker/CI config, SEO/monitoring. See git log for phase commits.
 
-## Root Cause Analysis
+### 2. Pixel-Perfect Styling (Home Page) ✅
+The home page components match the prototype pixel-for-pixel. All components use **inline styles** (not Tailwind arbitrary classes) because Tailwind v4 silently fails to generate CSS for oklch arbitrary values.
 
-**Tailwind v4's arbitrary value syntax is unreliable with oklch colors.** Classes like `text-[oklch(0.72_0.06_280)]`, `bg-[oklch(0.4_0.08_280)]`, `text-[22px]` were silently not generating CSS in some cases, causing:
-- Text defaulting to browser defaults instead of specified sizes
-- Colors falling back to inherited/default values
-- Custom theme tokens (`rounded-card`, `rounded-pill`, `text-success-700`) not always resolving
+**Completed components** (all inline styles, verified against prototype):
+- `apps/web/app/layout.tsx` — DM Sans via `next/font/google`, body bg `oklch(0.97 0.01 280)`
+- `apps/web/app/page.tsx` — Hero, stats bar, browse section, popular cards grid. Has DEMO_CATEGORIES and DEMO_TESTS arrays for rendering without a database.
+- `apps/web/app/components/Navbar.tsx` — 64px height, 1240px max-width, dark bg, webkit backdrop blur
+- `apps/web/app/components/SearchBar.tsx` — 14px radius, shadow, autocomplete dropdown
+- `apps/web/app/components/TestCard.tsx` — 14px radius, 20px padding, 1.5px border, hover effects, gap 5px
+- `apps/web/app/components/HomeTestList.tsx` — Grid `1fr 140px 90px 28px`, row hover
+- `apps/web/app/components/CategoryTabs.tsx` — Active tab uses accent gradient
+- `apps/web/app/components/Footer.tsx` — Dark bg, `marginTop: auto`
+- `apps/web/app/loading.tsx`, `not-found.tsx`, `error.tsx` — All converted to inline styles
 
-**Partial fix applied**: Converted most components to inline styles. But `page.tsx` still had Tailwind arbitrary classes for the stats bar, headings, and other elements. The latest round (not yet committed) converted those to inline styles too.
+### 3. Scraper Framework Scaffolded
+- `packages/scrapers/` — Config-driven vendor adapter architecture
+- Two engines: `PlaywrightEngine` (JS-rendered sites), `HttpEngine` (static pages)
+- Two vendor configs exist: `ulta-lab-tests.ts`, `life-extension.ts`
+- Supporting modules: `normalizer.ts` (price parsing/change detection), `publisher.ts`, `proxy-manager.ts`
+- Worker app: `apps/worker/` runs scrape jobs via BullMQ
 
-## What Was Tried
+### 4. Documentation
+- `docs/01-prd.md` through `docs/10-implementation-roadmap.md` — Full architecture docs
+- `docs/setup-guide.md` — Beginner-friendly deployment guide (VPS, DB, Redis, domain, etc.)
 
-### Round 1: Color hue fix
-- Changed brand-500/600/700 from hue 220 (blue) to hue 280 (purple)
-- **Result**: Colors slightly better but still wrong — they should be Indigo theme values
+## What's NOT Done
 
-### Round 2: Inline styles conversion
-- Converted Navbar, TestCard, SearchBar, HomeTestList, CategoryTabs, Footer to use inline styles instead of Tailwind arbitrary classes
-- **Result**: Cards, search bar, list structure improved significantly
+### 1. Secondary Pages Still Use Tailwind Arbitrary Classes
+These pages have `text-[oklch(...)]`, `bg-[oklch(...)]`, `border-[...]` classes that **silently produce no CSS** in Tailwind v4. They need the same inline-style conversion applied to home page components:
 
-### Round 3: Full page.tsx inline conversion
-- Converted hero, stats bar, browse section headings and grid to pure inline styles
-- Fixed "instantly" gradient from oklch (rendering green) to hex `#a855f7` → `#d946ef`
-- **Result**: Much closer to prototype but user reports font/sizing still wrong
+- `apps/web/app/test/[slug]/TestDetailClient.tsx` — Extensive (biggest file)
+- `apps/web/app/test/[slug]/PriceAlertButton.tsx`
+- `apps/web/app/test/[slug]/SaveTestButton.tsx`
+- `apps/web/app/test/[slug]/loading.tsx`
+- `apps/web/app/dashboard/page.tsx`
+- `apps/web/app/dashboard/components/SavedTestCard.tsx`
+- `apps/web/app/dashboard/components/NotificationList.tsx`
+- `apps/web/app/dashboard/components/AlertList.tsx`
+- `apps/web/app/category/[slug]/page.tsx`
 
-### Round 4: Exact accent gradient values
-- Found prototype defaults to **Indigo** theme (not Sky): `oklch(0.58 0.22 280)` → `oklch(0.52 0.22 305)`
-- Updated all accent color references across ~15 files
-- **Result**: Not yet committed/tested on user's machine
+**Fix pattern**: Replace all `className="... text-[oklch(...)] ..."` with inline `style={{ color: 'oklch(...)' }}`. See any home page component for examples.
 
-### Key Discovery
-Debug evaluation revealed `body.fontFamily = "sans, Arial, sans-serif"` — **DM Sans is not being applied**. This means either:
-1. Google Fonts CDN link isn't loading
-2. Tailwind v4's `font-sans` utility isn't mapping to `--font-sans` properly
-3. The `@theme` `--font-sans` override isn't being picked up
+### 2. Scraper Configs Needed for 8 More Vendors
+Only 2 of 10 vendor configs exist. Missing:
+- DirectLabs, True Health Labs, Walk-In Lab, Request A Test, Quest Diagnostics, LabCorp, Health Testing Centers, Any Lab Test Now
 
-## Files Actively Being Edited
+Each needs a config in `packages/scrapers/src/configs/` following the `VendorConfig` interface (see `src/types.ts`), plus export from `src/index.ts`.
 
-| File | Status | Notes |
-|------|--------|-------|
-| `apps/web/app/page.tsx` | Modified | Fully converted to inline styles + demo fallback data |
-| `apps/web/app/components/Navbar.tsx` | Modified | Inline styles, correct accent gradient |
-| `apps/web/app/components/SearchBar.tsx` | Modified | Inline styles |
-| `apps/web/app/components/TestCard.tsx` | Modified | Inline styles with hover state |
-| `apps/web/app/components/HomeTestList.tsx` | Modified | Inline styles, correct grid layout |
-| `apps/web/app/components/CategoryTabs.tsx` | Modified | Inline styles |
-| `apps/web/app/components/Footer.tsx` | Modified | Inline styles |
-| `apps/web/app/globals.css` | Modified | Updated brand colors to Indigo theme values |
-| `apps/web/app/layout.tsx` | Unchanged | Loads DM Sans via Google Fonts `<link>` |
-| `apps/web/app/error.tsx` | Modified | Accent color fix |
-| `apps/web/app/not-found.tsx` | Modified | Accent color fix |
-| `apps/web/app/loading.tsx` | Modified | Accent color fix |
-| `apps/web/app/test/[slug]/TestDetailClient.tsx` | Modified | Accent color fix |
-| `apps/web/app/test/[slug]/PriceAlertButton.tsx` | Modified | Accent color fix |
+### 3. Scraper Validation
+The existing configs (`ulta-lab-tests.ts`, `life-extension.ts`) have placeholder CSS selectors that need validation against actual vendor websites. Test URLs need to be populated for all 12 demo tests.
 
-## Next Steps
+### 4. Build Issue
+`npx next build` fails with `Environment variable not found: DATABASE_URL` during sitemap.xml prerendering. Expected without a running database — not a code bug, but needs conditional handling for build-time.
 
-### 1. Fix DM Sans font loading (CRITICAL)
-The font is the biggest visual difference. Options:
-- **Option A**: Use `next/font/google` instead of a `<link>` tag — this is the Next.js recommended approach and guarantees font loading:
-  ```tsx
-  // layout.tsx
-  import { DM_Sans } from 'next/font/google';
-  const dmSans = DM_Sans({ subsets: ['latin'], weight: ['300','400','500','600','700'] });
-  // Then: <body className={dmSans.className}>
-  ```
-- **Option B**: Add `font-family: 'DM Sans', system-ui, sans-serif` as an inline style on the `<body>` tag as a fallback
-- **Option C**: Check if Tailwind v4's `@theme` `--font-sans` is actually generating CSS, or if the `font-sans` utility is producing `font-family: var(--font-sans)` correctly
+## Critical Knowledge
 
-### 2. Verify all inline styles are committed
-Run `git diff --stat` to see what's staged/unstaged. The latest round of changes (full page.tsx inline conversion + accent gradient fixes) may not be committed yet.
+### Tailwind v4 + oklch = Broken
+**Root cause of ALL styling issues**: Tailwind v4's arbitrary value syntax (`text-[oklch(0.5 0.2 280)]`) silently fails to generate CSS. The classes appear in the HTML but produce no styles. The fix is always inline styles: `style={{ color: 'oklch(0.5 0.2 280)' }}`.
 
-### 3. Remove remaining Tailwind arbitrary value classes
-Search for remaining `text-[`, `bg-[`, `border-[` patterns in the component files and convert to inline styles. Key patterns to find:
-```
-grep -rn 'className.*\[oklch\|className.*\[#\|text-\[.*px\]' apps/web/app/
-```
-
-### 4. Test on user's Windows machine
-After pushing, user needs to:
-```
-git pull origin claude/github-write-access-3v9dld
-pnpm dev
-```
-
-## Reference: Prototype Accent Theme Values
-
+### Prototype Accent Theme
+The prototype defaults to **Indigo** (NOT Sky):
 ```js
-// From project/Lab Test Price Comparison.dc.html line 566-570
-const ACCENT_THEMES = {
-  'Indigo':  { h: 280, primary: 'oklch(0.58 0.22 280)', secondary: 'oklch(0.52 0.22 305)' },
-  'Emerald': { h: 155, primary: 'oklch(0.56 0.18 155)', secondary: 'oklch(0.5 0.18 168)' },
-  'Sky':     { h: 220, primary: 'oklch(0.58 0.18 220)', secondary: 'oklch(0.52 0.18 232)' },
-};
-// Default theme: Indigo (line 597: this.props.accentTheme ?? 'Indigo')
+// project/Lab Test Price Comparison.dc.html lines 566-570
+primary: 'oklch(0.58 0.22 280)'   // hue 280 = purple/violet
+secondary: 'oklch(0.52 0.22 305)'
 // Accent gradient: linear-gradient(135deg, primary, secondary)
 ```
 
-## Reference: Key Prototype CSS Values
+### Key Prototype CSS Values
+- Page bg: `oklch(0.97 0.01 280)`
+- Nav: 64px height, `rgba(15,12,36,0.9)`, blur(20px)
+- Hero: padding `90px 24px 110px`, h1 54px/700, letter-spacing -1.8px
+- Search bar: 14px radius, padding `5px 5px 5px 18px`, shadow `0 24px 64px rgba(0,0,0,0.32)`
+- Stats bar: bg `oklch(0.22 0.1 280)`, padding `14px 24px`, gap 48px
+- Cards: 14px radius, 20px padding, 1.5px border `oklch(0.92 0.02 280)`
+- All Tests grid: `1fr 140px 90px 28px`
+- Price green: `oklch(0.38 0.17 145)`
+- Footer: bg `oklch(0.17 0.09 280)`, `marginTop: auto`
 
-- Page background: `oklch(0.97 0.01 280)`
-- Nav: height 64px, max-width 1240px, dark bg `rgba(15,12,36,0.9)`
-- Hero: padding `90px 24px 110px`, gradient `linear-gradient(155deg, oklch(0.17 0.1 280), oklch(0.21 0.12 295) 55%, oklch(0.19 0.09 265))`
-- h1: 54px, 700, white, line-height 1.1, letter-spacing -1.8px
-- "instantly" gradient: `linear-gradient(90deg, oklch(0.75 0.2 280), oklch(0.78 0.18 315))` — use hex `#a855f7` → `#d946ef` for browser compat
-- Subtitle: 18px, line-height 1.55, margin-bottom 44px
-- Search bar: white bg, border-radius 14px, padding `5px 5px 5px 18px`, shadow `0 24px 64px rgba(0,0,0,0.32)`
-- Stats bar: bg `oklch(0.22 0.1 280)`, padding `14px 24px`, gap 48px between stats, gap 10px within each stat
-- Browse section: padding `56px 24px 80px`
-- Popular cards: white bg, 14px radius, 20px padding, 1.5px border `oklch(0.92 0.02 280)`, gap 14px
-- All Tests list: white bg container, 14px radius, 1.5px border, grid `1fr 140px 90px 28px`
-- Price color (green): `oklch(0.38 0.17 145)`
-- Category badge colors: per-category oklch values in CAT_COLORS maps
+### Demo Data
+`apps/web/app/page.tsx` has `DEMO_CATEGORIES` and `DEMO_TESTS` arrays so the page renders without a database connection.
+
+## How to Run
+
+```bash
+git checkout claude/github-write-access-3v9dld
+git pull origin claude/github-write-access-3v9dld
+pnpm install
+pnpm dev    # starts Next.js on localhost:3000
+```
+
+No database needed for home page (demo data fallback). For full functionality: see `docs/setup-guide.md`.
