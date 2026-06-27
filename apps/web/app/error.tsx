@@ -9,26 +9,50 @@ export default function ErrorPage({
 }) {
   return (
     <div
-      className="min-h-screen flex items-center justify-center px-6"
-      style={{ background: 'oklch(0.97 0.01 280)' }}
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 24px',
+        background: 'oklch(0.97 0.01 280)',
+      }}
     >
-      <div className="text-center max-w-md">
+      <div style={{ textAlign: 'center', maxWidth: 400 }}>
         <div
-          className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-2xl"
-          style={{ background: 'oklch(0.95 0.06 15)', color: 'oklch(0.45 0.14 15)' }}
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: '50%',
+            margin: '0 auto 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 24,
+            background: 'oklch(0.95 0.06 15)',
+            color: 'oklch(0.45 0.14 15)',
+          }}
         >
           !
         </div>
-        <h1 className="text-2xl font-bold text-[oklch(0.18_0.04_280)] mb-3">
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'oklch(0.18 0.04 280)', marginBottom: 12 }}>
           Something went wrong
         </h1>
-        <p className="text-[oklch(0.5_0.04_280)] mb-8 leading-relaxed">
+        <p style={{ color: 'oklch(0.5 0.04 280)', marginBottom: 32, lineHeight: 1.6 }}>
           We hit an unexpected error. Please try again, and if the problem persists, contact support.
         </p>
         <button
           onClick={reset}
-          className="px-6 py-3 rounded-btn font-semibold text-white cursor-pointer border-none text-[15px]"
-          style={{ background: 'oklch(0.52 0.22 305)' }}
+          style={{
+            padding: '12px 24px',
+            borderRadius: 10,
+            fontWeight: 600,
+            color: '#fff',
+            cursor: 'pointer',
+            border: 'none',
+            fontSize: 15,
+            background: 'oklch(0.52 0.22 305)',
+          }}
         >
           Try again
         </button>

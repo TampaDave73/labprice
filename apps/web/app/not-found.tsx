@@ -4,26 +4,33 @@ import Footer from './components/Footer';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'oklch(0.97 0.01 280)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'oklch(0.97 0.01 280)' }}>
       <Navbar variant="light" />
-      <div className="flex-1 flex items-center justify-center px-6">
-        <div className="text-center max-w-md">
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 400 }}>
           <h1
-            className="text-[72px] font-bold leading-none mb-2"
-            style={{ color: 'oklch(0.85 0.08 280)' }}
+            style={{ fontSize: 72, fontWeight: 700, lineHeight: 1, marginBottom: 8, color: 'oklch(0.85 0.08 280)' }}
           >
             404
           </h1>
-          <h2 className="text-xl font-semibold text-[oklch(0.18_0.04_280)] mb-3">
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: 'oklch(0.18 0.04 280)', marginBottom: 12 }}>
             Page not found
           </h2>
-          <p className="text-[oklch(0.5_0.04_280)] mb-8 leading-relaxed">
+          <p style={{ color: 'oklch(0.5 0.04 280)', marginBottom: 32, lineHeight: 1.6 }}>
             The page you are looking for does not exist or may have been moved.
           </p>
           <Link
             href="/"
-            className="inline-block px-6 py-3 rounded-btn font-semibold text-white no-underline text-[15px]"
-            style={{ background: 'oklch(0.52 0.22 305)' }}
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              borderRadius: 10,
+              fontWeight: 600,
+              color: '#fff',
+              textDecoration: 'none',
+              fontSize: 15,
+              background: 'oklch(0.52 0.22 305)',
+            }}
           >
             Back to home
           </Link>

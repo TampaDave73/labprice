@@ -11,6 +11,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
         top: 0,
         zIndex: 200,
         backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         background: isDark ? 'rgba(15,12,36,0.9)' : 'rgba(255,255,255,0.96)',
         borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
       }}

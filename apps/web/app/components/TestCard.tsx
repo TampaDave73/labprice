@@ -65,7 +65,7 @@ export default function TestCard({ name, slug, category, minPrice }: TestCardPro
       >
         {name}
       </h3>
-      <div className="flex items-baseline" style={{ gap: 6 }}>
+      <div className="flex items-baseline" style={{ gap: 5 }}>
         <span style={{ fontSize: 11, color: 'oklch(0.6 0.04 280)' }}>from</span>
         <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.38 0.17 145)' }}>
           {minPrice != null ? `$${Math.round(minPrice)}` : '--'}

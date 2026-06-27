@@ -5,8 +5,14 @@ export default function Loading() {
       style={{ background: 'oklch(0.97 0.01 280)' }}
     >
       <div
-        className="w-10 h-10 rounded-full border-[3px] border-[oklch(0.9_0.04_280)] animate-spin"
-        style={{ borderTopColor: 'oklch(0.52 0.22 305)' }}
+        className="animate-spin"
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          border: '3px solid oklch(0.9 0.04 280)',
+          borderTopColor: 'oklch(0.52 0.22 305)',
+        }}
       />
     </div>
   );
