@@ -23,7 +23,7 @@ export default function NotFound() {
           <Link
             href="/"
             className="inline-block px-6 py-3 rounded-btn font-semibold text-white no-underline text-[15px]"
-            style={{ background: 'oklch(0.52 0.18 232)' }}
+            style={{ background: 'oklch(0.48 0.2 280)' }}
           >
             Back to home
           </Link>

@@ -6,7 +6,7 @@ export default function Loading() {
     >
       <div
         className="w-10 h-10 rounded-full border-[3px] border-[oklch(0.9_0.04_280)] animate-spin"
-        style={{ borderTopColor: 'oklch(0.52 0.18 232)' }}
+        style={{ borderTopColor: 'oklch(0.48 0.2 280)' }}
       />
     </div>
   );

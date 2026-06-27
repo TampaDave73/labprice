@@ -171,7 +171,7 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
                 onClick={() => setSortBy('price')}
                 className="flex items-center gap-1.5 px-4 py-[7px] rounded-[7px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150"
                 style={{
-                  background: isPriceSorted ? 'oklch(0.58 0.18 220)' : 'transparent',
+                  background: isPriceSorted ? 'oklch(0.55 0.2 280)' : 'transparent',
                   color: isPriceSorted ? '#fff' : 'oklch(0.5 0.05 280)',
                 }}
               >
@@ -184,7 +184,7 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
                 onClick={() => setSortBy('alpha')}
                 className="flex items-center gap-1.5 px-4 py-[7px] rounded-[7px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150"
                 style={{
-                  background: !isPriceSorted ? 'oklch(0.58 0.18 220)' : 'transparent',
+                  background: !isPriceSorted ? 'oklch(0.55 0.2 280)' : 'transparent',
                   color: !isPriceSorted ? '#fff' : 'oklch(0.5 0.05 280)',
                 }}
               >

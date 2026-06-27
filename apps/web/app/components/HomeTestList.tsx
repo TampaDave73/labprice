@@ -67,7 +67,7 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
               onClick={() => setSortBy('name')}
               className="px-3 py-1.5 rounded-[6px] border-none text-xs font-medium cursor-pointer transition-all duration-150"
               style={{
-                background: isName ? 'oklch(0.58 0.18 220)' : 'transparent',
+                background: isName ? 'oklch(0.55 0.2 280)' : 'transparent',
                 color: isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >
@@ -77,7 +77,7 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
               onClick={() => setSortBy('price')}
               className="px-3 py-1.5 rounded-[6px] border-none text-xs font-medium cursor-pointer transition-all duration-150"
               style={{
-                background: !isName ? 'oklch(0.58 0.18 220)' : 'transparent',
+                background: !isName ? 'oklch(0.55 0.2 280)' : 'transparent',
                 color: !isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >

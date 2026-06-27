@@ -78,7 +78,7 @@ export default function PriceAlertButton({ testId }: Props) {
               onClick={() => setMode('target')}
               className="flex-1 px-3 py-1.5 rounded-[7px] text-xs font-medium cursor-pointer border-none transition-all"
               style={{
-                background: mode === 'target' ? 'oklch(0.58 0.18 220)' : 'oklch(0.96 0.01 280)',
+                background: mode === 'target' ? 'oklch(0.55 0.2 280)' : 'oklch(0.96 0.01 280)',
                 color: mode === 'target' ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >
@@ -89,7 +89,7 @@ export default function PriceAlertButton({ testId }: Props) {
               onClick={() => setMode('drop')}
               className="flex-1 px-3 py-1.5 rounded-[7px] text-xs font-medium cursor-pointer border-none transition-all"
               style={{
-                background: mode === 'drop' ? 'oklch(0.58 0.18 220)' : 'oklch(0.96 0.01 280)',
+                background: mode === 'drop' ? 'oklch(0.55 0.2 280)' : 'oklch(0.96 0.01 280)',
                 color: mode === 'drop' ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
             >
