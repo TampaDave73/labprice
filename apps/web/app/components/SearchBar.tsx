@@ -83,8 +83,16 @@ export default function SearchBar() {
   }, []);
 
   return (
-    <div ref={wrapperRef} className="relative max-w-[570px] mx-auto">
-      <div className="flex items-center bg-white rounded-[14px] p-[5px] pl-[18px] shadow-[0_24px_64px_rgba(0,0,0,0.32)]">
+    <div ref={wrapperRef} style={{ position: 'relative', maxWidth: 570, margin: '0 auto' }}>
+      <div
+        className="flex items-center"
+        style={{
+          background: '#fff',
+          borderRadius: 14,
+          padding: '5px 5px 5px 18px',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
+        }}
+      >
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
           <circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.1 280)" strokeWidth="1.8" />
           <path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.1 280)" strokeWidth="1.8" strokeLinecap="round" />
@@ -95,40 +103,75 @@ export default function SearchBar() {
           onKeyDown={onKeyDown}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
           placeholder="Test name — Vitamin D, Testosterone, TSH..."
-          className="flex-1 border-none outline-none bg-transparent text-base px-3.5 py-3 text-brand-900"
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontSize: 16,
+            padding: '11px 14px',
+            color: 'oklch(0.18 0.04 280)',
+          }}
         />
         <button
           onClick={() => {
             if (suggestions.length > 0 && suggestions[0] != null) navigate(suggestions[0]!.slug);
           }}
-          className="shrink-0 bg-gradient-to-br from-brand-500 to-brand-600 text-white border-none rounded-btn px-6 py-3 text-[15px] font-semibold cursor-pointer"
+          style={{
+            flexShrink: 0,
+            background: 'linear-gradient(135deg, oklch(0.55 0.2 280), oklch(0.48 0.2 280))',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            padding: '13px 24px',
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
         >
           Compare
         </button>
       </div>
 
       {open && suggestions.length > 0 && (
-        <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white rounded-[13px] shadow-[0_16px_48px_rgba(0,0,0,0.18)] overflow-hidden z-50 animate-[slideDown_0.15s_ease]">
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            right: 0,
+            background: '#fff',
+            borderRadius: 13,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.18)',
+            overflow: 'hidden',
+            zIndex: 50,
+            animation: 'slideDown 0.15s ease',
+          }}
+        >
           {suggestions.map((sug, i) => (
             <div
               key={sug.slug}
               onClick={() => navigate(sug.slug)}
-              className="flex items-center justify-between px-[18px] py-3 cursor-pointer border-b border-[oklch(0.95_0.01_280)] transition-colors"
+              className="flex items-center justify-between"
               style={{
+                padding: '12px 18px',
+                cursor: 'pointer',
+                borderBottom: '1px solid oklch(0.95 0.01 280)',
+                transition: 'background 150ms',
                 background: i === activeIdx ? 'oklch(0.97 0.03 280)' : undefined,
               }}
               onMouseEnter={() => setActiveIdx(i)}
             >
-              <div className="text-left">
-                <div className="text-sm font-semibold text-[oklch(0.18_0.04_280)]">{sug.name}</div>
-                <div className="text-[11px] text-[oklch(0.58_0.05_280)] mt-0.5">
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.18 0.04 280)' }}>{sug.name}</div>
+                <div style={{ fontSize: 11, color: 'oklch(0.58 0.05 280)', marginTop: 2 }}>
                   {sug.questCode ? `Quest ${sug.questCode}` : ''}
                   {sug.questCode && sug.labcorpCode ? ' · ' : ''}
                   {sug.labcorpCode ? `LabCorp ${sug.labcorpCode}` : ''}
                 </div>
               </div>
               {sug.minPrice != null && (
-                <div className="text-sm font-bold text-[oklch(0.4_0.17_145)]">
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'oklch(0.4 0.17 145)' }}>
                   from ${Math.round(sug.minPrice)}
                 </div>
               )}

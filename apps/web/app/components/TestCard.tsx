@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 
 const CAT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -17,21 +20,54 @@ interface TestCardProps {
 
 export default function TestCard({ name, slug, category, minPrice }: TestCardProps) {
   const cat = CAT_COLORS[category] ?? { bg: '#f0f0f0', color: '#555' };
+  const [hovered, setHovered] = useState(false);
   return (
     <Link
       href={`/test/${slug}`}
-      className="block bg-white rounded-card p-5 border-[1.5px] border-[oklch(0.92_0.02_280)] no-underline transition-all duration-[180ms] hover:-translate-y-0.5 hover:shadow-[0_8px_28px_oklch(0.55_0.15_280/0.11)] hover:border-[oklch(0.75_0.12_280)]"
+      className="block no-underline"
+      style={{
+        background: '#fff',
+        borderRadius: 14,
+        padding: 20,
+        border: `1.5px solid ${hovered ? 'oklch(0.75 0.12 280)' : 'oklch(0.92 0.02 280)'}`,
+        transition: 'all 180ms',
+        transform: hovered ? 'translateY(-2px)' : 'none',
+        boxShadow: hovered ? '0 8px 28px oklch(0.55 0.15 280 / 0.11)' : 'none',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <span
-        className="inline-block px-2.5 py-0.5 rounded-pill text-[11px] font-bold tracking-[0.4px] uppercase mb-2.5"
-        style={{ background: cat.bg, color: cat.color }}
+        style={{
+          display: 'inline-block',
+          padding: '3px 10px',
+          borderRadius: 20,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.4px',
+          textTransform: 'uppercase',
+          marginBottom: 10,
+          background: cat.bg,
+          color: cat.color,
+        }}
       >
         {category}
       </span>
-      <h3 className="text-[15px] font-semibold text-[oklch(0.18_0.04_280)] mb-1.5 leading-snug">{name}</h3>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-[11px] text-[oklch(0.6_0.04_280)]">from</span>
-        <span className="text-[22px] font-bold text-success-700">
+      <h3
+        style={{
+          fontSize: 15,
+          fontWeight: 600,
+          color: 'oklch(0.18 0.04 280)',
+          marginBottom: 5,
+          lineHeight: 1.35,
+          margin: '0 0 5px',
+        }}
+      >
+        {name}
+      </h3>
+      <div className="flex items-baseline" style={{ gap: 6 }}>
+        <span style={{ fontSize: 11, color: 'oklch(0.6 0.04 280)' }}>from</span>
+        <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.38 0.17 145)' }}>
           {minPrice != null ? `$${Math.round(minPrice)}` : '--'}
         </span>
       </div>

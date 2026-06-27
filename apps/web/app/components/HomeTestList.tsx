@@ -53,20 +53,37 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
 
   return (
     <div>
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+      <div className="flex items-center justify-between flex-wrap" style={{ gap: 16, marginBottom: 16 }}>
         <div>
-          <h2 className="text-2xl font-bold tracking-[-0.4px] text-[oklch(0.18_0.04_280)]">All Tests</h2>
-          <p className="text-sm text-[oklch(0.52_0.03_280)] mt-1">
+          <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', color: 'oklch(0.18 0.04 280)', margin: 0 }}>
+            All Tests
+          </h2>
+          <p style={{ fontSize: 14, color: 'oklch(0.52 0.03 280)', marginTop: 4, margin: '4px 0 0' }}>
             {testCount} tests &middot; search by name or code above
           </p>
         </div>
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
           <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
-          <div className="flex bg-white border-[1.5px] border-[oklch(0.9_0.02_280)] rounded-[9px] p-0.5 gap-0.5">
+          <div
+            className="flex"
+            style={{
+              background: '#fff',
+              border: '1.5px solid oklch(0.9 0.02 280)',
+              borderRadius: 9,
+              padding: 2,
+              gap: 2,
+            }}
+          >
             <button
               onClick={() => setSortBy('name')}
-              className="px-3 py-1.5 rounded-[6px] border-none text-xs font-medium cursor-pointer transition-all duration-150"
               style={{
+                padding: '5px 12px',
+                borderRadius: 6,
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 150ms',
                 background: isName ? 'oklch(0.55 0.2 280)' : 'transparent',
                 color: isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
@@ -75,8 +92,14 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
             </button>
             <button
               onClick={() => setSortBy('price')}
-              className="px-3 py-1.5 rounded-[6px] border-none text-xs font-medium cursor-pointer transition-all duration-150"
               style={{
+                padding: '5px 12px',
+                borderRadius: 6,
+                border: 'none',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 150ms',
                 background: !isName ? 'oklch(0.55 0.2 280)' : 'transparent',
                 color: !isName ? '#fff' : 'oklch(0.5 0.05 280)',
               }}
@@ -88,18 +111,28 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
       </div>
 
       {/* List table */}
-      <div className="bg-white rounded-card border-[1.5px] border-[oklch(0.92_0.02_280)] overflow-hidden">
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: 14,
+          border: '1.5px solid oklch(0.92 0.02 280)',
+          overflow: 'hidden',
+        }}
+      >
         {/* Header */}
         <div
-          className="grid items-center px-[18px] py-2.5 border-b-[1.5px] border-[oklch(0.92_0.02_280)]"
           style={{
+            display: 'grid',
             gridTemplateColumns: '1fr 140px 90px 28px',
+            alignItems: 'center',
+            padding: '10px 18px',
             background: 'oklch(0.97 0.015 280)',
+            borderBottom: '1.5px solid oklch(0.92 0.02 280)',
           }}
         >
-          <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px]">Test</span>
-          <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px]">Category</span>
-          <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px] text-right">
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Test</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Category</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>
             From
           </span>
           <span />
@@ -111,12 +144,22 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
             <Link
               key={row.id}
               href={`/test/${row.slug}`}
-              className="grid items-center px-[18px] py-[13px] border-b border-[oklch(0.96_0.01_280)] cursor-pointer no-underline transition-colors hover:bg-[oklch(0.97_0.02_280)]"
-              style={{ gridTemplateColumns: '1fr 140px 90px 28px' }}
+              className="no-underline"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 140px 90px 28px',
+                alignItems: 'center',
+                padding: '13px 18px',
+                borderBottom: '1px solid oklch(0.96 0.01 280)',
+                cursor: 'pointer',
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'oklch(0.97 0.02 280)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
             >
               <div>
-                <div className="text-sm font-semibold text-[oklch(0.18_0.04_280)]">{row.name}</div>
-                <div className="text-[11px] text-[oklch(0.6_0.04_280)] mt-0.5">
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.18 0.04 280)' }}>{row.name}</div>
+                <div style={{ fontSize: 11, color: 'oklch(0.6 0.04 280)', marginTop: 2 }}>
                   {row.questCode ? `Quest ${row.questCode}` : ''}
                   {row.questCode && row.labcorpCode ? ' · ' : ''}
                   {row.labcorpCode ? `LabCorp ${row.labcorpCode}` : ''}
@@ -124,18 +167,28 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
               </div>
               <div>
                 <span
-                  className="inline-block px-2.5 py-0.5 rounded-pill text-[10px] font-bold tracking-[0.4px] uppercase whitespace-nowrap"
-                  style={{ background: cat.bg, color: cat.color }}
+                  style={{
+                    display: 'inline-block',
+                    padding: '3px 9px',
+                    borderRadius: 20,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                    background: cat.bg,
+                    color: cat.color,
+                  }}
                 >
                   {row.category}
                 </span>
               </div>
-              <div className="text-right">
-                <span className="text-base font-bold text-success-700">
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: 'oklch(0.38 0.17 145)' }}>
                   {row.minPrice != null ? `$${Math.round(row.minPrice)}` : '--'}
                 </span>
               </div>
-              <div className="text-right text-[oklch(0.65_0.06_280)]">
+              <div style={{ textAlign: 'right', color: 'oklch(0.65 0.06 280)' }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M4 3l5 4-5 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
@@ -145,22 +198,31 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
         })}
 
         {visible.length === 0 && (
-          <div className="text-center py-12 px-6 text-[oklch(0.55_0.04_280)]">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" className="mx-auto mb-3 block">
+          <div style={{ textAlign: 'center', padding: '48px 24px', color: 'oklch(0.55 0.04 280)' }}>
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ display: 'block', margin: '0 auto 12px' }}>
               <circle cx="17" cy="17" r="10" stroke="oklch(0.75 0.05 280)" strokeWidth="2.5" />
               <path d="M24 24l8 8" stroke="oklch(0.75 0.05 280)" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
-            <div className="text-base font-semibold text-[oklch(0.35_0.04_280)] mb-1.5">No tests found</div>
-            <div className="text-sm">Try a different search term, code, or category</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: 'oklch(0.35 0.04 280)', marginBottom: 6 }}>No tests found</div>
+            <div style={{ fontSize: 14 }}>Try a different search term, code, or category</div>
           </div>
         )}
       </div>
 
       {showMoreVisible && (
-        <div className="text-center mt-3.5">
+        <div style={{ textAlign: 'center', marginTop: 14 }}>
           <button
             onClick={() => setShowAll(!showAll)}
-            className="px-[22px] py-2.5 bg-white border-[1.5px] border-[oklch(0.88_0.03_280)] rounded-[9px] text-sm font-medium text-[oklch(0.45_0.12_280)] cursor-pointer hover:border-[oklch(0.72_0.1_280)] hover:text-[oklch(0.38_0.15_280)] transition-all"
+            style={{
+              padding: '9px 22px',
+              background: '#fff',
+              border: '1.5px solid oklch(0.88 0.03 280)',
+              borderRadius: 9,
+              fontSize: 14,
+              fontWeight: 500,
+              color: 'oklch(0.45 0.12 280)',
+              cursor: 'pointer',
+            }}
           >
             {showAll ? 'Show fewer ↑' : `View all ${filtered.length} tests ↓`}
           </button>

@@ -5,57 +5,89 @@ import SearchBar from './components/SearchBar';
 import TestCard from './components/TestCard';
 import HomeTestList from './components/HomeTestList';
 
+const DEMO_CATEGORIES = [
+  { name: 'Vitamins & Minerals', slug: 'vitamins-minerals' },
+  { name: 'Hormones', slug: 'hormones' },
+  { name: 'Metabolic', slug: 'metabolic' },
+  { name: 'Blood Count', slug: 'blood-count' },
+  { name: 'Cancer Markers', slug: 'cancer-markers' },
+];
+
+const DEMO_TESTS = [
+  { id: '1', name: 'Vitamin D, 25-Hydroxy', shortName: 'Vitamin D', slug: 'vitamin-d-25-hydroxy', category: 'Vitamins & Minerals', categorySlug: 'vitamins-minerals', questCode: '17306', labcorpCode: '081950', minPrice: 28, vendorCount: 8 },
+  { id: '2', name: 'Testosterone, Total', shortName: 'Testosterone', slug: 'testosterone-total', category: 'Hormones', categorySlug: 'hormones', questCode: '15983', labcorpCode: '004226', minPrice: 33, vendorCount: 7 },
+  { id: '3', name: 'Thyroid Panel (TSH, T3, T4)', shortName: 'Thyroid Panel', slug: 'thyroid-panel', category: 'Hormones', categorySlug: 'hormones', questCode: '34429', labcorpCode: '028274', minPrice: 39, vendorCount: 6 },
+  { id: '4', name: 'Complete Blood Count (CBC)', shortName: 'CBC', slug: 'complete-blood-count', category: 'Blood Count', categorySlug: 'blood-count', questCode: '6399', labcorpCode: '005009', minPrice: 22, vendorCount: 9 },
+  { id: '5', name: 'Comprehensive Metabolic Panel', shortName: 'CMP', slug: 'comprehensive-metabolic-panel', category: 'Metabolic', categorySlug: 'metabolic', questCode: '10231', labcorpCode: '322000', minPrice: 24, vendorCount: 8 },
+  { id: '6', name: 'Hemoglobin A1c', shortName: 'A1c', slug: 'hemoglobin-a1c', category: 'Metabolic', categorySlug: 'metabolic', questCode: '496', labcorpCode: '001453', minPrice: 25, vendorCount: 7 },
+  { id: '7', name: 'Lipid Panel', shortName: 'Lipid Panel', slug: 'lipid-panel', category: 'Metabolic', categorySlug: 'metabolic', questCode: '7600', labcorpCode: '303756', minPrice: 19, vendorCount: 8 },
+  { id: '8', name: 'Vitamin B12', shortName: 'Vitamin B12', slug: 'vitamin-b12', category: 'Vitamins & Minerals', categorySlug: 'vitamins-minerals', questCode: '927', labcorpCode: '081950', minPrice: 31, vendorCount: 6 },
+  { id: '9', name: 'Iron and TIBC', shortName: 'Iron Panel', slug: 'iron-and-tibc', category: 'Vitamins & Minerals', categorySlug: 'vitamins-minerals', questCode: '7573', labcorpCode: '001321', minPrice: 26, vendorCount: 5 },
+  { id: '10', name: 'PSA (Prostate-Specific Antigen)', shortName: 'PSA', slug: 'psa', category: 'Cancer Markers', categorySlug: 'cancer-markers', questCode: '11363', labcorpCode: '010322', minPrice: 35, vendorCount: 6 },
+  { id: '11', name: 'Estradiol', shortName: 'Estradiol', slug: 'estradiol', category: 'Hormones', categorySlug: 'hormones', questCode: '4021', labcorpCode: '004515', minPrice: 38, vendorCount: 5 },
+  { id: '12', name: 'Ferritin', shortName: 'Ferritin', slug: 'ferritin', category: 'Vitamins & Minerals', categorySlug: 'vitamins-minerals', questCode: '457', labcorpCode: '004598', minPrice: 27, vendorCount: 7 },
+];
+
 async function getHomeData() {
-  const [categories, popularTests, allTests] = await Promise.all([
-    prisma.category.findMany({ orderBy: { displayOrder: 'asc' } }),
-    prisma.test.findMany({
-      where: { isPopular: true, deletedAt: null },
-      include: {
-        category: true,
-        offerings: {
-          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
-          select: { currentPrice: true },
+  try {
+    const [categories, popularTests, allTests] = await Promise.all([
+      prisma.category.findMany({ orderBy: { displayOrder: 'asc' } }),
+      prisma.test.findMany({
+        where: { isPopular: true, deletedAt: null },
+        include: {
+          category: true,
+          offerings: {
+            where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+            select: { currentPrice: true },
+          },
         },
-      },
-      orderBy: { displayOrder: 'asc' },
-      take: 6,
-    }),
-    prisma.test.findMany({
-      where: { deletedAt: null },
-      include: {
-        category: true,
-        offerings: {
-          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
-          select: { currentPrice: true },
+        orderBy: { displayOrder: 'asc' },
+        take: 6,
+      }),
+      prisma.test.findMany({
+        where: { deletedAt: null },
+        include: {
+          category: true,
+          offerings: {
+            where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+            select: { currentPrice: true },
+          },
         },
-      },
-      orderBy: { name: 'asc' },
-    }),
-  ]);
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
-  const withMinPrice = (tests: typeof allTests) =>
-    tests.map((t) => {
-      const prices = t.offerings.map((o) => Number(o.currentPrice));
-      return {
-        id: t.id,
-        name: t.name,
-        shortName: t.shortName,
-        slug: t.slug,
-        category: t.category.name,
-        categorySlug: t.category.slug,
-        questCode: t.questCode,
-        labcorpCode: t.labcorpCode,
-        minPrice: prices.length > 0 ? Math.min(...prices) : null,
-        vendorCount: t.offerings.length,
-      };
-    });
+    const withMinPrice = (tests: typeof allTests) =>
+      tests.map((t) => {
+        const prices = t.offerings.map((o) => Number(o.currentPrice));
+        return {
+          id: t.id,
+          name: t.name,
+          shortName: t.shortName,
+          slug: t.slug,
+          category: t.category.name,
+          categorySlug: t.category.slug,
+          questCode: t.questCode,
+          labcorpCode: t.labcorpCode,
+          minPrice: prices.length > 0 ? Math.min(...prices) : null,
+          vendorCount: t.offerings.length,
+        };
+      });
 
-  return {
-    categories: categories.map((c) => ({ name: c.name, slug: c.slug })),
-    popularTests: withMinPrice(popularTests),
-    allTests: withMinPrice(allTests),
-    testCount: allTests.length,
-  };
+    return {
+      categories: categories.map((c) => ({ name: c.name, slug: c.slug })),
+      popularTests: withMinPrice(popularTests),
+      allTests: withMinPrice(allTests),
+      testCount: allTests.length,
+    };
+  } catch {
+    return {
+      categories: DEMO_CATEGORIES,
+      popularTests: DEMO_TESTS.slice(0, 6),
+      allTests: DEMO_TESTS,
+      testCount: DEMO_TESTS.length,
+    };
+  }
 }
 
 export default async function Home() {
@@ -75,16 +107,33 @@ export default async function Home() {
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_-5%,oklch(0.55_0.18_280/0.2),transparent)] pointer-events-none" />
         <div className="relative max-w-[700px] mx-auto animate-[fadeUp_0.6s_ease]">
-          <div className="inline-flex items-center gap-2 bg-[oklch(0.95_0.06_280/0.12)] border border-[oklch(0.8_0.1_280/0.22)] rounded-pill px-3.5 py-1 mb-6">
-            <span className="w-[7px] h-[7px] rounded-full bg-success-500 inline-block" />
-            <span className="text-[13px] text-[oklch(0.85_0.06_280)] font-medium">
+          <div
+            className="inline-flex items-center"
+            style={{
+              gap: 8,
+              background: 'oklch(0.95 0.06 280 / 0.12)',
+              border: '1px solid oklch(0.8 0.1 280 / 0.22)',
+              borderRadius: 20,
+              padding: '5px 14px',
+              marginBottom: 24,
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'oklch(0.72 0.18 145)', display: 'inline-block' }} />
+            <span style={{ fontSize: 13, color: 'oklch(0.85 0.06 280)', fontWeight: 500 }}>
               Live prices from 10 ordering services
             </span>
           </div>
           <h1 className="text-[54px] font-bold text-white leading-[1.1] tracking-[-1.8px] mb-[18px]">
             Compare blood test prices
             <br />
-            <span className="bg-gradient-to-r from-[oklch(0.75_0.2_280)] to-[oklch(0.78_0.18_315)] bg-clip-text text-transparent">
+            <span
+              style={{
+                background: 'linear-gradient(90deg, #a855f7, #d946ef)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
               instantly
             </span>
           </h1>
@@ -101,7 +150,17 @@ export default async function Home() {
               <a
                 key={t.slug}
                 href={`/test/${t.slug}`}
-                className="px-[15px] py-1.5 bg-[oklch(0.95_0.06_280/0.12)] border border-[oklch(0.8_0.1_280/0.28)] rounded-pill text-[13px] text-[oklch(0.85_0.07_280)] font-medium no-underline hover:bg-[oklch(0.95_0.06_280/0.22)] transition-colors"
+                className="no-underline"
+                style={{
+                  padding: '6px 15px',
+                  background: 'oklch(0.95 0.06 280 / 0.12)',
+                  border: '1px solid oklch(0.8 0.1 280 / 0.28)',
+                  borderRadius: 20,
+                  fontSize: 13,
+                  color: 'oklch(0.85 0.07 280)',
+                  fontWeight: 500,
+                  transition: 'background 150ms',
+                }}
               >
                 {t.shortName}
               </a>
