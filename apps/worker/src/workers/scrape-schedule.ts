@@ -5,7 +5,7 @@ import { scrapeExecuteQueue } from '../queues';
 
 export function createScheduleWorker() {
   return new Worker(
-    'scrape:schedule',
+    'scrape-schedule',
     async (job: Job) => {
       console.log(`[schedule] Starting fan-out job ${job.id}`);
 

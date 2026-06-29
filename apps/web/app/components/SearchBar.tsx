@@ -30,9 +30,10 @@ export default function SearchBar() {
     try {
       const res = await fetch(`/api/v1/search/autocomplete?q=${encodeURIComponent(q)}`);
       if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data.results ?? []);
-        setOpen((data.results ?? []).length > 0);
+        const json = await res.json();
+        const results: Suggestion[] = json.data ?? [];
+        setSuggestions(results);
+        setOpen(results.length > 0);
       }
     } catch {
       /* ignore */

@@ -89,26 +89,50 @@ export async function search(query: string, limit = 25) {
   return trigramResults.map(toSummary);
 }
 
-export async function autocomplete(query: string, limit = 8) {
-  const prefix = `${query.trim()}%`;
+export interface AutocompleteSuggestion {
+  name: string;
+  slug: string;
+  category: string;
+  questCode: string | null;
+  labcorpCode: string | null;
+  minPrice: number | null;
+}
 
-  const results = await prisma.$queryRawUnsafe<SearchResult[]>(
-    `
-    SELECT
-      t.id, t.name, t.short_name, t.slug, t.is_popular,
-      c.id AS category_id, c.name AS cat_name, c.slug AS cat_slug,
-      c.color_bg, c.color_text,
-      0 AS rank
-    FROM tests t
-    JOIN categories c ON c.id = t.category_id
-    WHERE t.deleted_at IS NULL
-      AND (t.name ILIKE $1 OR t.short_name ILIKE $1)
-    ORDER BY t.is_popular DESC, t.display_order ASC
-    LIMIT $2
-    `,
-    prefix,
-    limit,
-  );
+export async function autocomplete(query: string, limit = 8): Promise<AutocompleteSuggestion[]> {
+  const term = query.trim();
 
-  return results.map(toSummary);
+  // Substring match across name, short name, and Quest/LabCorp codes — mirrors the
+  // prototype's "smart suggestions" which match on any of those fields.
+  const tests = await prisma.test.findMany({
+    where: {
+      deletedAt: null,
+      OR: [
+        { name: { contains: term, mode: 'insensitive' } },
+        { shortName: { contains: term, mode: 'insensitive' } },
+        { questCode: { contains: term, mode: 'insensitive' } },
+        { labcorpCode: { contains: term, mode: 'insensitive' } },
+      ],
+    },
+    include: {
+      category: { select: { name: true } },
+      offerings: {
+        where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+        select: { currentPrice: true },
+      },
+    },
+    orderBy: [{ isPopular: 'desc' }, { displayOrder: 'asc' }],
+    take: limit,
+  });
+
+  return tests.map((t) => {
+    const prices = t.offerings.map((o) => Number(o.currentPrice));
+    return {
+      name: t.name,
+      slug: t.slug,
+      category: t.category.name,
+      questCode: t.questCode,
+      labcorpCode: t.labcorpCode,
+      minPrice: prices.length > 0 ? Math.min(...prices) : null,
+    };
+  });
 }

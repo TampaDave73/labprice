@@ -22,18 +22,18 @@ export default async function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-900">Dashboard</h1>
+      <h1 className="admin-h1 mb-6">Dashboard</h1>
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className="rounded-xl border border-brand-100 bg-white p-6 shadow-sm">
+          <div key={kpi.label} className="admin-card p-6">
             <p className="text-sm font-medium text-brand-400">{kpi.label}</p>
             <p className={`mt-1 text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl border border-brand-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-brand-900">Recent Activity</h2>
+      <div className="admin-card p-6">
+        <h2 className="admin-h2 mb-4">Recent Activity</h2>
         {recentActivity.length === 0 ? (
           <p className="text-sm text-brand-400">No recent activity.</p>
         ) : (

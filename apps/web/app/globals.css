@@ -20,10 +20,12 @@
   --radius-btn: 10px;
 }
 
+/* Only normalize box-sizing globally. Do NOT reset margin/padding here —
+   an unlayered `*` rule overrides Tailwind v4's layered spacing utilities
+   (p-6, px-3, etc.), which silently zeroed all admin padding. Tailwind
+   Preflight already provides the appropriate margin/padding resets. */
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 ::placeholder {
@@ -38,6 +40,71 @@
   background: oklch(0.55 0.2 280 / 0.25);
   border-radius: 3px;
 }
+
+/* ── Admin: mirror the main site's design language ──
+   Plain CSS (not Tailwind arbitrary values) so the indigo gradient, card
+   radii, and typography render identically to the public pages. */
+.admin-h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: oklch(0.18 0.04 280);
+}
+.admin-h2 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: oklch(0.18 0.04 280);
+}
+.admin-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1.5px solid oklch(0.92 0.02 280);
+}
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: filter 0.15s, background 0.15s, box-shadow 0.15s;
+  background: linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305));
+  color: #fff;
+}
+.admin-btn:hover { filter: brightness(1.07); }
+.admin-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
+.admin-btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 8px; gap: 5px; }
+.admin-btn-success { background: oklch(0.52 0.17 145); }
+.admin-btn-danger { background: oklch(0.55 0.2 25); }
+.admin-btn-ghost {
+  background: #fff;
+  color: oklch(0.45 0.14 280);
+  border: 1.5px solid oklch(0.84 0.04 280);
+}
+.admin-btn-ghost:hover { filter: none; background: oklch(0.97 0.02 280); }
+.admin-input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1.5px solid oklch(0.9 0.02 280);
+  padding: 9px 14px;
+  font-size: 14px;
+  color: oklch(0.18 0.04 280);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.admin-input:focus {
+  border-color: oklch(0.58 0.22 280);
+  box-shadow: 0 0 0 3px oklch(0.58 0.22 280 / 0.18);
+}
+.admin-input-inline { width: auto; padding: 6px 10px; font-size: 13px; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(18px); }

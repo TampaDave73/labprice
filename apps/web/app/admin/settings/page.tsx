@@ -2,93 +2,115 @@
 
 import { useEffect, useState } from 'react';
 
-type Setting = { id: string; key: string; value: unknown };
-type Flag = { id: string; key: string; description: string | null; isEnabled: boolean };
+type Flag = { key: string; description: string | null; isEnabled: boolean };
+
+type FieldDef = {
+  key: string;
+  label: string;
+  type: 'number' | 'boolean';
+  group: string;
+  default: number | boolean;
+  help?: string;
+};
+
+const FIELDS: FieldDef[] = [
+  { key: 'scrape_enabled', label: 'Scraping enabled', type: 'boolean', default: true, group: 'Scraping', help: 'Master switch — when off, no scrapers run.' },
+  { key: 'scrape_interval_hours', label: 'Scrape interval (hours)', type: 'number', default: 24, group: 'Scraping', help: 'How often the scheduler kicks off a full scrape pass.' },
+  { key: 'scrape_default_timeout_ms', label: 'Default request timeout (ms)', type: 'number', default: 30000, group: 'Scraping', help: 'Per-page fetch timeout when a vendor has no override.' },
+  { key: 'auto_approve_decrease_percent', label: 'Auto-approve price drops up to (%)', type: 'number', default: 20, group: 'Auto-approval', help: 'Price decreases within this percent publish automatically; larger drops go to the Change Queue.' },
+  { key: 'auto_approve_increase_percent', label: 'Auto-approve price increases up to (%)', type: 'number', default: 5, group: 'Auto-approval', help: 'Price increases within this percent publish automatically; larger increases go to the Change Queue.' },
+];
+
+const GROUPS = ['Scraping', 'Auto-approval'];
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Setting[]>([]);
+  const [values, setValues] = useState<Record<string, number | boolean>>({});
   const [flags, setFlags] = useState<Flag[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editedValues, setEditedValues] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/v1/admin/settings').then((r) => r.json()).then((j) => {
-      setSettings(j.data?.settings ?? []);
+      const stored: Record<string, unknown> = {};
+      (j.data?.settings ?? []).forEach((s: { key: string; value: unknown }) => { stored[s.key] = s.value; });
+      const v: Record<string, number | boolean> = {};
+      for (const f of FIELDS) {
+        const raw = stored[f.key];
+        if (f.type === 'boolean') v[f.key] = raw === undefined ? (f.default as boolean) : raw === true || raw === 'true';
+        else v[f.key] = raw === undefined ? (f.default as number) : Number(raw);
+      }
+      setValues(v);
       setFlags(j.data?.featureFlags ?? []);
-      const vals: Record<string, string> = {};
-      (j.data?.settings ?? []).forEach((s: Setting) => { vals[s.key] = JSON.stringify(s.value); });
-      setEditedValues(vals);
       setLoading(false);
     });
   }, []);
 
-  const saveSettings = async () => {
-    setSaving(true);
-    const settingsPayload = Object.entries(editedValues).map(([key, value]) => {
-      try { return { key, value: JSON.parse(value) }; } catch { return { key, value }; }
-    });
+  const save = async () => {
+    setSaving(true); setMsg(null);
     await fetch('/api/v1/admin/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ settings: settingsPayload, featureFlags: flags.map((f) => ({ key: f.key, isEnabled: f.isEnabled })) }),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        settings: FIELDS.map((f) => ({ key: f.key, value: values[f.key] })),
+        featureFlags: flags.map((f) => ({ key: f.key, isEnabled: f.isEnabled })),
+      }),
     });
-    setSaving(false);
+    setSaving(false); setMsg('Settings saved.');
   };
 
-  const toggleFlag = (key: string) => {
-    setFlags((prev) => prev.map((f) => f.key === key ? { ...f, isEnabled: !f.isEnabled } : f));
-  };
+  const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
+    <button onClick={onClick} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? 'bg-success-500' : 'bg-brand-200'}`}>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? 'left-5' : 'left-0.5'}`} />
+    </button>
+  );
 
   if (loading) return <div className="p-6 text-brand-400">Loading...</div>;
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-900">Settings</h1>
-
-      <div className="mb-8 rounded-xl border border-brand-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-brand-900">System Settings</h2>
-        {settings.length === 0 ? (
-          <p className="text-sm text-brand-400">No settings configured.</p>
-        ) : (
-          <div className="space-y-3">
-            {settings.map((s) => (
-              <div key={s.key} className="flex items-center gap-4">
-                <label className="w-48 shrink-0 text-sm font-medium text-brand-700">{s.key}</label>
-                <input type="text" value={editedValues[s.key] ?? ''} onChange={(e) => setEditedValues((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                  className="flex-1 rounded-lg border border-brand-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" />
-              </div>
-            ))}
-          </div>
-        )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="admin-h1">Settings</h1>
+        {msg && <span className="text-sm text-success-700">{msg}</span>}
       </div>
 
-      <div className="mb-8 rounded-xl border border-brand-100 bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-brand-900">Feature Flags</h2>
+      {GROUPS.map((group) => (
+        <div key={group} className="admin-card max-w-2xl space-y-4 p-6">
+          <h2 className="admin-h2">{group}</h2>
+          {FIELDS.filter((f) => f.group === group).map((f) => (
+            <div key={f.key} className="flex items-start justify-between gap-6 border-b border-brand-50 pb-4 last:border-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium text-brand-900">{f.label}</div>
+                {f.help && <div className="mt-0.5 text-xs text-brand-400">{f.help}</div>}
+              </div>
+              {f.type === 'boolean' ? (
+                <Toggle on={values[f.key] as boolean} onClick={() => setValues((p) => ({ ...p, [f.key]: !(p[f.key] as boolean) }))} />
+              ) : (
+                <input type="number" className="admin-input shrink-0" style={{ width: 110 }} value={values[f.key] as number}
+                  onChange={(e) => setValues((p) => ({ ...p, [f.key]: Number(e.target.value) }))} />
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <div className="admin-card max-w-2xl space-y-3 p-6">
+        <h2 className="admin-h2">Feature Flags</h2>
         {flags.length === 0 ? (
           <p className="text-sm text-brand-400">No feature flags configured.</p>
         ) : (
-          <div className="space-y-3">
-            {flags.map((f) => (
-              <div key={f.key} className="flex items-center justify-between rounded-lg border border-brand-100 p-3">
-                <div>
-                  <p className="text-sm font-medium text-brand-900">{f.key}</p>
-                  {f.description && <p className="text-xs text-brand-400">{f.description}</p>}
-                </div>
-                <button onClick={() => toggleFlag(f.key)}
-                  className={`relative h-6 w-11 rounded-full transition-colors ${f.isEnabled ? 'bg-success-500' : 'bg-brand-200'}`}>
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${f.isEnabled ? 'left-5' : 'left-0.5'}`} />
-                </button>
+          flags.map((f) => (
+            <div key={f.key} className="flex items-center justify-between gap-6 border-b border-brand-50 pb-3 last:border-0 last:pb-0">
+              <div>
+                <div className="text-sm font-medium text-brand-900">{f.key}</div>
+                {f.description && <div className="mt-0.5 text-xs text-brand-400">{f.description}</div>}
               </div>
-            ))}
-          </div>
+              <Toggle on={f.isEnabled} onClick={() => setFlags((prev) => prev.map((x) => (x.key === f.key ? { ...x, isEnabled: !x.isEnabled } : x)))} />
+            </div>
+          ))
         )}
       </div>
 
-      <button onClick={saveSettings} disabled={saving}
-        className="rounded-lg bg-brand-600 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
-        {saving ? 'Saving...' : 'Save All'}
-      </button>
+      <button onClick={save} disabled={saving} className="admin-btn">{saving ? 'Saving...' : 'Save All'}</button>
     </div>
   );
 }

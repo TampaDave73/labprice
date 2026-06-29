@@ -14,3 +14,5 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export type { PrismaClient } from '@prisma/client';
 export * from '@prisma/client';
+export * from './vendor-trust';
+export * from './settings';

@@ -57,7 +57,7 @@ export async function PATCH(
     const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
-    const publishQueue = new Queue('scrape:publish', { connection: connection as any });
+    const publishQueue = new Queue('scrape-publish', { connection: connection as any });
     await publishQueue.add('publish', { stagedChangeId: id });
     await publishQueue.close();
     await connection.quit();

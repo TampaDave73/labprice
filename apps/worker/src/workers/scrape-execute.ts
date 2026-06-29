@@ -1,10 +1,13 @@
 import { Worker, type Job } from 'bullmq';
-import { Decimal } from '@labprice/database';
-import { prisma } from '@labprice/database';
+import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import type { VendorConfig, ScrapeResult, ScrapeError } from '@labprice/scrapers';
 import { PlaywrightEngine } from '@labprice/scrapers/src/engines/playwright-engine';
 import { connection } from '../redis';
 import { scrapePublishQueue } from '../queues';
+
+// Prisma 6 exposes Decimal under the Prisma namespace; alias it for use as type + value.
+type Decimal = Prisma.Decimal;
+const Decimal = Prisma.Decimal;
 
 interface ExecuteJobData {
   offeringId: string;
@@ -17,13 +20,24 @@ function isScrapeError(r: ScrapeResult | ScrapeError): r is ScrapeError {
 }
 
 /**
- * Auto-approval rules (BR-6 to BR-9):
- * BR-6: Price decrease ≤ 20% → auto-approve
- * BR-7: Price increase ≤ 5% → auto-approve
- * BR-8: First price (no previous) → auto-approve
- * BR-9: Price unchanged → no staged change needed
+ * Auto-approval rules (BR-6 to BR-9), modulated by vendor trust:
+ * BR-6: Price decrease within threshold → auto-approve
+ * BR-7: Price increase within threshold → auto-approve
+ * BR-8: First price (no previous) → auto-approve (unless LOW trust)
+ * BR-9: Price unchanged → no staged change needed (handled by caller)
+ *
+ * LOW trust  → never auto-approve (everything goes to the Change Queue).
+ * HIGH trust → more lenient thresholds; MEDIUM → standard thresholds.
  */
-function shouldAutoApprove(oldPrice: Decimal | null, newPrice: Decimal): boolean {
+function shouldAutoApprove(
+  oldPrice: Decimal | null,
+  newPrice: Decimal,
+  trust: TrustLevel,
+  baseDecrease: number,
+  baseIncrease: number,
+): boolean {
+  if (trust === 'LOW') return false;
+
   if (!oldPrice) return true; // BR-8
 
   const old = oldPrice.toNumber();
@@ -32,9 +46,13 @@ function shouldAutoApprove(oldPrice: Decimal | null, newPrice: Decimal): boolean
   if (old === 0) return true;
 
   const changePercent = ((nw - old) / old) * 100;
+  // HIGH trust gets 1.5× the configured thresholds.
+  const factor = trust === 'HIGH' ? 1.5 : 1;
+  const maxDecrease = baseDecrease * factor;
+  const maxIncrease = baseIncrease * factor;
 
-  if (changePercent < 0 && Math.abs(changePercent) <= 20) return true; // BR-6
-  if (changePercent > 0 && changePercent <= 5) return true; // BR-7
+  if (changePercent < 0 && Math.abs(changePercent) <= maxDecrease) return true; // BR-6
+  if (changePercent > 0 && changePercent <= maxIncrease) return true; // BR-7
 
   return false;
 }
@@ -43,7 +61,7 @@ export function createExecuteWorker() {
   const engine = new PlaywrightEngine();
 
   const worker = new Worker<ExecuteJobData>(
-    'scrape:execute',
+    'scrape-execute',
     async (job: Job<ExecuteJobData>) => {
       const { offeringId, vendorId, testId } = job.data;
       console.log(`[execute] Scraping offering=${offeringId} vendor=${vendorId} test=${testId}`);
@@ -78,15 +96,19 @@ export function createExecuteWorker() {
 
       const startTime = Date.now();
 
-      // Build vendor config from DB
+      // Build vendor config from the per-vendor scrape config (managed in admin).
+      const dbConfig = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId } });
+      const selectors = (dbConfig?.selectors as Record<string, string> | null) ?? {};
       const vendorConfig: VendorConfig = {
         vendorId: offering.vendor.id,
         vendorSlug: offering.vendor.slug,
-        engine: 'playwright',
-        baseUrl: offering.vendor.websiteUrl ?? '',
+        engine: dbConfig?.engine === 'HTTP' ? 'http' : 'playwright',
+        baseUrl: dbConfig?.baseUrl ?? offering.vendor.websiteUrl ?? '',
         rateLimit: { maxConcurrent: 1, delayMs: 2000 },
         selectors: {
-          priceSelector: '.price', // TODO: load from vendor scrape config
+          priceSelector: selectors.priceSelector ?? '.price',
+          nameSelector: selectors.nameSelector,
+          containerSelector: selectors.containerSelector,
         },
         testUrls: {
           [testId]: offering.externalUrl ?? '',
@@ -139,7 +161,15 @@ export function createExecuteWorker() {
       const priceChanged = !offering.currentPrice || !scrapedPrice.equals(offering.currentPrice);
 
       if (priceChanged) {
-        const autoApprove = shouldAutoApprove(offering.currentPrice, scrapedPrice);
+        const trust = await getEffectiveTrust(vendorId, offering.vendor.trustOverride);
+        const settings = await getScrapeSettings();
+        const autoApprove = shouldAutoApprove(
+          offering.currentPrice,
+          scrapedPrice,
+          trust,
+          settings.autoApproveDecreasePercent,
+          settings.autoApproveIncreasePercent,
+        );
         const status = autoApprove ? 'AUTO_APPROVED' : 'PENDING';
 
         const staged = await prisma.stagedPriceChange.create({

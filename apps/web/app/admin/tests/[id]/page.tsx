@@ -10,43 +10,95 @@ type TestData = {
   slug: string;
   description: string | null;
   purpose: string | null;
+  procedure: string | null;
   preparation: string | null;
   normalRange: string | null;
+  questCode: string | null;
+  labcorpCode: string | null;
   categoryId: string;
+  categoryIds: string[]; // additional categories (beyond the primary)
   isPopular: boolean;
   displayOrder: number;
-  category: { id: string; name: string };
-  biomarkers: { biomarker: { id: string; name: string } }[];
+};
+
+type Category = { id: string; name: string };
+
+const EMPTY: TestData = {
+  id: '', name: '', shortName: '', slug: '', description: '', purpose: '', procedure: '',
+  preparation: '', normalRange: '', questCode: '', labcorpCode: '', categoryId: '',
+  categoryIds: [], isPopular: false, displayOrder: 0,
 };
 
 export default function TestEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const router = useRouter();
   const [test, setTest] = useState<TestData | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const isNew = id === 'new';
 
   useEffect(() => {
-    if (isNew) {
-      setTest({ id: '', name: '', shortName: '', slug: '', description: '', purpose: '', preparation: '', normalRange: '', categoryId: '', isPopular: false, displayOrder: 0, category: { id: '', name: '' }, biomarkers: [] });
-      return;
-    }
-    fetch(`/api/v1/admin/tests/${id}`).then((r) => r.json()).then((j) => setTest(j.data));
+    fetch('/api/v1/admin/categories').then((r) => r.json()).then((j) => setCategories(j.data ?? []));
+  }, []);
+
+  useEffect(() => {
+    if (isNew) { setTest({ ...EMPTY }); return; }
+    fetch(`/api/v1/admin/tests/${id}`).then((r) => r.json()).then((j) => {
+      const d = j.data;
+      setTest({ ...d, categoryIds: (d.categories ?? []).map((c: { categoryId: string }) => c.categoryId) });
+    });
   }, [id, isNew]);
 
-  const handleChange = (field: string, value: string | boolean | number) => {
-    setTest((prev) => prev ? { ...prev, [field]: value } : prev);
+  const toggleExtraCategory = (catId: string) =>
+    setTest((prev) => {
+      if (!prev) return prev;
+      const has = prev.categoryIds.includes(catId);
+      return { ...prev, categoryIds: has ? prev.categoryIds.filter((c) => c !== catId) : [...prev.categoryIds, catId] };
+    });
+
+  const handleChange = (field: keyof TestData, value: string | boolean | number) => {
+    setTest((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    const res = await fetch('/api/v1/admin/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setError(json.error?.message ?? 'Could not add category'); return; }
+    setCategories((prev) => [...prev, json.data]);
+    handleChange('categoryId', json.data.id);
+    setNewCategory('');
+    setAddingCategory(false);
+    setError(null);
   };
 
   const handleSave = async () => {
     if (!test) return;
+    setError(null);
+    if (!test.categoryId) { setError('Please choose a category.'); return; }
     setSaving(true);
     const method = isNew ? 'POST' : 'PATCH';
     const url = isNew ? '/api/v1/admin/tests' : `/api/v1/admin/tests/${id}`;
-    const { category, biomarkers, ...body } = test;
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const body = {
+      name: test.name, shortName: test.shortName, slug: test.slug, categoryId: test.categoryId,
+      description: test.description, purpose: test.purpose, procedure: test.procedure,
+      preparation: test.preparation, normalRange: test.normalRange,
+      questCode: test.questCode, labcorpCode: test.labcorpCode,
+      isPopular: test.isPopular, displayOrder: Number(test.displayOrder) || 0,
+      categoryIds: test.categoryIds.filter((c) => c !== test.categoryId),
+    };
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     setSaving(false);
-    if (isNew) router.push('/admin/tests');
+    if (!res.ok) { const j = await res.json().catch(() => ({})); setError(j.error?.message ?? 'Save failed'); return; }
+    router.push('/admin/tests');
   };
 
   const handleDelete = async () => {
@@ -57,53 +109,125 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
 
   if (!test) return <div className="p-6 text-brand-400">Loading...</div>;
 
+  const labelCls = 'mb-1 block text-sm font-medium text-brand-700';
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-900">{isNew ? 'Add Test' : 'Edit Test'}</h1>
-      <div className="max-w-2xl space-y-4 rounded-xl border border-brand-100 bg-white p-6 shadow-sm">
-        {([
-          ['name', 'Name', 'text'],
-          ['shortName', 'Short Name', 'text'],
-          ['slug', 'Slug', 'text'],
-          ['categoryId', 'Category ID', 'text'],
-        ] as const).map(([field, label, type]) => (
-          <div key={field}>
-            <label className="mb-1 block text-sm font-medium text-brand-700">{label}</label>
-            <input type={type} value={(test as any)[field] ?? ''} onChange={(e) => handleChange(field, e.target.value)}
-              className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-          </div>
-        ))}
-        {(['description', 'purpose', 'preparation', 'normalRange'] as const).map((field) => (
-          <div key={field}>
-            <label className="mb-1 block text-sm font-medium text-brand-700 capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
-            <textarea value={(test as any)[field] ?? ''} onChange={(e) => handleChange(field, e.target.value)} rows={3}
-              className="w-full rounded-lg border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
-          </div>
-        ))}
-        <div className="flex items-center gap-3">
-          <input type="checkbox" id="isPopular" checked={test.isPopular} onChange={(e) => handleChange('isPopular', e.target.checked)} className="h-4 w-4 rounded" />
-          <label htmlFor="isPopular" className="text-sm font-medium text-brand-700">Popular Test</label>
-        </div>
-
-        {!isNew && test.biomarkers.length > 0 && (
-          <div>
-            <label className="mb-2 block text-sm font-medium text-brand-700">Biomarkers</label>
-            <div className="flex flex-wrap gap-2">
-              {test.biomarkers.map((b) => (
-                <span key={b.biomarker.id} className="rounded-full bg-brand-100 px-3 py-1 text-xs font-medium text-brand-700">
-                  {b.biomarker.name}
-                </span>
-              ))}
-            </div>
-          </div>
+      <h1 className="admin-h1 mb-6">{isNew ? 'Add Test' : 'Edit Test'}</h1>
+      <div className="admin-card max-w-2xl space-y-4 p-6">
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
 
+        <div>
+          <label className={labelCls}>Name</label>
+          <input type="text" className="admin-input" value={test.name} onChange={(e) => handleChange('name', e.target.value)} />
+        </div>
+        <div>
+          <label className={labelCls}>Short Name</label>
+          <input type="text" className="admin-input" value={test.shortName} onChange={(e) => handleChange('shortName', e.target.value)} />
+        </div>
+        <div>
+          <label className={labelCls}>Slug</label>
+          <input type="text" className="admin-input" value={test.slug} onChange={(e) => handleChange('slug', e.target.value)} />
+        </div>
+
+        {/* Category dropdown + inline add */}
+        <div>
+          <label className={labelCls}>Category</label>
+          {!addingCategory ? (
+            <div className="flex items-center gap-2">
+              <select className="admin-input" value={test.categoryId} onChange={(e) => handleChange('categoryId', e.target.value)}>
+                <option value="">— Select a category —</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost shrink-0" onClick={() => setAddingCategory(true)}>+ New</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                className="admin-input"
+                placeholder="New category name"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); } }}
+              />
+              <button type="button" className="admin-btn admin-btn-sm shrink-0" onClick={handleAddCategory}>Add</button>
+              <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost shrink-0" onClick={() => { setAddingCategory(false); setNewCategory(''); }}>Cancel</button>
+            </div>
+          )}
+        </div>
+
+        {/* Additional categories (a test can belong to several) */}
+        <div>
+          <label className={labelCls}>Additional categories</label>
+          <div className="flex flex-wrap gap-2">
+            {categories.filter((c) => c.id !== test.categoryId).length === 0 ? (
+              <span className="text-xs text-brand-400">Pick a primary category first.</span>
+            ) : (
+              categories.filter((c) => c.id !== test.categoryId).map((c) => {
+                const on = test.categoryIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleExtraCategory(c.id)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      on ? 'border-brand-500 bg-brand-500 text-white' : 'border-brand-200 bg-white text-brand-600 hover:bg-brand-50'
+                    }`}
+                  >
+                    {on ? '✓ ' : ''}{c.name}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <p className="mt-1 text-xs text-brand-400">The primary category drives the test&rsquo;s URL and badge; these are extra groupings.</p>
+        </div>
+
+        {/* Codes */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Quest Code</label>
+            <input type="text" className="admin-input" value={test.questCode ?? ''} onChange={(e) => handleChange('questCode', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>LabCorp Code</label>
+            <input type="text" className="admin-input" value={test.labcorpCode ?? ''} onChange={(e) => handleChange('labcorpCode', e.target.value)} />
+          </div>
+        </div>
+
+        {([
+          ['description', 'Description'],
+          ['purpose', 'Purpose'],
+          ['procedure', "How It's Performed"],
+          ['preparation', 'How To Prepare'],
+          ['normalRange', 'Normal Ranges'],
+        ] as const).map(([field, label]) => (
+          <div key={field}>
+            <label className={labelCls}>{label}</label>
+            <textarea className="admin-input" rows={3} value={(test[field] as string | null) ?? ''} onChange={(e) => handleChange(field, e.target.value)} />
+          </div>
+        ))}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Display Order</label>
+            <input type="number" className="admin-input" value={test.displayOrder} onChange={(e) => handleChange('displayOrder', Number(e.target.value))} />
+          </div>
+          <div className="flex items-end gap-3 pb-2">
+            <input type="checkbox" id="isPopular" className="h-4 w-4 rounded" checked={test.isPopular} onChange={(e) => handleChange('isPopular', e.target.checked)} />
+            <label htmlFor="isPopular" className="text-sm font-medium text-brand-700">Popular Test</label>
+          </div>
+        </div>
+
         <div className="flex gap-3 pt-4">
-          <button onClick={handleSave} disabled={saving} className="rounded-lg bg-brand-600 px-6 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="admin-btn">
             {saving ? 'Saving...' : 'Save'}
           </button>
           {!isNew && (
-            <button onClick={handleDelete} className="rounded-lg bg-red-600 px-6 py-2 text-sm font-medium text-white hover:bg-red-700">Delete</button>
+            <button onClick={handleDelete} className="admin-btn admin-btn-danger">Delete</button>
           )}
         </div>
       </div>

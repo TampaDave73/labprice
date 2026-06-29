@@ -17,7 +17,7 @@ async function main() {
   ];
 
   console.log(`[worker] Registered ${workers.length} workers`);
-  console.log('[worker] Queues: scrape:schedule, scrape:execute, scrape:publish, partition:maintain');
+  console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-publish, partition-maintain');
 
   startHealthServer();
 

@@ -18,7 +18,7 @@ function getPartitionBounds(year: number, month: number) {
 
 export function createPartitionWorker() {
   return new Worker(
-    'partition:maintain',
+    'partition-maintain',
     async (job: Job) => {
       console.log('[partition] Running monthly partition maintenance');
 

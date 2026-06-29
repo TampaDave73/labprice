@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@labprice/database';
+import { prisma, getVendorTrustMetrics } from '@labprice/database';
 import { auth } from '@/lib/auth';
 
 type Params = { params: Promise<{ id: string }> };
@@ -29,7 +29,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
     );
   }
 
-  return NextResponse.json({ data: vendor });
+  const trust = await getVendorTrustMetrics(vendor.id);
+  const effectiveTrust = vendor.trustOverride ?? trust.computed;
+
+  return NextResponse.json({ data: { ...vendor, trust, effectiveTrust } });
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -44,9 +47,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
 
+  const fields = ['name', 'slug', 'websiteUrl', 'affiliateUrlTemplate', 'logoUrl', 'isActive', 'trustOverride'] as const;
+  const data: Record<string, unknown> = {};
+  for (const f of fields) {
+    if (f in body) data[f] = f === 'trustOverride' && !body[f] ? null : body[f];
+  }
+
   const vendor = await prisma.vendor.update({
     where: { id },
-    data: body,
+    data,
   });
 
   return NextResponse.json({ data: vendor });

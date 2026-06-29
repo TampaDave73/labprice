@@ -8,7 +8,7 @@ interface PublishJobData {
 
 export function createPublishWorker() {
   return new Worker<PublishJobData>(
-    'scrape:publish',
+    'scrape-publish',
     async (job: Job<PublishJobData>) => {
       const { stagedChangeId } = job.data;
       console.log(`[publish] Publishing staged change ${stagedChangeId}`);

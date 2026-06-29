@@ -63,33 +63,41 @@ export default function ChangeQueuePage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-900">Change Queue</h1>
+      <h1 className="admin-h1 mb-2">Change Queue</h1>
+      <div className="admin-card mb-6 max-w-3xl p-4">
+        <p className="text-sm leading-relaxed text-brand-600">
+          When a scraper finds a price that differs from the stored one, it stages a change here. Small,
+          expected moves (a first price, a drop or rise within the thresholds in <span className="font-medium">Settings</span>)
+          are auto-approved and published immediately. Larger jumps — and <span className="font-medium">every</span> change
+          from a <span className="font-medium">LOW-trust</span> vendor — land here as <span className="font-medium">Pending</span> for
+          you to <span className="font-medium text-success-700">Approve</span> or <span className="font-medium text-red-600">Reject</span>.
+          Approving publishes the new price to the live offering.
+        </p>
+      </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t ? 'bg-brand-600 text-white' : 'bg-white text-brand-600 border border-brand-200 hover:bg-brand-50'
-            }`}
+            className={`admin-btn admin-btn-sm ${tab === t ? '' : 'admin-btn-ghost'}`}
           >
             {t === 'All' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
           </button>
         ))}
         {selected.size > 0 && (
           <div className="ml-auto flex gap-2">
-            <button onClick={() => handleAction('approve', [...selected])} className="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-700">
+            <button onClick={() => handleAction('approve', [...selected])} className="admin-btn admin-btn-success">
               Approve ({selected.size})
             </button>
-            <button onClick={() => handleAction('reject', [...selected])} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+            <button onClick={() => handleAction('reject', [...selected])} className="admin-btn admin-btn-danger">
               Reject ({selected.size})
             </button>
           </div>
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-brand-100 bg-white shadow-sm">
+      <div className="admin-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-100 bg-brand-50 text-left text-brand-600">
@@ -133,8 +141,8 @@ export default function ChangeQueuePage() {
                     <td className="p-3">
                       {c.status === 'PENDING' && (
                         <div className="flex gap-1">
-                          <button onClick={() => handleAction('approve', [c.id])} className="rounded bg-success-500 px-2 py-1 text-xs text-white hover:bg-success-700">Approve</button>
-                          <button onClick={() => handleAction('reject', [c.id])} className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700">Reject</button>
+                          <button onClick={() => handleAction('approve', [c.id])} className="admin-btn admin-btn-sm admin-btn-success">Approve</button>
+                          <button onClick={() => handleAction('reject', [c.id])} className="admin-btn admin-btn-sm admin-btn-danger">Reject</button>
                         </div>
                       )}
                     </td>

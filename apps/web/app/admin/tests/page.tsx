@@ -13,28 +13,41 @@ type Test = {
   _count: { offerings: number };
 };
 
+type SortKey = 'name' | 'category' | 'created' | 'popular';
+
 export default function TestsListPage() {
   const [tests, setTests] = useState<Test[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<SortKey>('name');
+  const [dir, setDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true);
-      const qs = search ? `?search=${encodeURIComponent(search)}` : '';
-      const res = await fetch(`/api/v1/admin/tests${qs}`);
+      const params = new URLSearchParams({ sort, dir });
+      if (search) params.set('search', search);
+      const res = await fetch(`/api/v1/admin/tests?${params.toString()}`);
       const json = await res.json();
       setTests(json.data ?? []);
       setLoading(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, sort, dir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sort === key) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSort(key); setDir(key === 'created' || key === 'popular' ? 'desc' : 'asc'); }
+  };
+
+  const arrow = (key: SortKey) => (sort === key ? (dir === 'asc' ? ' ↑' : ' ↓') : '');
+  const thCls = 'cursor-pointer select-none p-3 hover:text-brand-900';
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-brand-900">Tests</h1>
-        <Link href="/admin/tests/new" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">
+        <h1 className="admin-h1">Tests</h1>
+        <Link href="/admin/tests/new" className="admin-btn">
           Add Test
         </Link>
       </div>
@@ -44,19 +57,19 @@ export default function TestsListPage() {
         placeholder="Search tests..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="mb-4 w-full max-w-sm rounded-lg border border-brand-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        className="admin-input mb-4 max-w-sm"
       />
 
-      <div className="overflow-x-auto rounded-xl border border-brand-100 bg-white shadow-sm">
+      <div className="admin-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-100 bg-brand-50 text-left text-brand-600">
-              <th className="p-3">Name</th>
-              <th className="p-3">Category</th>
+              <th className={thCls} onClick={() => toggleSort('name')}>Name{arrow('name')}</th>
+              <th className={thCls} onClick={() => toggleSort('category')}>Category{arrow('category')}</th>
               <th className="p-3">Slug</th>
               <th className="p-3 text-right">Offerings</th>
-              <th className="p-3">Popular</th>
-              <th className="p-3">Created</th>
+              <th className={thCls} onClick={() => toggleSort('popular')}>Popular{arrow('popular')}</th>
+              <th className={thCls} onClick={() => toggleSort('created')}>Created{arrow('created')}</th>
             </tr>
           </thead>
           <tbody>

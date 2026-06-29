@@ -45,7 +45,23 @@ const ACC_ICONS = {
   ranges: { path: 'M2 12l3-4 3 2.5 3-6 3 2', bg: 'oklch(0.93 0.05 300)', color: 'oklch(0.4 0.14 300)' },
 };
 
-export default function TestDetailClient({ test, offerings, biomarkers }: Props) {
+// Best-price highlight palette — Green theme (hue 145), matching the prototype default.
+const BEST = {
+  rowBg: 'oklch(0.97 0.05 145)',
+  bannerBg: 'oklch(0.96 0.05 145)',
+  bannerBorder: 'oklch(0.86 0.1 145)',
+  label: 'oklch(0.28 0.14 145)',
+  price: 'oklch(0.35 0.18 145)',
+  solid: 'oklch(0.52 0.17 145)',
+  title: 'oklch(0.4 0.12 145)',
+  name: 'oklch(0.25 0.12 145)',
+  vs: 'oklch(0.48 0.1 145)',
+  savings: 'oklch(0.38 0.15 145)',
+};
+
+const ACCENT = 'oklch(0.58 0.22 280)';
+
+export default function TestDetailClient({ test, offerings }: Props) {
   const [sortBy, setSortBy] = useState<'price' | 'alpha'>('price');
   const [openSection, setOpenSection] = useState<string | null>('about');
 
@@ -57,11 +73,9 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
   const most = offerings.length > 0 ? offerings.reduce((a, b) => (a.price > b.price ? a : b)) : null;
   const savings = cheapest && most ? most.price - cheapest.price : 0;
 
+  // Matches the prototype's four fixed accordion sections (no biomarkers section).
   const sections = [
     { id: 'about', title: 'About This Test', content: [test.description, test.purpose].filter(Boolean).join(' ') },
-    ...(biomarkers.length > 0
-      ? [{ id: 'biomarkers', title: 'Included Biomarkers', content: biomarkers.map((b) => b.name).join(', ') }]
-      : []),
     { id: 'procedure', title: 'How It\'s Performed', content: test.procedure },
     { id: 'prep', title: 'How To Prepare', content: test.preparation },
     { id: 'ranges', title: 'Normal Ranges', content: test.normalRange },
@@ -69,11 +83,39 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
 
   const isPriceSorted = sortBy === 'price';
 
+  const sortBtn = (active: boolean): React.CSSProperties => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '7px 16px',
+    borderRadius: 7,
+    border: 'none',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    background: active ? ACCENT : 'transparent',
+    color: active ? '#fff' : 'oklch(0.5 0.05 280)',
+  });
+
   return (
-    <div className="max-w-[1240px] mx-auto px-6 pt-7 pb-20">
+    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '28px 24px 80px' }}>
+      <style>{`
+        .td-grid { display: grid; grid-template-columns: 360px 1fr; gap: 28px; align-items: start; margin-top: 28px; }
+        .td-left { position: sticky; top: 80px; }
+        .td-acc-header:hover { background: oklch(0.99 0.008 280); }
+        .td-home-link:hover { text-decoration: underline; }
+        .td-row:hover { background: oklch(0.97 0.02 280); }
+        .td-row-best:hover { background: oklch(0.95 0.06 145); }
+        @media (max-width: 900px) {
+          .td-grid { grid-template-columns: 1fr; }
+          .td-left { position: static; }
+        }
+      `}</style>
+
       {/* Breadcrumb */}
-      <div className="flex items-center gap-[7px] mb-5 text-[13px] text-[oklch(0.58_0.04_280)]">
-        <Link href="/" className="text-[oklch(0.52_0.15_280)] font-medium hover:underline no-underline">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 20, fontSize: 13, color: 'oklch(0.58 0.04 280)' }}>
+        <Link href="/" className="td-home-link" style={{ color: 'oklch(0.52 0.15 280)', fontWeight: 500, textDecoration: 'none' }}>
           Home
         </Link>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -83,77 +125,71 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span className="text-[oklch(0.2_0.04_280)] font-semibold">{test.name}</span>
+        <span style={{ color: 'oklch(0.2 0.04 280)', fontWeight: 600 }}>{test.name}</span>
       </div>
 
       {/* Test header */}
-      <div className="mb-2.5">
-        <h1 className="text-4xl font-bold tracking-[-0.8px] text-[oklch(0.15_0.04_280)] mb-2">{test.name}</h1>
-        <div className="flex items-center gap-2.5 flex-wrap mb-3">
+      <div style={{ marginBottom: 10 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.8px', color: 'oklch(0.15 0.04 280)', marginBottom: 8 }}>
+          {test.name}
+        </h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           {test.questCode && (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-[oklch(0.95_0.02_280)] rounded-pill border border-[oklch(0.9_0.03_280)]">
-              <span className="text-[11px] font-bold text-[oklch(0.55_0.08_280)] uppercase tracking-[0.4px]">Quest</span>
-              <span className="text-[13px] font-semibold text-[oklch(0.25_0.04_280)]">#{test.questCode}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'oklch(0.95 0.02 280)', borderRadius: 20, border: '1px solid oklch(0.9 0.03 280)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.08 280)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quest</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.25 0.04 280)' }}>#{test.questCode}</span>
             </div>
           )}
           {test.labcorpCode && (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-[oklch(0.95_0.02_280)] rounded-pill border border-[oklch(0.9_0.03_280)]">
-              <span className="text-[11px] font-bold text-[oklch(0.55_0.08_280)] uppercase tracking-[0.4px]">LabCorp</span>
-              <span className="text-[13px] font-semibold text-[oklch(0.25_0.04_280)]">#{test.labcorpCode}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'oklch(0.95 0.02 280)', borderRadius: 20, border: '1px solid oklch(0.9 0.03 280)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.08 280)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>LabCorp</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.25 0.04 280)' }}>#{test.labcorpCode}</span>
             </div>
           )}
-          <span className="text-[13px] text-[oklch(0.55_0.04_280)]">
-            {offerings.length} ordering services compared
-          </span>
+          <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 280)' }}>{offerings.length} ordering services compared</span>
         </div>
         {(test.description || test.purpose) && (
-          <p className="text-[15px] text-[oklch(0.5_0.03_280)] leading-[1.65] max-w-[680px]">
+          <p style={{ fontSize: 15, color: 'oklch(0.5 0.03 280)', lineHeight: 1.65, maxWidth: 680 }}>
             {test.description} {test.purpose}
           </p>
         )}
       </div>
 
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-7 items-start mt-7">
+      <div className="td-grid">
         {/* Left: Accordion */}
-        <div className="lg:sticky lg:top-20">
+        <div className="td-left">
           {sections.map((sec) => {
             const icon = ACC_ICONS[sec.id as keyof typeof ACC_ICONS] ?? ACC_ICONS.about;
             const isOpen = openSection === sec.id;
             return (
-              <div
-                key={sec.id}
-                className="bg-white rounded-[13px] mb-2.5 border-[1.5px] border-[oklch(0.92_0.02_280)] overflow-hidden"
-              >
+              <div key={sec.id} style={{ background: '#fff', borderRadius: 13, marginBottom: 10, border: '1.5px solid oklch(0.92 0.02 280)', overflow: 'hidden' }}>
                 <button
                   onClick={() => setOpenSection(isOpen ? null : sec.id)}
-                  className="w-full flex items-center justify-between px-[18px] py-[15px] cursor-pointer bg-transparent border-none hover:bg-[oklch(0.99_0.008_280)] transition-colors"
+                  className="td-acc-header"
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px', cursor: 'pointer', background: 'transparent', border: 'none', transition: 'background 0.15s' }}
                 >
-                  <div className="flex items-center gap-[11px]">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: icon.bg }}
-                    >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: icon.bg }}>
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d={icon.path} stroke={icon.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <span className="text-sm font-semibold text-[oklch(0.2_0.04_280)] text-left">{sec.title}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.2 0.04 280)', textAlign: 'left' }}>{sec.title}</span>
                   </div>
                   <svg
                     width="16"
                     height="16"
                     viewBox="0 0 16 16"
                     fill="none"
-                    className="shrink-0 transition-transform duration-200"
-                    style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                    style={{ flexShrink: 0, transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
                   >
                     <path d="M4 6l4 4 4-4" stroke="oklch(0.6 0.04 280)" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
                 </button>
                 {isOpen && (
-                  <div className="px-[18px] pb-[18px] pt-1 border-t border-[oklch(0.94_0.01_280)]">
-                    <p className="text-sm text-[oklch(0.42_0.03_280)] leading-[1.75] mt-3.5">{sec.content}</p>
+                  <div style={{ padding: '4px 18px 18px', borderTop: '1px solid oklch(0.94 0.01 280)' }}>
+                    <p style={{ fontSize: 14, color: 'oklch(0.42 0.03 280)', lineHeight: 1.75, marginTop: 14 }}>{sec.content}</p>
                   </div>
                 )}
               </div>
@@ -164,30 +200,16 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
         {/* Right: Price comparison */}
         <div>
           {/* Sort controls */}
-          <div className="flex items-center gap-2.5 mb-[18px] flex-wrap">
-            <span className="text-[13px] font-medium text-[oklch(0.52_0.04_280)]">Sort by:</span>
-            <div className="flex bg-white border-[1.5px] border-[oklch(0.9_0.02_280)] rounded-btn p-[3px] gap-0.5">
-              <button
-                onClick={() => setSortBy('price')}
-                className="flex items-center gap-1.5 px-4 py-[7px] rounded-[7px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150"
-                style={{
-                  background: isPriceSorted ? 'oklch(0.58 0.22 280)' : 'transparent',
-                  color: isPriceSorted ? '#fff' : 'oklch(0.5 0.05 280)',
-                }}
-              >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'oklch(0.52 0.04 280)' }}>Sort by:</span>
+            <div style={{ display: 'flex', background: '#fff', border: '1.5px solid oklch(0.9 0.02 280)', borderRadius: 10, padding: 3, gap: 2 }}>
+              <button onClick={() => setSortBy('price')} style={sortBtn(isPriceSorted)}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M6 1v10M2 7l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
                 Price
               </button>
-              <button
-                onClick={() => setSortBy('alpha')}
-                className="flex items-center gap-1.5 px-4 py-[7px] rounded-[7px] border-none text-[13px] font-medium cursor-pointer transition-all duration-150"
-                style={{
-                  background: !isPriceSorted ? 'oklch(0.58 0.22 280)' : 'transparent',
-                  color: !isPriceSorted ? '#fff' : 'oklch(0.5 0.05 280)',
-                }}
-              >
+              <button onClick={() => setSortBy('alpha')} style={sortBtn(!isPriceSorted)}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path d="M1 9l3-6 3 6M2.5 7h3M8 3v6M8 9h3M8 6h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                 </svg>
@@ -198,103 +220,62 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
 
           {/* Best price banner */}
           {cheapest && (
-            <div
-              className="flex items-center gap-3.5 rounded-[13px] px-5 py-[15px] mb-4 border-[1.5px]"
-              style={{
-                background: 'oklch(0.96 0.05 75)',
-                borderColor: 'oklch(0.86 0.1 75)',
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-xl text-white leading-none"
-                style={{ background: 'oklch(0.52 0.17 75)' }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, borderRadius: 13, padding: '15px 20px', marginBottom: 16, border: '1.5px solid', background: BEST.bannerBg, borderColor: BEST.bannerBorder }}>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20, color: '#fff', lineHeight: 1, background: BEST.solid }}>
                 &#9733;
               </div>
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.6px]" style={{ color: 'oklch(0.4 0.12 75)' }}>
-                  Best Price
-                </div>
-                <div className="text-[17px] font-bold mt-0.5" style={{ color: 'oklch(0.25 0.12 75)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: BEST.title }}>Best Price</div>
+                <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2, color: BEST.name }}>
                   {cheapest.vendorName} &middot; ${cheapest.price.toFixed(2)}
                 </div>
               </div>
               {savings > 0 && (
-                <div className="ml-auto text-right">
-                  <div className="text-[11px]" style={{ color: 'oklch(0.48 0.1 75)' }}>
-                    vs. most expensive
-                  </div>
-                  <div className="text-base font-bold mt-0.5" style={{ color: 'oklch(0.38 0.15 75)' }}>
-                    Save ${savings.toFixed(2)}
-                  </div>
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                  <div style={{ fontSize: 11, color: BEST.vs }}>vs. most expensive</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: BEST.savings }}>Save ${savings.toFixed(2)}</div>
                 </div>
               )}
             </div>
           )}
 
           {/* Price table */}
-          <div className="bg-white rounded-card border-[1.5px] border-[oklch(0.92_0.02_280)] overflow-hidden">
+          <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid oklch(0.92 0.02 280)', overflow: 'hidden' }}>
             {/* Header */}
-            <div
-              className="grid px-5 py-[11px] border-b-[1.5px] border-[oklch(0.92_0.02_280)]"
-              style={{ gridTemplateColumns: '1fr 90px 80px', background: 'oklch(0.97 0.015 280)' }}
-            >
-              <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px]">
-                Ordering Service
-              </span>
-              <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px] text-right">
-                Price
-              </span>
-              <span className="text-[11px] font-bold text-[oklch(0.55_0.05_280)] uppercase tracking-[0.6px] text-right">
-                Order
-              </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', padding: '11px 20px', borderBottom: '1.5px solid oklch(0.92 0.02 280)', background: 'oklch(0.97 0.015 280)' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Ordering Service</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Price</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 280)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Order</span>
             </div>
             {sorted.map((row) => {
-              const isBest = cheapest && row.price === cheapest.price;
+              const isBest = cheapest != null && row.price === cheapest.price;
               return (
                 <div
                   key={row.id}
-                  className="grid items-center px-5 py-[13px] border-b border-[oklch(0.96_0.01_280)] transition-colors"
-                  style={{
-                    gridTemplateColumns: '1fr 90px 80px',
-                    background: isBest ? 'oklch(0.97 0.05 75)' : '#fff',
-                  }}
+                  className={isBest ? 'td-row-best' : 'td-row'}
+                  style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid oklch(0.96 0.01 280)', transition: 'background 0.1s', background: isBest ? BEST.rowBg : '#fff' }}
                 >
                   <div>
-                    <div
-                      className="text-[15px]"
-                      style={{
-                        fontWeight: isBest ? 700 : 500,
-                        color: isBest ? 'oklch(0.28 0.14 75)' : 'oklch(0.2 0.04 280)',
-                      }}
-                    >
+                    <div style={{ fontSize: 15, fontWeight: isBest ? 700 : 500, color: isBest ? BEST.label : 'oklch(0.2 0.04 280)' }}>
                       {row.vendorName}
                     </div>
                     {isBest && (
-                      <div className="text-[10px] font-bold uppercase tracking-[0.4px] mt-px" style={{ color: 'oklch(0.4 0.12 75)' }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
                         &#10003; Best Price
                       </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <span
-                      className="text-lg font-bold"
-                      style={{ color: isBest ? 'oklch(0.35 0.18 75)' : 'oklch(0.38 0.18 280)' }}
-                    >
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.18 280)' }}>
                       ${row.price.toFixed(2)}
                     </span>
                   </div>
-                  <div className="text-right">
+                  <div style={{ textAlign: 'right' }}>
                     <a
                       href={`/api/v1/go/${row.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block px-3 py-1.5 rounded-[7px] text-xs font-semibold cursor-pointer no-underline border-[1.5px] transition-colors"
-                      style={{
-                        background: isBest ? 'oklch(0.52 0.17 75)' : '#fff',
-                        color: isBest ? '#fff' : 'oklch(0.45 0.14 280)',
-                        borderColor: isBest ? 'oklch(0.52 0.17 75)' : 'oklch(0.84 0.04 280)',
-                      }}
+                      style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.14 280)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 280)' }}
                     >
                       Order
                     </a>
@@ -305,12 +286,12 @@ export default function TestDetailClient({ test, offerings, biomarkers }: Props)
           </div>
 
           {/* Disclaimer */}
-          <div className="mt-3.5 px-4 py-3 rounded-btn border border-[oklch(0.92_0.01_280)] flex items-start gap-[9px]" style={{ background: 'oklch(0.97 0.01 280)' }}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 mt-0.5">
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, border: '1px solid oklch(0.92 0.01 280)', display: 'flex', alignItems: 'flex-start', gap: 9, background: 'oklch(0.97 0.01 280)' }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
               <circle cx="7" cy="7" r="6" stroke="oklch(0.62 0.04 280)" strokeWidth="1.4" />
               <path d="M7 6v4M7 4.5h0" stroke="oklch(0.62 0.04 280)" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
-            <p className="text-xs text-[oklch(0.55_0.03_280)] leading-relaxed">
+            <p style={{ fontSize: 12, color: 'oklch(0.55 0.03 280)', lineHeight: 1.6 }}>
               These are online lab ordering services — not the physical draw site. Once you purchase a
               requisition, you visit a nearby Quest or LabCorp patient service center for your blood draw.
               Prices are self-pay cash rates and may vary by location.

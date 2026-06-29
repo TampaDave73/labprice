@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: null,
     });
-    const publishQueue = new Queue('scrape:publish', { connection: connection as any });
+    const publishQueue = new Queue('scrape-publish', { connection: connection as any });
 
     for (const id of ids) {
       await publishQueue.add('publish', { stagedChangeId: id });

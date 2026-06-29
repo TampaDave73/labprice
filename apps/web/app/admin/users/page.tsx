@@ -30,8 +30,8 @@ export default function UsersPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-brand-900">Users</h1>
-      <div className="overflow-x-auto rounded-xl border border-brand-100 bg-white shadow-sm">
+      <h1 className="admin-h1 mb-6">Users</h1>
+      <div className="admin-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-100 bg-brand-50 text-left text-brand-600">
@@ -53,7 +53,7 @@ export default function UsersPage() {
                   <td className="p-3 text-brand-600">{u.name ?? '—'}</td>
                   <td className="p-3">
                     <select value={u.role} onChange={(e) => changeRole(u.id, e.target.value)}
-                      className="rounded-lg border border-brand-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                      className="admin-input admin-input-inline">
                       {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </td>

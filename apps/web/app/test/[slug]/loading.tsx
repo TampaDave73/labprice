@@ -1,27 +1,27 @@
 export default function TestDetailLoading() {
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+    <div style={{ minHeight: '100vh', background: 'oklch(0.97 0.01 280)' }}>
       {/* Navbar skeleton */}
-      <div className="h-16 bg-white border-b border-[oklch(0.92_0.02_280)]" />
+      <div style={{ height: 64, background: '#fff', borderBottom: '1px solid oklch(0.92 0.02 280)' }} />
 
-      <div className="max-w-[1240px] mx-auto px-6 py-10">
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '40px 24px' }}>
         {/* Breadcrumb skeleton */}
-        <div className="h-4 w-48 bg-[oklch(0.92_0.03_280)] rounded mb-6 animate-pulse" />
+        <div className="animate-pulse" style={{ height: 16, width: 192, background: 'oklch(0.92 0.03 280)', borderRadius: 6, marginBottom: 24 }} />
 
         {/* Title skeleton */}
-        <div className="h-8 w-80 bg-[oklch(0.9_0.03_280)] rounded mb-3 animate-pulse" />
-        <div className="h-5 w-64 bg-[oklch(0.92_0.03_280)] rounded mb-8 animate-pulse" />
+        <div className="animate-pulse" style={{ height: 32, width: 320, background: 'oklch(0.9 0.03 280)', borderRadius: 6, marginBottom: 12 }} />
+        <div className="animate-pulse" style={{ height: 20, width: 256, background: 'oklch(0.92 0.03 280)', borderRadius: 6, marginBottom: 32 }} />
 
         {/* Price table skeleton */}
-        <div className="bg-white rounded-card border border-[oklch(0.92_0.02_280)] p-6 mb-8">
-          <div className="h-6 w-40 bg-[oklch(0.92_0.03_280)] rounded mb-5 animate-pulse" />
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid oklch(0.92 0.02 280)', padding: 24, marginBottom: 32 }}>
+          <div className="animate-pulse" style={{ height: 24, width: 160, background: 'oklch(0.92 0.03 280)', borderRadius: 6, marginBottom: 20 }} />
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center justify-between py-4 border-b border-[oklch(0.95_0.01_280)]"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 0', borderBottom: '1px solid oklch(0.95 0.01 280)' }}
             >
-              <div className="h-5 w-36 bg-[oklch(0.93_0.02_280)] rounded animate-pulse" />
-              <div className="h-5 w-20 bg-[oklch(0.93_0.02_280)] rounded animate-pulse" />
+              <div className="animate-pulse" style={{ height: 20, width: 144, background: 'oklch(0.93 0.02 280)', borderRadius: 6 }} />
+              <div className="animate-pulse" style={{ height: 20, width: 80, background: 'oklch(0.93 0.02 280)', borderRadius: 6 }} />
             </div>
           ))}
         </div>
@@ -30,9 +30,10 @@ export default function TestDetailLoading() {
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
-            className="bg-white rounded-card border border-[oklch(0.92_0.02_280)] p-5 mb-3 animate-pulse"
+            className="animate-pulse"
+            style={{ background: '#fff', borderRadius: 14, border: '1px solid oklch(0.92 0.02 280)', padding: 20, marginBottom: 12 }}
           >
-            <div className="h-5 w-48 bg-[oklch(0.92_0.03_280)] rounded" />
+            <div style={{ height: 20, width: 192, background: 'oklch(0.92 0.03 280)', borderRadius: 6 }} />
           </div>
         ))}
       </div>
