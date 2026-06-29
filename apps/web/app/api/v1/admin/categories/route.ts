@@ -25,10 +25,21 @@ export async function GET() {
 
   const categories = await prisma.category.findMany({
     orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
-    include: { _count: { select: { tests: true } } },
+    // testCategories = many-to-many membership count, excluding soft-deleted tests.
+    include: { _count: { select: { testCategories: { where: { test: { deletedAt: null } } } } } },
   });
 
-  return NextResponse.json({ data: categories });
+  const data = categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    displayOrder: c.displayOrder,
+    colorBg: c.colorBg,
+    colorText: c.colorText,
+    testCount: c._count.testCategories,
+  }));
+
+  return NextResponse.json({ data });
 }
 
 export async function POST(req: NextRequest) {

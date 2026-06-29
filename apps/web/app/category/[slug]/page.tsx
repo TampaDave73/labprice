@@ -11,18 +11,22 @@ interface Props {
 }
 
 async function getCategory(slug: string) {
+  // List tests via the many-to-many membership so a test shows under every category it's in.
   const category = await prisma.category.findUnique({
     where: { slug },
     include: {
-      tests: {
-        where: { deletedAt: null },
+      testCategories: {
+        where: { test: { deletedAt: null } },
         include: {
-          offerings: {
-            where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
-            select: { currentPrice: true },
+          test: {
+            include: {
+              offerings: {
+                where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+                select: { currentPrice: true },
+              },
+            },
           },
         },
-        orderBy: { name: 'asc' },
       },
     },
   });
@@ -44,15 +48,18 @@ export default async function CategoryPage({ params }: Props) {
   const category = await getCategory(slug);
   if (!category) notFound();
 
-  const tests = category.tests.map((t) => {
-    const prices = t.offerings.map((o) => Number(o.currentPrice));
-    return {
-      name: t.name,
-      slug: t.slug,
-      category: category.name,
-      minPrice: prices.length > 0 ? Math.min(...prices) : null,
-    };
-  });
+  const tests = category.testCategories
+    .map((tc) => tc.test)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((t) => {
+      const prices = t.offerings.map((o) => Number(o.currentPrice));
+      return {
+        name: t.name,
+        slug: t.slug,
+        category: category.name,
+        minPrice: prices.length > 0 ? Math.min(...prices) : null,
+      };
+    });
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>

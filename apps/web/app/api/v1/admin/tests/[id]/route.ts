@@ -47,9 +47,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
 
-  // Whitelist updatable scalar fields (avoid mass-assignment and relation errors)
+  // Whitelist updatable scalar fields. `categoryId` is NOT directly settable — it's
+  // derived from the selected category set below.
   const fields = [
-    'name', 'shortName', 'slug', 'categoryId', 'description', 'purpose',
+    'name', 'shortName', 'slug', 'description', 'purpose',
     'procedure', 'preparation', 'normalRange', 'questCode', 'labcorpCode',
     'isPopular', 'displayOrder',
   ] as const;
@@ -58,19 +59,30 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (f in body) data[f] = body[f];
   }
 
+  // Category set (m2m). When provided, require ≥1 and recompute the display pointer.
+  const categoryIds: string[] | null = Array.isArray(body.categoryIds) ? body.categoryIds.filter(Boolean) : null;
+  if (categoryIds) {
+    if (categoryIds.length === 0) {
+      return NextResponse.json({ error: { code: 'validation_error', message: 'At least one category is required.' } }, { status: 400 });
+    }
+    const cats = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, displayOrder: true } });
+    if (cats.length === 0) {
+      return NextResponse.json({ error: { code: 'validation_error', message: 'Selected categories were not found.' } }, { status: 400 });
+    }
+    data.categoryId = [...cats].sort((a, b) => a.displayOrder - b.displayOrder)[0]!.id;
+  }
+
   const test = await prisma.test.update({
     where: { id },
     data,
     include: { category: true },
   });
 
-  // Additional (m2m) categories — replace the set, excluding the primary category.
-  if (Array.isArray(body.categoryIds)) {
-    const extra = (body.categoryIds as string[]).filter((c) => c && c !== test.categoryId);
+  if (categoryIds) {
     await prisma.$transaction([
       prisma.testCategory.deleteMany({ where: { testId: id } }),
       prisma.testCategory.createMany({
-        data: extra.map((categoryId) => ({ testId: id, categoryId })),
+        data: categoryIds.map((categoryId) => ({ testId: id, categoryId })),
         skipDuplicates: true,
       }),
     ]);

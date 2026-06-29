@@ -60,23 +60,29 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, shortName, slug, categoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder } = body;
+  const { name, shortName, slug, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder } = body;
+
+  // A test must have at least one category. The `categoryId` column is kept only as a
+  // derived "display" pointer (the selected category with the lowest displayOrder).
+  const categoryIds: string[] = Array.isArray(body.categoryIds) ? body.categoryIds.filter(Boolean) : [];
+  if (categoryIds.length === 0) {
+    return NextResponse.json({ error: { code: 'validation_error', message: 'At least one category is required.' } }, { status: 400 });
+  }
+  const cats = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, displayOrder: true } });
+  if (cats.length === 0) {
+    return NextResponse.json({ error: { code: 'validation_error', message: 'Selected categories were not found.' } }, { status: 400 });
+  }
+  const displayCategoryId = [...cats].sort((a, b) => a.displayOrder - b.displayOrder)[0]!.id;
 
   const test = await prisma.test.create({
-    data: { name, shortName, slug, categoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder },
+    data: { name, shortName, slug, categoryId: displayCategoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder },
     include: { category: true },
   });
 
-  // Additional (m2m) categories beyond the primary.
-  if (Array.isArray(body.categoryIds)) {
-    const extra = (body.categoryIds as string[]).filter((c) => c && c !== categoryId);
-    if (extra.length > 0) {
-      await prisma.testCategory.createMany({
-        data: extra.map((cid) => ({ testId: test.id, categoryId: cid })),
-        skipDuplicates: true,
-      });
-    }
-  }
+  await prisma.testCategory.createMany({
+    data: cats.map((c) => ({ testId: test.id, categoryId: c.id })),
+    skipDuplicates: true,
+  });
 
   return NextResponse.json({ data: test }, { status: 201 });
 }

@@ -40,6 +40,15 @@ const navItems = [
     ),
   },
   {
+    label: 'Categories',
+    href: '/admin/categories',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h4l2 2.5h5A1.5 1.5 0 0 1 17 7v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5z" />
+      </svg>
+    ),
+  },
+  {
     label: 'Vendors',
     href: '/admin/vendors',
     icon: (

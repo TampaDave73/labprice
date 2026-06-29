@@ -48,11 +48,13 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
     if (isNew) { setTest({ ...EMPTY }); return; }
     fetch(`/api/v1/admin/tests/${id}`).then((r) => r.json()).then((j) => {
       const d = j.data;
-      setTest({ ...d, categoryIds: (d.categories ?? []).map((c: { categoryId: string }) => c.categoryId) });
+      // Full category set = m2m memberships ∪ the (legacy) display pointer.
+      const ids = Array.from(new Set([d.categoryId, ...(d.categories ?? []).map((c: { categoryId: string }) => c.categoryId)].filter(Boolean)));
+      setTest({ ...d, categoryIds: ids });
     });
   }, [id, isNew]);
 
-  const toggleExtraCategory = (catId: string) =>
+  const toggleCategory = (catId: string) =>
     setTest((prev) => {
       if (!prev) return prev;
       const has = prev.categoryIds.includes(catId);
@@ -74,7 +76,7 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
     const json = await res.json();
     if (!res.ok) { setError(json.error?.message ?? 'Could not add category'); return; }
     setCategories((prev) => [...prev, json.data]);
-    handleChange('categoryId', json.data.id);
+    setTest((prev) => (prev ? { ...prev, categoryIds: [...prev.categoryIds, json.data.id] } : prev)); // auto-select new
     setNewCategory('');
     setAddingCategory(false);
     setError(null);
@@ -83,17 +85,17 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
   const handleSave = async () => {
     if (!test) return;
     setError(null);
-    if (!test.categoryId) { setError('Please choose a category.'); return; }
+    if (test.categoryIds.length === 0) { setError('Choose at least one category.'); return; }
     setSaving(true);
     const method = isNew ? 'POST' : 'PATCH';
     const url = isNew ? '/api/v1/admin/tests' : `/api/v1/admin/tests/${id}`;
     const body = {
-      name: test.name, shortName: test.shortName, slug: test.slug, categoryId: test.categoryId,
+      name: test.name, shortName: test.shortName, slug: test.slug,
       description: test.description, purpose: test.purpose, procedure: test.procedure,
       preparation: test.preparation, normalRange: test.normalRange,
       questCode: test.questCode, labcorpCode: test.labcorpCode,
       isPopular: test.isPopular, displayOrder: Number(test.displayOrder) || 0,
-      categoryIds: test.categoryIds.filter((c) => c !== test.categoryId),
+      categoryIds: test.categoryIds, // full set; server derives the display pointer
     };
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     setSaving(false);
@@ -132,15 +134,26 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           <input type="text" className="admin-input" value={test.slug} onChange={(e) => handleChange('slug', e.target.value)} />
         </div>
 
-        {/* Category dropdown + inline add */}
+        {/* Categories — a test belongs to one or many. At least one is required. */}
         <div>
-          <label className={labelCls}>Category</label>
+          <label className={labelCls}>Categories <span className="text-red-500">*</span></label>
           {!addingCategory ? (
-            <div className="flex items-center gap-2">
-              <select className="admin-input" value={test.categoryId} onChange={(e) => handleChange('categoryId', e.target.value)}>
-                <option value="">— Select a category —</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+            <div className="flex flex-wrap items-center gap-2">
+              {categories.map((c) => {
+                const on = test.categoryIds.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCategory(c.id)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      on ? 'border-brand-500 bg-brand-500 text-white' : 'border-brand-200 bg-white text-brand-600 hover:bg-brand-50'
+                    }`}
+                  >
+                    {on ? '✓ ' : ''}{c.name}
+                  </button>
+                );
+              })}
               <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost shrink-0" onClick={() => setAddingCategory(true)}>+ New</button>
             </div>
           ) : (
@@ -157,33 +170,7 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
               <button type="button" className="admin-btn admin-btn-sm admin-btn-ghost shrink-0" onClick={() => { setAddingCategory(false); setNewCategory(''); }}>Cancel</button>
             </div>
           )}
-        </div>
-
-        {/* Additional categories (a test can belong to several) */}
-        <div>
-          <label className={labelCls}>Additional categories</label>
-          <div className="flex flex-wrap gap-2">
-            {categories.filter((c) => c.id !== test.categoryId).length === 0 ? (
-              <span className="text-xs text-brand-400">Pick a primary category first.</span>
-            ) : (
-              categories.filter((c) => c.id !== test.categoryId).map((c) => {
-                const on = test.categoryIds.includes(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggleExtraCategory(c.id)}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      on ? 'border-brand-500 bg-brand-500 text-white' : 'border-brand-200 bg-white text-brand-600 hover:bg-brand-50'
-                    }`}
-                  >
-                    {on ? '✓ ' : ''}{c.name}
-                  </button>
-                );
-              })
-            )}
-          </div>
-          <p className="mt-1 text-xs text-brand-400">The primary category drives the test&rsquo;s URL and badge; these are extra groupings.</p>
+          <p className="mt-1 text-xs text-brand-400">Pick one or more. Full list is managed under <span className="font-medium">Categories</span> in the sidebar.</p>
         </div>
 
         {/* Codes */}

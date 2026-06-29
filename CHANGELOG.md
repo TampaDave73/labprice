@@ -8,15 +8,23 @@ All notable changes to LabPrice are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Added
-- **Multiple categories per test.** A test now has a **primary** category (drives URL,
-  breadcrumb, card badge — unchanged) plus optional **additional** categories via a new
-  `TestCategory` many-to-many join table.
-  - Schema: `packages/database/prisma/schema.prisma` (`TestCategory` model; `Test.categories`,
-    `Category.testCategories` relations).
-  - Admin: the Test editor has an "Additional categories" chip multi-select
-    (`apps/web/app/admin/tests/[id]/page.tsx`).
-  - API: `tests` GET returns `categories`; POST/PATCH accept a `categoryIds[]` array and
-    replace the join rows (`apps/web/app/api/v1/admin/tests/route.ts`, `.../tests/[id]/route.ts`).
+- **Categories are now true many-to-many, with full management.** A test belongs to **one or
+  many** categories — there is **no "primary/main" category** to choose. The `Test.categoryId`
+  column is retained only as an internal, auto-derived **display pointer** (the selected category
+  with the lowest `displayOrder`); it's never user-selected, so public pages (breadcrumb, card
+  badge, category pages) keep working.
+  - **Dedicated Categories admin page** (`apps/web/app/admin/categories/page.tsx`, sidebar nav):
+    add, rename, reorder, and delete categories.
+  - **Test editor** (`apps/web/app/admin/tests/[id]/page.tsx`): a single "Categories" chip
+    multi-select; **at least one category is required** to save (validated client + server).
+  - **Delete contingency** (`apps/web/app/api/v1/admin/categories/[id]/route.ts`): deleting a
+    category is **blocked (409) if it would orphan any test** (the offending test names are
+    returned); otherwise tests whose display pointer was that category are auto-reassigned to
+    their next remaining category.
+  - Schema: `TestCategory` join model + `Test.categories` / `Category.testCategories` relations.
+  - APIs: `tests` POST/PATCH accept `categoryIds[]`, validate ≥1, derive the display pointer, and
+    replace the join rows; category counts exclude soft-deleted tests; public category pages list
+    tests via the m2m so a test appears under every category it's in.
 - **Offerings → vendor quick-link.** Vendor names in the Offerings overview link straight to
   that vendor's edit page (`apps/web/app/admin/offerings/page.tsx` + `vendorId` added to
   `apps/web/app/api/v1/admin/offerings/route.ts`).
