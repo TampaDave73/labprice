@@ -7,7 +7,7 @@ import { createPartitionWorker } from './workers/partition-maintenance';
 import { startHealthServer } from './health';
 
 async function main() {
-  console.log('[worker] Starting LabPrice worker…');
+  console.log('[worker] Starting LabTestCompare worker…');
 
   const workers = [
     createScheduleWorker(),

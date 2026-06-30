@@ -209,7 +209,7 @@ async function main() {
     update: { role: Role.SUPER_ADMIN },
     create: {
       email: 'admin@labprice.com',
-      name: 'LabPrice Admin',
+      name: 'LabTestCompare Admin',
       role: Role.SUPER_ADMIN,
       emailVerifiedAt: new Date(),
     },

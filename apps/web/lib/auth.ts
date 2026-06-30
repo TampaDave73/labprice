@@ -26,7 +26,7 @@ const nextAuth: NextAuthResult = NextAuth({
   session: { strategy: 'database' },
   providers: [
     Resend({
-      from: process.env.EMAIL_FROM || 'LabPrice <noreply@labtestcompare.com>',
+      from: process.env.EMAIL_FROM || 'LabTestCompare <noreply@labtestcompare.com>',
     }),
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,

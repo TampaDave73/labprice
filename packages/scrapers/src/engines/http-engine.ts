@@ -32,7 +32,7 @@ export class HttpEngine implements IScrapeEngine {
 
       const response = await fetch(sourceUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; LabPriceBot/1.0)',
+          'User-Agent': 'Mozilla/5.0 (compatible; LabTestCompareBot/1.0)',
           'Accept': 'text/html,application/json',
           ...config.headers,
         },

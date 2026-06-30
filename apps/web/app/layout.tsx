@@ -16,22 +16,22 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'LabPrice — Compare Blood Test Prices',
-    template: '%s | LabPrice',
+    default: 'LabTestCompare — Compare Blood Test Prices',
+    template: '%s | LabTestCompare',
   },
   description: 'Compare self-pay blood test prices across ordering services. Find the cheapest Vitamin D, Testosterone, CBC, and more.',
   keywords: ['blood test prices', 'lab test comparison', 'self-pay lab tests', 'cheap blood tests'],
   openGraph: {
-    title: 'LabPrice — Compare Blood Test Prices',
+    title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services. Find the cheapest lab tests.',
     url: 'https://labtestcompare.com',
-    siteName: 'LabPrice',
+    siteName: 'LabTestCompare',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'LabPrice' }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'LabTestCompare' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LabPrice — Compare Blood Test Prices',
+    title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services.',
     images: ['/og-image.png'],
   },

@@ -12,7 +12,7 @@ export default function SignIn() {
               <line x1="13" y1="9" x2="16" y2="9" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-brand-900 tracking-tight">Sign in to LabPrice</h1>
+          <h1 className="text-2xl font-bold text-brand-900 tracking-tight">Sign in to LabTestCompare</h1>
           <p className="text-sm text-brand-400 mt-2">Get price alerts and save your favorite tests</p>
         </div>
         <form action="/api/auth/signin/resend" method="POST" className="space-y-4">

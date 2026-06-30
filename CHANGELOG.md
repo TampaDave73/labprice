@@ -14,9 +14,13 @@ All notable changes to LabPrice are documented here. Format loosely follows
   tests (`apps/web/app/page.tsx`; `revalidate = 60` keeps them fresh in production).
 
 ### Changed
+- **Rebrand "LabPrice" → "LabTestCompare"** across all user-facing surfaces: navbar, footer,
+  sign-in, admin sidebar, page titles/metadata, Open Graph, email sender name, worker log, scraper
+  bot User-Agent, and the seeded admin display name. (Internal `@labprice/*` package names and the
+  local Postgres DB name are unchanged — purely internal.)
 - **Domain → `labtestcompare.com`.** Updated canonical/OG/sitemap/robots/JSON-LD URLs and the
   email sender domain (`layout.tsx`, `robots.ts`, `sitemap.ts`, `test/[slug]/page.tsx`, `auth.ts`,
-  `.env.example` adds `NEXT_PUBLIC_BASE_URL`). The brand name "LabPrice" is unchanged.
+  `.env.example` adds `NEXT_PUBLIC_BASE_URL`).
 
 ### Fixed
 - **Homepage "All Tests" category filter ignored extra categories.** A test only appeared under

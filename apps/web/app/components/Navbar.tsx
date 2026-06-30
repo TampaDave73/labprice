@@ -46,7 +46,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
               color: isDark ? '#fff' : 'oklch(0.18 0.04 280)',
             }}
           >
-            LabPrice
+            LabTestCompare
           </span>
         </Link>
         <div className="flex-1" />

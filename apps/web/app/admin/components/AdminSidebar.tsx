@@ -104,7 +104,7 @@ export default function AdminSidebar() {
   const sidebarContent = (
     <div className="flex h-full flex-col bg-brand-900 text-white">
       <div className="flex items-center gap-3 px-6 py-5">
-        <span className="text-xl font-bold tracking-tight">LabPrice</span>
+        <span className="text-xl font-bold tracking-tight">LabTestCompare</span>
         <span className="rounded bg-white/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider">
           Admin
         </span>
