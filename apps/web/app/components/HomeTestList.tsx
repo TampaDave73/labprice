@@ -20,6 +20,7 @@ interface TestRow {
   slug: string;
   category: string;
   categorySlug: string;
+  categorySlugs?: string[]; // full category set (a test can be in several)
   questCode: string | null;
   labcorpCode: string | null;
   minPrice: number | null;
@@ -37,7 +38,9 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
   const [showAll, setShowAll] = useState(false);
 
   const filtered = useMemo(() => {
-    let list = activeCategory === 'all' ? tests : tests.filter((t) => t.categorySlug === activeCategory);
+    let list = activeCategory === 'all'
+      ? tests
+      : tests.filter((t) => (t.categorySlugs ?? [t.categorySlug]).includes(activeCategory));
     if (sortBy === 'price') {
       list = [...list].sort((a, b) => (a.minPrice ?? 9999) - (b.minPrice ?? 9999));
     } else {

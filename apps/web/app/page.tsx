@@ -36,6 +36,7 @@ async function getHomeData() {
         where: { isPopular: true, deletedAt: null },
         include: {
           category: true,
+          categories: { select: { category: { select: { slug: true } } } }, // full m2m set
           offerings: {
             where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
             select: { currentPrice: true },
@@ -48,6 +49,7 @@ async function getHomeData() {
         where: { deletedAt: null },
         include: {
           category: true,
+          categories: { select: { category: { select: { slug: true } } } }, // full m2m set
           offerings: {
             where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
             select: { currentPrice: true },
@@ -67,6 +69,7 @@ async function getHomeData() {
           slug: t.slug,
           category: t.category.name,
           categorySlug: t.category.slug,
+          categorySlugs: Array.from(new Set([t.category.slug, ...t.categories.map((tc) => tc.category.slug)])),
           questCode: t.questCode,
           labcorpCode: t.labcorpCode,
           minPrice: prices.length > 0 ? Math.min(...prices) : null,

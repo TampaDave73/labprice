@@ -8,6 +8,11 @@ All notable changes to LabPrice are documented here. Format loosely follows
 ## [Unreleased]
 
 ### Fixed
+- **Homepage "All Tests" category filter ignored extra categories.** A test only appeared under
+  its single display category because `HomeTestList` filtered on one `categorySlug`. The homepage
+  now loads each test's full category set (`getHomeData` in `apps/web/app/page.tsx`) and filters by
+  membership (`apps/web/app/components/HomeTestList.tsx`), so a multi-category test shows under all
+  of its categories. (Category *pages* already used the m2m correctly.)
 - **Dev server "Jest worker… exceeding retry limit" crash.** `pnpm dev` ran `turbo dev`, which
   also started the `@labprice/worker` app — and that app was in a Redis crash-loop spewing tens of
   thousands of `ECONNRESET` errors. The resource churn starved Next's compilation workers, which
