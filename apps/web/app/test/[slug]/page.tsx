@@ -79,7 +79,7 @@ export default async function TestDetailPage({ params }: Props) {
     '@type': 'MedicalTest',
     name: test.name,
     description: test.description,
-    url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labprice.com'}/test/${test.slug}`,
+    url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com'}/test/${test.slug}`,
     ...(test.category && { bodyLocation: test.category.name }),
     ...(offerings.length > 0 && {
       offers: {

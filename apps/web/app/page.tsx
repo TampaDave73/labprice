@@ -5,6 +5,11 @@ import SearchBar from './components/SearchBar';
 import TestCard from './components/TestCard';
 import HomeTestList from './components/HomeTestList';
 
+// Re-fetch counts/prices at most once a minute so vendor/test counts stay current
+// in production (dev always renders live). Without this the page could be frozen
+// at build time.
+export const revalidate = 60;
+
 const DEMO_CATEGORIES = [
   { name: 'Vitamins & Minerals', slug: 'vitamins-minerals' },
   { name: 'Hormones', slug: 'hormones' },
@@ -30,7 +35,7 @@ const DEMO_TESTS = [
 
 async function getHomeData() {
   try {
-    const [categories, popularTests, allTests] = await Promise.all([
+    const [categories, popularTests, allTests, vendorCount] = await Promise.all([
       prisma.category.findMany({ orderBy: { displayOrder: 'asc' } }),
       prisma.test.findMany({
         where: { isPopular: true, deletedAt: null },
@@ -57,6 +62,7 @@ async function getHomeData() {
         },
         orderBy: { name: 'asc' },
       }),
+      prisma.vendor.count({ where: { isActive: true, deletedAt: null } }),
     ]);
 
     const withMinPrice = (tests: typeof allTests) =>
@@ -82,6 +88,7 @@ async function getHomeData() {
       popularTests: withMinPrice(popularTests),
       allTests: withMinPrice(allTests),
       testCount: allTests.length,
+      vendorCount,
     };
   } catch {
     return {
@@ -89,12 +96,13 @@ async function getHomeData() {
       popularTests: DEMO_TESTS.slice(0, 6),
       allTests: DEMO_TESTS,
       testCount: DEMO_TESTS.length,
+      vendorCount: 10,
     };
   }
 }
 
 export default async function Home() {
-  const { categories, popularTests, allTests, testCount } = await getHomeData();
+  const { categories, popularTests, allTests, testCount, vendorCount } = await getHomeData();
 
   return (
     <div style={{ minHeight: '100vh', background: 'oklch(0.97 0.01 280)' }}>
@@ -126,7 +134,7 @@ export default async function Home() {
           >
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'oklch(0.72 0.18 145)', flexShrink: 0, display: 'inline-block' }} />
             <span style={{ fontSize: 13, color: 'oklch(0.85 0.06 280)', fontWeight: 500 }}>
-              Live prices from 10 ordering services
+              Live prices from {vendorCount} ordering services
             </span>
           </div>
           <h1 style={{ fontSize: 54, fontWeight: 700, color: '#fff', lineHeight: 1.1, letterSpacing: '-1.8px', marginBottom: 18 }}>
@@ -179,12 +187,12 @@ export default async function Home() {
       <div style={{ background: 'oklch(0.22 0.1 280)', padding: '14px 24px' }}>
         <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>10</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{vendorCount}</span>
             <span style={{ fontSize: 13, color: 'oklch(0.72 0.06 280)' }}>Ordering Services</span>
           </div>
           <div style={{ width: 1, height: 28, background: 'oklch(0.4 0.08 280)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{testCount > 0 ? `${testCount}+` : '12+'}</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: '#fff' }}>{testCount}</span>
             <span style={{ fontSize: 13, color: 'oklch(0.72 0.06 280)' }}>Common Tests</span>
           </div>
           <div style={{ width: 1, height: 28, background: 'oklch(0.4 0.08 280)' }} />

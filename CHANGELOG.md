@@ -7,6 +7,17 @@ All notable changes to LabPrice are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Added
+- **Live, data-driven counts on the homepage.** The hero badge ("Live prices from N ordering
+  services") and the stats bar ("N Ordering Services", "N Common Tests") now reflect the actual
+  counts of active vendors and non-deleted tests, so they update as you add/remove vendors and
+  tests (`apps/web/app/page.tsx`; `revalidate = 60` keeps them fresh in production).
+
+### Changed
+- **Domain → `labtestcompare.com`.** Updated canonical/OG/sitemap/robots/JSON-LD URLs and the
+  email sender domain (`layout.tsx`, `robots.ts`, `sitemap.ts`, `test/[slug]/page.tsx`, `auth.ts`,
+  `.env.example` adds `NEXT_PUBLIC_BASE_URL`). The brand name "LabPrice" is unchanged.
+
 ### Fixed
 - **Homepage "All Tests" category filter ignored extra categories.** A test only appeared under
   its single display category because `HomeTestList` filtered on one `categorySlug`. The homepage

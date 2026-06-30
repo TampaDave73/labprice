@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LabPrice — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services. Find the cheapest lab tests.',
-    url: 'https://labprice.com',
+    url: 'https://labtestcompare.com',
     siteName: 'LabPrice',
     type: 'website',
     images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'LabPrice' }],

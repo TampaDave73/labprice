@@ -1,7 +1,7 @@
 import { prisma } from '@labprice/database';
 import type { MetadataRoute } from 'next';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labprice.com';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [tests, categories] = await Promise.all([
