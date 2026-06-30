@@ -7,6 +7,15 @@ All notable changes to LabPrice are documented here. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed
+- **Dev server "Jest worker… exceeding retry limit" crash.** `pnpm dev` ran `turbo dev`, which
+  also started the `@labprice/worker` app — and that app was in a Redis crash-loop spewing tens of
+  thousands of `ECONNRESET` errors. The resource churn starved Next's compilation workers, which
+  then died while generating paths for dynamic admin routes (e.g. `/admin/tests/[id]`). `pnpm dev`
+  now runs **web-only** (`turbo dev --filter=@labprice/web`); use `pnpm dev:worker` for the worker
+  and `pnpm dev:all` for both. (Known follow-ups, tracked for the scraper work: the worker's Redis
+  reconnect storm, and the benign `@prisma/client` "can't be external" Turbopack warnings.)
+
 ### Added
 - **Categories are now true many-to-many, with full management.** A test belongs to **one or
   many** categories — there is **no "primary/main" category** to choose. The `Test.categoryId`

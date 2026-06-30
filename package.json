@@ -2,7 +2,9 @@
   "name": "labprice",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@labprice/web",
+    "dev:worker": "turbo dev --filter=@labprice/worker",
+    "dev:all": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
