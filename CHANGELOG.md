@@ -18,6 +18,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 - **Vendor links now point to the exact product page.** Catalog discovery stores the matched product
   URL on the offering (`externalUrl`), so the "Order"/verify link resolves to e.g.
   `goodlabs.com/tests/<slug>` instead of the vendor homepage.
+- **"Order" now applies affiliate tracking on top of the product page** (`apps/web/lib/affiliate-url.ts`,
+  used by `/api/v1/go/[offeringId]`). Previously a vendor's `affiliateUrlTemplate` *replaced* the
+  destination, so clicks skipped the exact product page. Now the customer always lands on the product
+  page, with tracking layered on: a `{url}` placeholder in the template is substituted with the
+  encoded product URL (network deep-links); a query-string template (`?subid=…`) is appended; a bare
+  redirector URL gets the destination as a `url=` param. No template → straight to the product page.
 - **Removed a duplicate GoodLabs vendor.** The e2e test runner had created a second vendor
   (slug `goodlabs`, 8 tests) separate from the admin-created `Good Labs` (slug `good-labs`); the
   duplicate is retired and the real vendor is configured as a catalog scraper. (Cleanup script:

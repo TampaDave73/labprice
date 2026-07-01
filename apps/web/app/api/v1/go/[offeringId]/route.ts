@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { logAffiliateClick } from '@/lib/services/analytics-service';
+import { buildOrderUrl } from '@/lib/affiliate-url';
 
 export async function GET(
   req: NextRequest,
@@ -29,10 +30,12 @@ export async function GET(
       referrer: req.headers.get('referer') ?? undefined,
     });
 
-    const redirectUrl =
-      offering.vendor.affiliateUrlTemplate ??
-      offering.externalUrl ??
-      offering.vendor.websiteUrl;
+    // Land on the exact product page we discovered, with affiliate tracking layered on if configured.
+    const redirectUrl = buildOrderUrl(
+      offering.externalUrl,
+      offering.vendor.websiteUrl,
+      offering.vendor.affiliateUrlTemplate,
+    );
 
     if (!redirectUrl) {
       return NextResponse.json(
