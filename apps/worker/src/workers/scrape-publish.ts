@@ -1,6 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { prisma } from '@labprice/database';
-import { connection } from '../redis';
+import { redisConnection } from '../redis';
 
 interface PublishJobData {
   stagedChangeId: string;
@@ -63,6 +63,6 @@ export function createPublishWorker() {
       console.log(`[publish] Published offering=${staged.offeringId} price=${staged.newPrice}`);
       return { published: true, offeringId: staged.offeringId };
     },
-    { connection },
+    { connection: redisConnection },
   );
 }

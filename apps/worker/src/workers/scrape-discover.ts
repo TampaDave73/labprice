@@ -3,7 +3,7 @@
 // matches OUR tests into it by Quest code / LabCorp code / name — see apps/worker/src/discovery.ts.
 // Auto-approved changes are handed to the scrape-publish queue, exactly like scrape-execute.
 import { Worker, type Job } from 'bullmq';
-import { connection } from '../redis';
+import { redisConnection } from '../redis';
 import { scrapePublishQueue } from '../queues';
 import { runVendorDiscovery } from '../discovery';
 
@@ -34,6 +34,6 @@ export function createDiscoverWorker() {
 
       return summary;
     },
-    { connection, concurrency: 1 }, // one catalog crawl at a time per worker — be polite to vendors
+    { connection: redisConnection, concurrency: 1 }, // one catalog crawl at a time per worker — be polite to vendors
   );
 }

@@ -6,7 +6,7 @@ import { Worker, type Job } from 'bullmq';
 import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import type { VendorConfig, ScrapeResult, ScrapeError } from '@labprice/scrapers';
 import { PlaywrightEngine } from '@labprice/scrapers/src/engines/playwright-engine';
-import { connection } from '../redis';
+import { redisConnection } from '../redis';
 import { scrapePublishQueue } from '../queues';
 
 // Prisma 6 exposes Decimal under the Prisma namespace; alias it for use as type + value.
@@ -214,7 +214,7 @@ export function createExecuteWorker() {
 
       return { status: 'success', priceChanged, newPrice: scrapedPrice.toString() };
     },
-    { connection, concurrency: 3 },
+    { connection: redisConnection, concurrency: 3 },
   );
 
   worker.on('closed', () => engine.cleanup());

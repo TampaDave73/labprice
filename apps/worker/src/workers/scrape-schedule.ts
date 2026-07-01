@@ -1,6 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { prisma } from '@labprice/database';
-import { connection } from '../redis';
+import { redisConnection } from '../redis';
 import { scrapeExecuteQueue } from '../queues';
 
 export function createScheduleWorker() {
@@ -51,6 +51,6 @@ export function createScheduleWorker() {
       console.log(`[schedule] Enqueued ${enqueued} scrape jobs across ${byVendor.size} vendors`);
       return { enqueued, vendors: byVendor.size };
     },
-    { connection },
+    { connection: redisConnection },
   );
 }

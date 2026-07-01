@@ -9,7 +9,20 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed
+- **Worker Redis reconnect storm fixed.** The BullMQ workers crash-looped with a `write ECONNABORTED`
+  storm because all 5 workers shared a single ioredis connection; blocking Workers each need their
+  own. Each Worker now gets a dedicated connection (pass `redisConnection` options, not the shared
+  instance); `localhost` is normalized to `127.0.0.1` to dodge Windows IPv6 flakiness
+  (`apps/worker/src/redis.ts`). The `scrape-discover`/`scrape-execute` workers now run continuously,
+  so admin **"Scrape now"** and **requeue-on-add** process end-to-end. Verified enqueue → worker
+  crawls GoodLabs → stages, with zero ECONNABORTED.
+
 ### Added
+- **Admin catalog-mode toggle.** The vendor Scraper Configuration now has a **Catalog mode** checkbox
+  + catalog-path field. Saving persists `selectors.mode='catalog'` (and catalogPath) instead of the
+  previous behavior that silently wiped it, so catalog vendors survive a config save. CSS selectors
+  are disabled/greyed while catalog mode is on.
 - **First live scraper: GoodLabs (catalog discovery).** A new scrape strategy for vendors that
   publish a whole catalog instead of per-test URLs. Given a vendor's linked tests, it finds each
   test's self-pay price on GoodLabs and stages the change.

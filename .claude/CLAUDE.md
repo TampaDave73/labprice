@@ -61,9 +61,11 @@ pnpm dev:all             # web + worker (turbo dev)
    and a global `* { padding:0 }` reset silently dropped styles. Public pages use **inline styles**;
    the admin uses the **`.admin-*` design-system classes in `globals.css`** (`.admin-btn`,
    `.admin-card`, `.admin-input`, `.admin-h1/2`). Prefer those over arbitrary-value utilities.
-2. **`pnpm dev` is web-only on purpose.** `turbo dev` also ran the worker, which crash-looped on
-   Redis and starved Next's compiler ("Jest worker exceeding retry limit"). Use `dev:worker`/`dev:all`
-   deliberately. The worker's Redis reconnect storm is a known open issue.
+2. **`pnpm dev` is web-only on purpose** — run the worker with `dev:worker`/`dev:all` when you need
+   scraping. The old "worker crash-loops on Redis" storm is **fixed**: each BullMQ Worker now gets a
+   dedicated connection (pass `redisConnection` *options*, not the shared `connection` instance —
+   sharing one ioredis socket across blocking Workers caused a `write ECONNABORTED` storm). See
+   `apps/worker/src/redis.ts`. Keeping `pnpm dev` web-only is now just a default, not a workaround.
 3. **Prisma client regen locks on Windows.** `prisma generate` fails with `EPERM` while any dev
    server holds the query-engine DLL. Stop dev servers -> generate -> restart. **Batch schema
    changes** to minimize this dance.
@@ -96,8 +98,9 @@ admin session cookie.
 - [x] **First scraper (GoodLabs)** — catalog discovery built + tested end-to-end against the live
       site and real DB (`scripts/discover-goodlabs.ts`): matched by Quest/LabCorp code + name, panels
       excluded, ambiguous flagged, requeue-on-add wired. Runs today via the standalone runners.
-- [ ] **Fix the worker's Redis reconnect storm** so the BullMQ `scrape-discover`/`scrape-execute`
-      workers run continuously (the scraper *logic* is done; this is the remaining infra blocker for
-      scheduled/queued runs — until then use the standalone runners in SKILLS.md).
+- [x] **Fixed the worker's Redis reconnect storm** (dedicated per-Worker connections). The BullMQ
+      `scrape-discover`/`scrape-execute` workers now run continuously; admin "Scrape now" + requeue-on-add
+      process end-to-end when the worker is running (`pnpm dev:worker`). Verified: enqueue → worker
+      crawls GoodLabs → stages, 0 ECONNABORTED.
 - [ ] Clean up the benign `@prisma/client` "can't be external" Turbopack warnings before prod build.
 - [x] Setup/deployment guide — see `docs/08-deployment.md`.

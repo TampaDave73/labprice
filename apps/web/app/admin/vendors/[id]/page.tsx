@@ -44,6 +44,8 @@ type CatalogItem = {
 type ConfigForm = {
   engine: 'PLAYWRIGHT' | 'SELENIUM' | 'HTTP';
   baseUrl: string;
+  catalogMode: boolean;
+  catalogPath: string;
   priceSelector: string;
   nameSelector: string;
   containerSelector: string;
@@ -54,7 +56,7 @@ type ConfigForm = {
 };
 
 const DEFAULT_CONFIG: ConfigForm = {
-  engine: 'HTTP', baseUrl: '', priceSelector: '', nameSelector: '', containerSelector: '',
+  engine: 'HTTP', baseUrl: '', catalogMode: false, catalogPath: '', priceSelector: '', nameSelector: '', containerSelector: '',
   scheduleCron: '', isEnabled: true, timeoutMs: 30000, maxRetries: 3,
 };
 
@@ -120,6 +122,8 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
         setConfig({
           engine: c.engine ?? 'HTTP',
           baseUrl: c.baseUrl ?? '',
+          catalogMode: sel.mode === 'catalog',
+          catalogPath: sel.catalogPath ?? '',
           priceSelector: sel.priceSelector ?? '',
           nameSelector: sel.nameSelector ?? '',
           containerSelector: sel.containerSelector ?? '',
@@ -154,8 +158,10 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
 
   const saveConfig = async () => {
     setSavingConfig(true); setMsg(null);
+    // Map the catalogMode checkbox to the `mode` the API persists into selectors.
     await fetch(`/api/v1/admin/vendors/${id}/scrape-config`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(config),
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...config, mode: config.catalogMode ? 'catalog' : 'per-url' }),
     });
     setSavingConfig(false); setMsg('Scraper config saved.');
   };
@@ -331,9 +337,24 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
             <input className="admin-input" placeholder="https://vendor.com" value={config.baseUrl} onChange={(e) => setC('baseUrl', e.target.value)} />
           </div>
         </div>
+        {/* Catalog mode: crawl the vendor's catalog and match our tests by code/name (GoodLabs).
+            When on, the CSS selectors below are ignored — matching uses Quest/LabCorp codes + name. */}
+        <div className="rounded-lg border border-brand-100 bg-brand-50/40 p-3">
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="catalogMode" className="h-4 w-4 rounded" checked={config.catalogMode} onChange={(e) => setC('catalogMode', e.target.checked)} />
+            <label htmlFor="catalogMode" className="text-sm font-medium text-brand-700">Catalog mode (crawl catalog &amp; match by Quest/LabCorp code or name)</label>
+          </div>
+          {config.catalogMode && (
+            <div className="mt-3">
+              <label className={labelCls}>Catalog path</label>
+              <input className="admin-input" placeholder="/book-tests?step=PANEL_SELECTION" value={config.catalogPath} onChange={(e) => setC('catalogPath', e.target.value)} />
+              <p className="mt-1 text-xs text-brand-400">The scraper fetches Base URL + this path to list all tests, then matches each linked test and stages prices. CSS selectors below are ignored in this mode. Use “Scrape now” or link a test to trigger discovery (worker must be running).</p>
+            </div>
+          )}
+        </div>
         <div>
-          <label className={labelCls}>Price selector (CSS)</label>
-          <input className="admin-input" placeholder=".price, .test-price" value={config.priceSelector} onChange={(e) => setC('priceSelector', e.target.value)} />
+          <label className={labelCls}>Price selector (CSS){config.catalogMode && <span className="ml-2 text-xs font-normal text-brand-400">(ignored in catalog mode)</span>}</label>
+          <input className="admin-input" placeholder=".price, .test-price" value={config.priceSelector} onChange={(e) => setC('priceSelector', e.target.value)} disabled={config.catalogMode} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>

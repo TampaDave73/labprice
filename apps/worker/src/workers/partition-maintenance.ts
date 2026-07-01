@@ -1,6 +1,6 @@
 import { Worker, type Job } from 'bullmq';
 import { prisma } from '@labprice/database';
-import { connection } from '../redis';
+import { redisConnection } from '../redis';
 
 const PARTITIONED_TABLES = ['price_history', 'affiliate_clicks', 'search_logs', 'page_views'];
 
@@ -52,6 +52,6 @@ export function createPartitionWorker() {
       console.log(`[partition] Ensured ${created} partitions across ${PARTITIONED_TABLES.length} tables`);
       return { created };
     },
-    { connection },
+    { connection: redisConnection },
   );
 }

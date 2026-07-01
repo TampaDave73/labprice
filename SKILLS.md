@@ -30,7 +30,8 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
 - **Vendors** — list (sortable incl. by trust) + **Add Vendor**; editor has: details, **Trust
-  Override + Scraper Health panel**, **Scraper Configuration** (engine/base URL/selectors/schedule),
+  Override + Scraper Health panel**, **Scraper Configuration** (engine/base URL/selectors/schedule +
+  a **Catalog mode** toggle & catalog path for catalog-scraper vendors like GoodLabs),
   **Catalog** (link/unlink tests + product URL + price), and **Scrape now**.
 - **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
   to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
@@ -124,12 +125,15 @@ cd packages/scrapers && node ../../apps/worker/node_modules/tsx/dist/cli.mjs scr
 # Full end-to-end: set up GoodLabs vendor + offerings, crawl live, persist + publish (needs docker:dev):
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlabs.ts
 ```
+- **From the admin** (worker must be running — `pnpm dev:worker` or `dev:all`): open the vendor →
+  Scraper Configuration → tick **Catalog mode** + set the catalog path → Save. Then "Scrape now"
+  enqueues a `scrape-discover` job the worker processes; linking a test (Catalog → Add) requeues just
+  that offering. The Redis reconnect storm that used to break the worker is fixed (dedicated
+  per-Worker connections).
 - **To onboard another catalog vendor**: add a parser in `packages/scrapers/src/catalog/` (the
   matcher, orchestrator, and worker are vendor-agnostic), set the vendor's `ScrapeVendorConfig`
-  selectors to `{ mode: 'catalog', catalogPath, preferredProvider? }`, and link its tests.
-- **Note**: running the BullMQ `scrape-discover` worker live still depends on fixing the worker's
-  Redis reconnect storm (see CLAUDE.md gotcha #2). The standalone runners above bypass BullMQ and are
-  the reliable way to run discovery today.
+  selectors to `{ mode: 'catalog', catalogPath, preferredProvider? }` (via the admin toggle or
+  directly), and link its tests.
 
 ### Verifying UI
 Use the preview tools (`preview_start`, `preview_eval`, `preview_screenshot`) with the admin
