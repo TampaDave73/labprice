@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { connection } from './redis';
 import { createScheduleWorker } from './workers/scrape-schedule';
 import { createExecuteWorker } from './workers/scrape-execute';
+import { createDiscoverWorker } from './workers/scrape-discover';
 import { createPublishWorker } from './workers/scrape-publish';
 import { createPartitionWorker } from './workers/partition-maintenance';
 import { startHealthServer } from './health';
@@ -12,12 +13,13 @@ async function main() {
   const workers = [
     createScheduleWorker(),
     createExecuteWorker(),
+    createDiscoverWorker(),
     createPublishWorker(),
     createPartitionWorker(),
   ];
 
   console.log(`[worker] Registered ${workers.length} workers`);
-  console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-publish, partition-maintain');
+  console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-discover, scrape-publish, partition-maintain');
 
   startHealthServer();
 

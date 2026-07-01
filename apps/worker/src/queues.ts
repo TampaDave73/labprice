@@ -7,6 +7,9 @@ export const scrapeScheduleQueue = new Queue('scrape-schedule', { connection });
 /** Per-vendor-test scrape jobs, concurrency 3. */
 export const scrapeExecuteQueue = new Queue('scrape-execute', { connection });
 
+/** Catalog-based vendor discovery (GoodLabs-style: crawl catalog, match our tests, stage prices). */
+export const scrapeDiscoverQueue = new Queue('scrape-discover', { connection });
+
 /** Publish approved price changes to the live offering record. */
 export const scrapePublishQueue = new Queue('scrape-publish', { connection });
 

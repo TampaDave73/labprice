@@ -74,6 +74,15 @@ pnpm dev:all             # web + worker (turbo dev)
    test. See `SKILLS.md` for the full rule.
 6. **Vendor Trust** = auto-computed from scraper health (`packages/database/src/vendor-trust.ts`),
    overridable per vendor (`Vendor.trustOverride`). LOW trust forces manual review of price changes.
+   Resolve trust *before* creating a `ScrapeRun` — the in-progress RUNNING run counts against success
+   rate and would force a brand-new vendor to LOW (see `apps/worker/src/discovery.ts`).
+7. **Two scrape strategies.** Per-URL (`scrape-execute`; offering stores a product URL) *and* catalog
+   discovery (`scrape-discover` → `apps/worker/src/discovery.ts` → `@labprice/scrapers` `catalog/*`)
+   for vendors like **GoodLabs** that publish a catalog instead of per-test URLs. A vendor is
+   catalog-mode when `ScrapeVendorConfig.selectors.mode === 'catalog'`. GoodLabs data comes from
+   JSON-LD + Next.js flight chunks over plain HTTP (no browser/CSS selectors); match priority is
+   Quest→LabCorp→name, panels (`isPanel`) excluded, and >1 surviving price ⇒ flagged ambiguous (never
+   guessed). Full details + how-to-run in `SKILLS.md`.
 
 ## Verifying changes
 
@@ -84,7 +93,11 @@ admin session cookie.
 
 ## TODO / deferred
 
-- [ ] **First scraper**: configs/linking/trust/trigger exist in-admin; running a live scrape and
-      fixing the worker's Redis reconnect storm is the next milestone.
+- [x] **First scraper (GoodLabs)** — catalog discovery built + tested end-to-end against the live
+      site and real DB (`scripts/discover-goodlabs.ts`): matched by Quest/LabCorp code + name, panels
+      excluded, ambiguous flagged, requeue-on-add wired. Runs today via the standalone runners.
+- [ ] **Fix the worker's Redis reconnect storm** so the BullMQ `scrape-discover`/`scrape-execute`
+      workers run continuously (the scraper *logic* is done; this is the remaining infra blocker for
+      scheduled/queued runs — until then use the standalone runners in SKILLS.md).
 - [ ] Clean up the benign `@prisma/client` "can't be external" Turbopack warnings before prod build.
 - [x] Setup/deployment guide — see `docs/08-deployment.md`.

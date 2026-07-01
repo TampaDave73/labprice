@@ -9,6 +9,32 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added
+- **First live scraper: GoodLabs (catalog discovery).** A new scrape strategy for vendors that
+  publish a whole catalog instead of per-test URLs. Given a vendor's linked tests, it finds each
+  test's self-pay price on GoodLabs and stages the change.
+  - **Data source**: plain HTTP (no browser, no CSS selectors). Parses the catalog page's JSON-LD
+    `ItemList` for every `{name, /tests/<slug>}`, then each product page's Next.js flight data, which
+    embeds one entry **per fulfilling lab** (quest/labcorp/bioreference) with that lab's code
+    (`labTestIDs`), `price`, and an explicit **`isPanel`** flag.
+  - **Matching** (`packages/scrapers/src/catalog/matcher.ts`): Quest code → LabCorp code → name
+    (first tier with a hit wins). **Panels excluded** — a single test is never priced off a bundle
+    it appears in. When >1 distinct price survives (e.g. "Testosterone Total" matches several
+    products), it's **flagged ambiguous** → staged `PENDING` in the Change Queue with every candidate
+    listed, never auto-guessed.
+  - **Persistence** (`apps/worker/src/discovery.ts`): writes `ScrapeJob`/`Run`/`Result` + staged
+    changes, auto-approving clean matches within trust/settings thresholds (ambiguous always manual).
+  - **Requeue-on-add**: linking a test to a catalog-mode vendor enqueues a `scrape-discover` job
+    scoped to that offering; "Scrape now" enqueues a full catalog crawl. A vendor is catalog-mode when
+    `ScrapeVendorConfig.selectors.mode === 'catalog'`.
+  - **Tested**: pure parsers + matcher covered by unit tests against real saved HTML
+    (`packages/scrapers/src/__tests__/`, 39 tests); live end-to-end validated against goodlabs.com +
+    real Postgres via `apps/worker/scripts/discover-goodlabs.ts` (6 matched, 1 ambiguous, 1 unmatched
+    on the seed set). New BullMQ `scrape-discover` queue/worker wired in (runs once the worker's Redis
+    reconnect storm is fixed; standalone runners work today).
+  - Fixed: vendor trust is now resolved *before* the run row is created, so a brand-new vendor's first
+    run doesn't self-drag its trust to LOW and block auto-approval.
+
 ### Documentation
 - **Project docs made current and self-maintaining.** Rewrote `.claude/CLAUDE.md` (project guide:
   conventions, gotchas, run commands, plus a documentation-discipline rule and a code-annotation

@@ -3,6 +3,7 @@ import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
+import { enqueueDiscover, isCatalogMode } from '@/lib/scrape-queue';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -24,6 +25,14 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   if (offerings.length === 0) {
     return NextResponse.json({ error: { code: 'no_offerings', message: 'This vendor has no active offerings to scrape.' } }, { status: 400 });
+  }
+
+  // Catalog-mode vendors (GoodLabs) use one discovery job that crawls the catalog and matches every
+  // linked test by code/name — not one fetch-a-URL job per offering.
+  const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true } });
+  if (isCatalogMode(config?.selectors)) {
+    await enqueueDiscover(vendorId, undefined, 'MANUAL');
+    return NextResponse.json({ data: { enqueued: 1, mode: 'catalog', offerings: offerings.length } });
   }
 
   const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });

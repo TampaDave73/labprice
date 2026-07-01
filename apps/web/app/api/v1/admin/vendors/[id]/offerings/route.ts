@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
+import { enqueueDiscover, isCatalogMode } from '@/lib/scrape-queue';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -64,6 +65,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     update: { deletedAt: null, isActive: true, externalUrl, ...(currentPrice != null ? { currentPrice } : {}) },
     create: { testId, vendorId, externalUrl, currentPrice, isActive: true },
   });
+
+  // Requeue-on-add: for catalog-mode vendors (e.g. GoodLabs), a newly-linked test has no price yet.
+  // Enqueue a discovery job scoped to just this offering so the scraper finds its price. Best-effort:
+  // if Redis/worker is down, the link still succeeds and a later full run will pick it up.
+  const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true, isEnabled: true } });
+  if (config?.isEnabled && isCatalogMode(config.selectors)) {
+    try {
+      await enqueueDiscover(vendorId, [offering.id]);
+    } catch (e) {
+      console.error('[offerings] failed to enqueue discovery for new offering', e);
+    }
+  }
 
   return NextResponse.json({ data: offering }, { status: 201 });
 }
