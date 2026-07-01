@@ -1,5 +1,8 @@
 'use client';
 
+// Vendor editor. Five sections, each saving independently: Details (+ trust override), Catalog
+// (test<->vendor links with product URL/price), Scraper Health (read-only computed trust metrics),
+// and Scraper Configuration (+ a "Scrape now" trigger). Effective trust = override ?? computed.
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 

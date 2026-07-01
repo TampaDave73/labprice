@@ -1,14 +1,20 @@
-# LabPrice
+# LabTestCompare
 
-A laboratory pricing application.
+A blood-test price comparison application (domain: `labtestcompare.com`).
 
 ## About
 
-LabPrice compares lab testing prices across multiple providers, helping users find the best deals on medical lab tests.
+LabTestCompare compares self-pay lab test prices across multiple ordering services, helping users find the best deals on medical lab tests. Prices are kept current by scrapers and curated through an admin panel.
 
 ## Documentation
 
-See the `docs/` directory for the complete architecture and implementation plan:
+Living docs (keep these current — see the discipline note in `.claude/CLAUDE.md`):
+
+- **[.claude/CLAUDE.md](.claude/CLAUDE.md)** — project guide: conventions, gotchas, how to run.
+- **[SKILLS.md](SKILLS.md)** — feature catalog + developer workflows/recipes.
+- **[CHANGELOG.md](CHANGELOG.md)** — dated history of notable changes.
+
+Original design docs in `docs/` (reference; may lag the code):
 
 - [Product Requirements Document](docs/01-prd.md)
 - [Database Design](docs/02-database-design.md)

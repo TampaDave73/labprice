@@ -1,3 +1,6 @@
+// Auth.js (NextAuth v5) config. Database-backed sessions via the Prisma adapter (the session cookie
+// value is a lookup key into the `sessions` table). Providers: Resend email magic-link + Google.
+// The session callback attaches the user's `role`, which the admin layout gates on.
 import NextAuth, { type NextAuthResult } from 'next-auth';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Google from 'next-auth/providers/google';

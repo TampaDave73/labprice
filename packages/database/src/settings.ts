@@ -1,3 +1,6 @@
+// Scrape-related system settings. Reads the `system_settings` rows (edited on the admin Settings
+// page) into a typed object with defaults. The worker uses this for the auto-approval thresholds
+// and schedule; keys are the canonical ones in KEY_TO_FIELD.
 import { prisma } from './client';
 
 export interface ScrapeSettings {

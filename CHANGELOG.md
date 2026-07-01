@@ -1,70 +1,58 @@
 # Changelog
 
-All notable changes to LabPrice are documented here. Format loosely follows
+All notable changes to LabTestCompare are documented here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are `YYYY-MM-DD`.
+
+See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions/gotchas).
 
 ---
 
 ## [Unreleased]
 
+### Documentation
+- **Project docs made current and self-maintaining.** Rewrote `.claude/CLAUDE.md` (project guide:
+  conventions, gotchas, run commands, plus a documentation-discipline rule and a code-annotation
+  standard). Added `SKILLS.md` (feature catalog + dev workflows/recipes). Added a `SessionStart`
+  hook (`.claude/settings.json`) that re-surfaces "keep CHANGELOG / SKILLS / CLAUDE current" each
+  session. Annotated the key/complex modules (trust, scrape pipeline, category m2m, settings, APIs).
+
 ### Added
 - **Live, data-driven counts on the homepage.** The hero badge ("Live prices from N ordering
-  services") and the stats bar ("N Ordering Services", "N Common Tests") now reflect the actual
-  counts of active vendors and non-deleted tests, so they update as you add/remove vendors and
-  tests (`apps/web/app/page.tsx`; `revalidate = 60` keeps them fresh in production).
+  services") and the stats bar ("N Ordering Services", "N Common Tests") reflect the actual counts of
+  active vendors and non-deleted tests, so they update as you add/remove vendors and tests
+  (`apps/web/app/page.tsx`; `revalidate = 60` keeps them fresh in production).
+- **Categories are now true many-to-many, with full management.** A test belongs to **one or many**
+  categories — there is **no "primary/main" category** to choose. `Test.categoryId` is retained only
+  as an internal, auto-derived **display pointer** (selected category with the lowest `displayOrder`),
+  so public pages keep working.
+  - Dedicated **Categories** admin page (add/rename/reorder/delete) + sidebar nav.
+  - Test editor uses a single "Categories" chip multi-select; **≥1 required** (client + server).
+  - **Delete contingency**: blocked (409) if it would orphan a test (names returned); otherwise the
+    display pointer of affected tests is auto-reassigned.
+  - Schema `TestCategory` join model; `tests` POST/PATCH accept `categoryIds[]`; category counts
+    exclude soft-deleted tests; category pages + homepage filter use the full m2m set.
+- **Offerings → vendor quick-link.** Vendor names in the Offerings overview link to the vendor editor.
+- **Add-Vendor workflow clarity.** "Create & Configure" redirects into the full editor where scraper,
+  trust, and catalog are set up (they need the vendor to exist first).
 
 ### Changed
-- **Rebrand "LabPrice" → "LabTestCompare"** across all user-facing surfaces: navbar, footer,
-  sign-in, admin sidebar, page titles/metadata, Open Graph, email sender name, worker log, scraper
-  bot User-Agent, and the seeded admin display name. (Internal `@labprice/*` package names and the
-  local Postgres DB name are unchanged — purely internal.)
-- **Domain → `labtestcompare.com`.** Updated canonical/OG/sitemap/robots/JSON-LD URLs and the
-  email sender domain (`layout.tsx`, `robots.ts`, `sitemap.ts`, `test/[slug]/page.tsx`, `auth.ts`,
-  `.env.example` adds `NEXT_PUBLIC_BASE_URL`).
+- **Rebrand "LabPrice" → "LabTestCompare"** across all user-facing surfaces (navbar, footer, sign-in,
+  admin sidebar, titles/metadata, Open Graph, email sender, worker log, scraper bot User-Agent, seeded
+  admin name). Internal `@labprice/*` package names and the local Postgres DB name are unchanged.
+- **Domain → `labtestcompare.com`** for canonical/OG/sitemap/robots/JSON-LD URLs and the email sender
+  (`layout.tsx`, `robots.ts`, `sitemap.ts`, `test/[slug]/page.tsx`, `auth.ts`; `.env.example` adds
+  `NEXT_PUBLIC_BASE_URL`).
+- **Vendors list is much faster.** Per-row trust (N+1) is now batched into **2 queries** via
+  `getVendorTrustMap()` (`packages/database/src/vendor-trust.ts`).
 
 ### Fixed
-- **Homepage "All Tests" category filter ignored extra categories.** A test only appeared under
-  its single display category because `HomeTestList` filtered on one `categorySlug`. The homepage
-  now loads each test's full category set (`getHomeData` in `apps/web/app/page.tsx`) and filters by
-  membership (`apps/web/app/components/HomeTestList.tsx`), so a multi-category test shows under all
-  of its categories. (Category *pages* already used the m2m correctly.)
-- **Dev server "Jest worker… exceeding retry limit" crash.** `pnpm dev` ran `turbo dev`, which
-  also started the `@labprice/worker` app — and that app was in a Redis crash-loop spewing tens of
-  thousands of `ECONNRESET` errors. The resource churn starved Next's compilation workers, which
-  then died while generating paths for dynamic admin routes (e.g. `/admin/tests/[id]`). `pnpm dev`
-  now runs **web-only** (`turbo dev --filter=@labprice/web`); use `pnpm dev:worker` for the worker
-  and `pnpm dev:all` for both. (Known follow-ups, tracked for the scraper work: the worker's Redis
-  reconnect storm, and the benign `@prisma/client` "can't be external" Turbopack warnings.)
-
-### Added
-- **Categories are now true many-to-many, with full management.** A test belongs to **one or
-  many** categories — there is **no "primary/main" category** to choose. The `Test.categoryId`
-  column is retained only as an internal, auto-derived **display pointer** (the selected category
-  with the lowest `displayOrder`); it's never user-selected, so public pages (breadcrumb, card
-  badge, category pages) keep working.
-  - **Dedicated Categories admin page** (`apps/web/app/admin/categories/page.tsx`, sidebar nav):
-    add, rename, reorder, and delete categories.
-  - **Test editor** (`apps/web/app/admin/tests/[id]/page.tsx`): a single "Categories" chip
-    multi-select; **at least one category is required** to save (validated client + server).
-  - **Delete contingency** (`apps/web/app/api/v1/admin/categories/[id]/route.ts`): deleting a
-    category is **blocked (409) if it would orphan any test** (the offending test names are
-    returned); otherwise tests whose display pointer was that category are auto-reassigned to
-    their next remaining category.
-  - Schema: `TestCategory` join model + `Test.categories` / `Category.testCategories` relations.
-  - APIs: `tests` POST/PATCH accept `categoryIds[]`, validate ≥1, derive the display pointer, and
-    replace the join rows; category counts exclude soft-deleted tests; public category pages list
-    tests via the m2m so a test appears under every category it's in.
-- **Offerings → vendor quick-link.** Vendor names in the Offerings overview link straight to
-  that vendor's edit page (`apps/web/app/admin/offerings/page.tsx` + `vendorId` added to
-  `apps/web/app/api/v1/admin/offerings/route.ts`).
-- **Add-Vendor workflow clarity.** The Add Vendor page now explains that scraper, trust, and
-  catalog are configured after creation, and the button reads "Create & Configure"; on save it
-  redirects into the full vendor editor (`apps/web/app/admin/vendors/new/page.tsx`).
-
-### Changed
-- **Vendors list is much faster.** Trust was computed per-row (N+1 = ~2 queries × vendor count).
-  Now batched into **2 queries total** via `getVendorTrustMap()`
-  (`packages/database/src/vendor-trust.ts`, used by `apps/web/app/api/v1/admin/vendors/route.ts`).
+- **Homepage "All Tests" category filter ignored extra categories.** It filtered on a single
+  `categorySlug`; now it loads each test's full category set and filters by membership
+  (`apps/web/app/page.tsx`, `components/HomeTestList.tsx`).
+- **Dev server "Jest worker… exceeding retry limit" crash.** `turbo dev` also ran the worker, which
+  crash-looped on Redis (tens of thousands of `ECONNRESET`) and starved Next's compiler. `pnpm dev`
+  now runs **web-only**; use `pnpm dev:worker` / `pnpm dev:all`. (Open follow-ups: the worker's Redis
+  reconnect storm; benign `@prisma/client` "can't be external" Turbopack warnings.)
 
 ---
 

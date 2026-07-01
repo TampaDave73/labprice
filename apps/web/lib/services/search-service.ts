@@ -1,3 +1,6 @@
+// Test search. `search()` uses Postgres full-text (to_tsquery on tests.search_vector) and falls
+// back to pg_trgm similarity when FTS finds nothing. `autocomplete()` does a fast substring match
+// across name/short-name/codes and returns the min price for the suggestion dropdown.
 import { prisma } from '@labprice/database';
 import type { TestSummaryDTO } from '@labprice/shared';
 

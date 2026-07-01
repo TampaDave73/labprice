@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo [project-docs] Keep CHANGELOG.md, SKILLS.md, and .claude/CLAUDE.md current. Read them before non-trivial work and update the relevant one in the same change."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,3 +1,7 @@
+// `scrape-execute` worker: scrape one offering's price, record a ScrapeRun, and (if the price moved)
+// stage a StagedPriceChange. It auto-approves within the Settings thresholds — modulated by vendor
+// trust (LOW = always manual review, HIGH = 1.5x thresholds) — else the change waits in the Change
+// Queue. Auto-approved changes are handed to the `scrape-publish` queue.
 import { Worker, type Job } from 'bullmq';
 import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import type { VendorConfig, ScrapeResult, ScrapeError } from '@labprice/scrapers';

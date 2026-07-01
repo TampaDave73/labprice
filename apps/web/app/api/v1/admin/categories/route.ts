@@ -1,3 +1,5 @@
+// Categories API: list (with many-to-many test counts, excluding soft-deleted tests) + create.
+// Per-category rename/reorder/delete (incl. the orphan-block contingency) live in `[id]/route.ts`.
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';

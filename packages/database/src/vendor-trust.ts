@@ -1,3 +1,7 @@
+// Vendor trust. Derives LOW/MEDIUM/HIGH from scraper health — recent run success rate, how recently
+// a run succeeded (freshness), and how often staged changes get rejected (volatility). Effective
+// trust = manual `Vendor.trustOverride` if set, else the computed level. `getVendorTrustMap()` is the
+// batched (2-query) path used by the admin vendor list to avoid an N+1.
 import { prisma } from './client';
 import type { TrustLevel } from '@prisma/client';
 

@@ -1,3 +1,6 @@
+// Public homepage (Server Component). Loads categories, popular + all tests (each with its full
+// category set and min price) and the active-vendor count for the live stats. Falls back to DEMO_*
+// data if the DB is unavailable. `revalidate = 60` keeps counts/prices fresh in production.
 import { prisma } from '@labprice/database';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
