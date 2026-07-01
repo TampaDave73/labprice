@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { publishStagedChange } from '@/lib/publish-change';
 
 export async function PATCH(
   req: NextRequest,
@@ -52,15 +51,9 @@ export async function PATCH(
     },
   });
 
-  // If approving, enqueue publish job
+  // If approving, publish the new price to the live offering inline (no worker needed).
   if (status === 'APPROVED') {
-    const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null,
-    });
-    const publishQueue = new Queue('scrape-publish', { connection: connection as any });
-    await publishQueue.add('publish', { stagedChangeId: id });
-    await publishQueue.close();
-    await connection.quit();
+    await publishStagedChange(id);
   }
 
   return NextResponse.json({ data: updated });

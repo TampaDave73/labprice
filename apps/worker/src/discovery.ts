@@ -139,6 +139,11 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
     // matched
     summary.matched++;
+    // Store the exact product URL so the public "Order"/verify link points at the right page, and
+    // admins can confirm the price. Set it even when the price is unchanged.
+    if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) {
+      await prisma.offering.update({ where: { id: offering.id }, data: { externalUrl: result.sourceUrl } });
+    }
     const price = new Decimal(result.price!);
     const priceChanged = !offering.currentPrice || !price.equals(offering.currentPrice);
     await prisma.scrapeResult.create({

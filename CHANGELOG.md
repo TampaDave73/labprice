@@ -10,6 +10,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Fixed
+- **Change Queue Approve/Reject now works without the worker.** The approve routes enqueued a publish
+  job to Redis (`maxRetriesPerRequest: null`), which could hang the request and only updated the live
+  price if the worker was running. Approve/reject now publish **inline** in a DB transaction
+  (`apps/web/lib/publish-change.ts`) — instant, worker-independent, and they adopt the discovered
+  product URL if the offering lacks one.
+- **Vendor links now point to the exact product page.** Catalog discovery stores the matched product
+  URL on the offering (`externalUrl`), so the "Order"/verify link resolves to e.g.
+  `goodlabs.com/tests/<slug>` instead of the vendor homepage.
+- **Removed a duplicate GoodLabs vendor.** The e2e test runner had created a second vendor
+  (slug `goodlabs`, 8 tests) separate from the admin-created `Good Labs` (slug `good-labs`); the
+  duplicate is retired and the real vendor is configured as a catalog scraper. (Cleanup script:
+  `apps/worker/scripts/fix-goodlabs-vendor.ts`.)
+
 - **Worker Redis reconnect storm fixed.** The BullMQ workers crash-looped with a `write ECONNABORTED`
   storm because all 5 workers shared a single ioredis connection; blocking Workers each need their
   own. Each Worker now gets a dedicated connection (pass `redisConnection` options, not the shared

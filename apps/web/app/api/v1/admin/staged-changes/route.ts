@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { publishStagedChange } from '@/lib/publish-change';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -74,20 +73,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // If approving, enqueue publish jobs
+  // If approving, publish the new prices to the live offerings right here (no worker needed).
+  let published = 0;
   if (action === 'approve') {
-    const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null,
-    });
-    const publishQueue = new Queue('scrape-publish', { connection: connection as any });
-
     for (const id of ids) {
-      await publishQueue.add('publish', { stagedChangeId: id });
+      if (await publishStagedChange(id)) published++;
     }
-
-    await publishQueue.close();
-    await connection.quit();
   }
 
-  return NextResponse.json({ data: { updated: updated.count, action } });
+  return NextResponse.json({ data: { updated: updated.count, published, action } });
 }
