@@ -88,6 +88,12 @@ export interface MatchOptions {
    * LabCorp code, without labelling which. Default false (GoodLabs: strict per-lab matching).
    */
   codeMatchAnyProvider?: boolean;
+  /**
+   * When true, Quest + LabCorp collapse into one "code" match and the CHEAPEST hit wins (never
+   * ambiguous), falling back to name only. Use for vendors that sell the same test through multiple
+   * labs at different prices (Dirt Cheap Labs), where the customer picks the cheaper lab.
+   */
+  mergeCodeTiers?: boolean;
 }
 
 /**
@@ -97,8 +103,17 @@ export interface MatchOptions {
  */
 export interface CatalogAdapter {
   name: string;
-  parseCatalog(html: string): CatalogEntry[];
+  // Page-based vendors (GoodLabs, OYL): catalog listing → per-product pages.
+  parseCatalog?(html: string): CatalogEntry[];
   /** `slug` is passed by the crawler (some sites, e.g. OYL, don't repeat their id in the page). */
-  parseProduct(html: string, baseUrl: string, slug?: string): CatalogProduct | null;
-  productUrl(baseUrl: string, slug: string): string;
+  parseProduct?(html: string, baseUrl: string, slug?: string): CatalogProduct | null;
+  productUrl?(baseUrl: string, slug: string): string;
+  /**
+   * API vendors (Dirt Cheap Labs): fetch the whole priced catalog in one shot (no per-product pages).
+   * When present, the crawler uses this instead of parseCatalog/parseProduct.
+   */
+  fetchAll?(
+    deps: { fetchHtml: (url: string) => Promise<string>; onLog?: (m: string) => void },
+    cfg: { baseUrl: string; apiBase?: string },
+  ): Promise<CatalogProduct[]>;
 }

@@ -2,6 +2,7 @@
 // shared shapes and builds product URLs, so the crawler/matcher/persistence stay vendor-agnostic.
 import { parseGoodLabsCatalog, parseGoodLabsProduct } from './goodlabs-parser';
 import { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './ownyourlabs-parser';
+import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -18,11 +19,18 @@ export const ownYourLabsAdapter: CatalogAdapter = {
   productUrl: (baseUrl, slug) => `${baseUrl}/test/${slug}`,
 };
 
+export const dirtCheapLabsAdapter: CatalogAdapter = {
+  name: 'dirtcheaplabs',
+  fetchAll: (deps, cfg) => fetchDirtCheapLabsCatalog(deps, cfg),
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
   ownyourlabs: ownYourLabsAdapter,
   oyl: ownYourLabsAdapter,
+  dirtcheaplabs: dirtCheapLabsAdapter,
+  dcl: dirtCheapLabsAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

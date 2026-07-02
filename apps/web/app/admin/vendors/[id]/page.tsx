@@ -365,6 +365,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
                 <select className="admin-input" value={config.catalogAdapter} onChange={(e) => setC('catalogAdapter', e.target.value)}>
                   <option value="goodlabs">GoodLabs (goodlabs.com)</option>
                   <option value="ownyourlabs">Own Your Labs (ownyourlabs.com)</option>
+                  <option value="dirtcheaplabs">Dirt Cheap Labs (dirtcheaplabs.com)</option>
                 </select>
               </div>
               <div>

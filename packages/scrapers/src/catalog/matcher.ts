@@ -24,6 +24,13 @@ import type {
 const DEFAULT_PRIORITY: MatchTier[] = ['quest', 'labcorp', 'name'];
 // Filler tokens ignored during name matching so "TSH (Thyroid Stimulating Hormone)" still matches "TSH".
 const STOPWORDS = new Set(['test', 'panel', 'with', 'and', 'the', 'a', 'of', 'for', 'serum', 'plasma', 'blood']);
+// Generic lab words that are NOT distinctive on their own — a shared "vitamin" or "panel" doesn't mean
+// two tests are the same. Used to require a *distinctive* shared token (so "Vitamin B12" ≠ "Vitamin A").
+const COMMON_WORDS = new Set([
+  ...STOPWORDS, 'vitamin', 'profile', 'screen', 'level', 'levels', 'total', 'free', 'comprehensive',
+  'complete', 'count', 'random', 'urine', 'ratio', 'ratios', 'sensitive', 'immunoassay', 'ultrasensitive',
+  'quantitative', 'qualitative', 'reflex', 'includes',
+]);
 
 interface Flat {
   product: CatalogProduct;
@@ -35,10 +42,13 @@ export function matchTestToProducts(
   products: CatalogProduct[],
   opts: MatchOptions = {},
 ): MatchResult {
-  const priority = opts.matchPriority ?? DEFAULT_PRIORITY;
   const includePanels = opts.includePanels ?? false;
   const flagAmbiguous = opts.flagAmbiguous ?? true;
   const anyProvider = opts.codeMatchAnyProvider ?? false;
+  // mergeCodeTiers: treat Quest+LabCorp as one "code" match and take the CHEAPEST — for vendors that
+  // sell the same test through multiple labs at different prices (Dirt Cheap Labs), where the customer
+  // would just pick the cheaper lab. Falls back to the name tier only.
+  const priority = opts.mergeCodeTiers ? (['name'] as MatchTier[]) : (opts.matchPriority ?? DEFAULT_PRIORITY);
 
   // Flatten to (product, provider) pairs, dropping panels unless explicitly included.
   const flat: Flat[] = [];
@@ -46,6 +56,27 @@ export function matchTestToProducts(
     for (const provider of product.providers) {
       if (!includePanels && provider.isPanel) continue;
       flat.push({ product, provider });
+    }
+  }
+
+  if (opts.mergeCodeTiers) {
+    const codeHits = flat.filter(
+      (f) =>
+        (!!test.questCode && f.provider.labTestIDs.includes(test.questCode)) ||
+        (!!test.labcorpCode && f.provider.labTestIDs.includes(test.labcorpCode)),
+    );
+    if (codeHits.length > 0) {
+      // A code can be stale/wrong and land on the wrong test (seed TSH Quest code 867 is actually
+      // "T4 Total" at Quest). Trust a code hit only if the product name also shares a distinctive
+      // token with our test — this drops the wrong-test hit while keeping the same test across labs.
+      const trusted = codeHits.filter((h) => sharesStrongToken(test.name, h.product.name));
+      if (trusted.length > 0) {
+        const priced = [...trusted].filter((h) => h.provider.price != null).sort((a, b) => a.provider.price! - b.provider.price!);
+        const best = priced[0] ?? trusted[0]!;
+        const tier: MatchTier = !!test.questCode && best.provider.labTestIDs.includes(test.questCode) ? 'quest' : 'labcorp';
+        return matched(tier, best, trusted.map(toCandidate));
+      }
+      // Every code hit was name-incompatible → the codes are suspect; fall through to the name tier.
     }
   }
 
@@ -111,8 +142,9 @@ function tierMatches(
   if (tier === 'labcorp') {
     return (anyProvider || provider.labProvider === 'labcorp') && !!test.labcorpCode && provider.labTestIDs.includes(test.labcorpCode);
   }
-  // name: compare our test name against the product/provider name (normalized token-subset).
-  return nameMatches(test.name, product.name) || nameMatches(test.name, provider.name);
+  // name: token-subset match AND a shared distinctive token (so "Vitamin B12" ≠ "Vitamin A, Serum").
+  const subset = nameMatches(test.name, product.name) || nameMatches(test.name, provider.name);
+  return subset && (sharesStrongToken(test.name, product.name) || sharesStrongToken(test.name, provider.name));
 }
 
 function matched(tier: MatchTier, best: Flat, candidates: MatchCandidate[]): MatchResult {
@@ -148,6 +180,24 @@ export function nameTokens(name: string): Set<string> {
       .split(/\s+/)
       .filter((t) => t.length > 1 && !STOPWORDS.has(t)),
   );
+}
+
+/** Distinctive tokens: name tokens minus generic lab words. "Vitamin B12" → {b12}; "CBC …" → {cbc}. */
+export function strongTokens(name: string): Set<string> {
+  return new Set([...nameTokens(name)].filter((t) => !COMMON_WORDS.has(t)));
+}
+
+/**
+ * True when `a` and `b` share a distinctive token — guards against matching on a generic word alone
+ * ("Vitamin B12" vs "Vitamin A" share only "vitamin" → false). If `a` has no distinctive tokens at
+ * all we can't judge, so we don't block the match (return true).
+ */
+export function sharesStrongToken(a: string, b: string): boolean {
+  const sa = strongTokens(a);
+  if (sa.size === 0) return true;
+  const tb = nameTokens(b);
+  for (const t of sa) if (tb.has(t)) return true;
+  return false;
 }
 
 /**

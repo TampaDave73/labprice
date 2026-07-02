@@ -11,6 +11,8 @@ export interface CatalogScrapeConfig {
   catalogPath: string;
   /** Vendor adapter (parsers + product-URL builder). Defaults to GoodLabs. */
   adapter?: CatalogAdapter;
+  /** API base for `fetchAll` (API vendors like Dirt Cheap Labs). */
+  apiBase?: string;
   /** Milliseconds to wait between product-page fetches (be polite to the vendor). */
   rateLimitMs?: number;
   matchOptions?: MatchOptions;
@@ -29,9 +31,10 @@ export interface OfferingMatch {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Fetch + parse the vendor's catalog listing (every test/panel it sells). */
+/** Fetch + parse the vendor's catalog listing (every test/panel it sells). Page-based adapters only. */
 export async function fetchCatalogEntries(deps: FetchDeps, cfg: CatalogScrapeConfig): Promise<CatalogEntry[]> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
+  if (!adapter.parseCatalog) throw new Error(`Adapter '${adapter.name}' is not page-based (no parseCatalog)`);
   const html = await deps.fetchHtml(`${cfg.baseUrl}${cfg.catalogPath}`);
   return adapter.parseCatalog(html);
 }
@@ -39,6 +42,7 @@ export async function fetchCatalogEntries(deps: FetchDeps, cfg: CatalogScrapeCon
 /** Fetch + parse one product detail page. Returns null if the page has no parseable product. */
 export async function fetchProduct(deps: FetchDeps, cfg: CatalogScrapeConfig, slug: string): Promise<CatalogProduct | null> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
+  if (!adapter.productUrl || !adapter.parseProduct) throw new Error(`Adapter '${adapter.name}' is not page-based`);
   const html = await deps.fetchHtml(adapter.productUrl(cfg.baseUrl, slug));
   return adapter.parseProduct(html, cfg.baseUrl, slug);
 }
@@ -57,6 +61,14 @@ export async function buildCatalogIndex(
   cfg: CatalogScrapeConfig,
   candidateTests?: TestKey[],
 ): Promise<CatalogProduct[]> {
+  const adapter = cfg.adapter ?? goodlabsAdapter;
+
+  // API vendors (Dirt Cheap Labs): one fetch returns the whole priced catalog — no per-product pages,
+  // and no name-narrowing (matching is by code, so we keep every product).
+  if (adapter.fetchAll) {
+    return adapter.fetchAll(deps, cfg);
+  }
+
   const entries = await fetchCatalogEntries(deps, cfg);
   deps.onLog?.(`catalog: ${entries.length} products`);
 

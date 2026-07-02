@@ -131,10 +131,17 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   test (Catalog → Add) prices just that offering inline. Both use name-narrowing so only a few catalog
   pages are fetched (~2s). Clean matches auto-publish; ambiguous ones go to the Change Queue. The
   worker's `scrape-discover` queue still exists for scheduled/background runs (Redis storm fixed).
-- **Two live adapters** (`catalog/adapters.ts`): `goodlabs` (JSON-LD + Next.js flight chunks,
-  `/tests/<slug>`) and `ownyourlabs` (Phoenix HTML, `/shop` → `/test/<UUID>`, matches a single Order
-  Code against both our codes via `codeMatchAnyProvider`). Pick per vendor with the admin **Catalog
-  source** dropdown (`selectors.adapter`). E2E runner: `apps/worker/scripts/discover-ownyourlabs.ts`.
+- **Three live adapters** (`catalog/adapters.ts`), pick per vendor via the admin **Catalog source**
+  dropdown (`selectors.adapter`):
+  - `goodlabs` — JSON-LD + Next.js flight chunks, `/tests/<slug>`.
+  - `ownyourlabs` — Phoenix HTML, `/shop` → `/test/<UUID>`; single Order Code vs both codes
+    (`codeMatchAnyProvider`).
+  - `dirtcheaplabs` — **API vendor** (`CatalogAdapter.fetchAll`): pulls both lab catalogs from
+    `api.dirtcheaplabs.com/api/catalog/alacarte?lab=…` and takes the cheaper lab (`mergeCodeTiers`).
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs}.ts`.
+- **Match safety**: a code hit is trusted only if the product name shares a *distinctive* token with
+  our test (`sharesStrongToken`) — guards against wrong/stale codes (e.g. a bad Quest code resolving
+  to a different test) and generic-word name collisions ("Vitamin B12" ≠ "Vitamin A").
 - **To onboard another catalog vendor**: add a `<vendor>-parser.ts` in `packages/scrapers/src/catalog/`
   exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
   add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,

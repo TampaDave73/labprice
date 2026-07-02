@@ -47,12 +47,15 @@ export interface DiscoverySummary {
 function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, selectors: Record<string, unknown>): CatalogScrapeConfig {
   const adapter = getAdapter(selectors.adapter as string | undefined);
   const isOyl = adapter.name === 'ownyourlabs';
+  const isDcl = adapter.name === 'dirtcheaplabs';
+  const defaultBase = isOyl ? 'https://ownyourlabs.com' : isDcl ? 'https://dirtcheaplabs.com' : 'https://goodlabs.com';
   // Strip a trailing slash so `${baseUrl}${path}` / `${baseUrl}/test/...` don't get a double slash.
-  const base = (dbBaseUrl || websiteUrl || (isOyl ? 'https://ownyourlabs.com' : 'https://goodlabs.com')).replace(/\/+$/, '');
+  const base = (dbBaseUrl || websiteUrl || defaultBase).replace(/\/+$/, '');
   return {
     baseUrl: base,
-    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : '/book-tests?step=PANEL_SELECTION'),
+    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : isDcl ? '/alacarte' : '/book-tests?step=PANEL_SELECTION'),
     adapter,
+    ...(isDcl ? { apiBase: (selectors.apiBase as string) || 'https://api.dirtcheaplabs.com' } : {}),
     rateLimitMs: 500,
     matchOptions: {
       matchPriority: ['quest', 'labcorp', 'name'],
@@ -60,6 +63,8 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
       flagAmbiguous: true,
       // OYL exposes one order code per test (Quest OR LabCorp) unlabelled — match against both.
       codeMatchAnyProvider: isOyl,
+      // DCL sells the same test at two labs — take the cheaper.
+      mergeCodeTiers: isDcl,
       ...(typeof selectors.preferredProvider === 'string' ? { preferredProvider: selectors.preferredProvider } : {}),
     },
   };

@@ -82,12 +82,14 @@ pnpm dev:all             # web + worker (turbo dev)
    discovery for vendors that publish a catalog instead of per-test URLs. Catalog discovery is
    **adapter-based** (`@labprice/scrapers` `catalog/adapters.ts`): the crawler/matcher/persistence
    (`catalog/persist.ts` → `runVendorDiscovery`) are vendor-agnostic; each site's parsing is its own
-   module. Live adapters: **GoodLabs** (JSON-LD + Next.js flight chunks; `/tests/<slug>`) and **Own
-   Your Labs** (Phoenix HTML; `/shop` → `/test/<UUID>`, matches a single Order Code against both our
-   codes via `codeMatchAnyProvider`). A vendor is catalog-mode when `selectors.mode === 'catalog'`,
-   with `selectors.adapter` picking the parser. Runs **inline in the web app** ("Scrape now"/add-test,
-   no worker needed) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name, panels
-   excluded, >1 price ⇒ ambiguous (never guessed). All plain HTTP. Details in `SKILLS.md`.
+   module. Live adapters: **GoodLabs** (JSON-LD + flight chunks; `/tests/<slug>`), **Own Your Labs**
+   (Phoenix HTML; `/shop` → `/test/<UUID>`, single Order Code vs both codes via `codeMatchAnyProvider`),
+   and **Dirt Cheap Labs** (API vendor: `CatalogAdapter.fetchAll` pulls both lab catalogs from
+   `api.dirtcheaplabs.com`, `mergeCodeTiers` takes the cheaper lab). A vendor is catalog-mode when
+   `selectors.mode === 'catalog'`, `selectors.adapter` picks the parser. Runs **inline in the web app**
+   ("Scrape now"/add-test) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name;
+   panels excluded; a code hit must also share a **distinctive** name token (guards wrong/stale codes);
+   >1 surviving price ⇒ ambiguous. Details in `SKILLS.md`.
 
 ## Verifying changes
 

@@ -10,6 +10,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Third scraper — Dirt Cheap Labs** (`dirtcheaplabs.com`), an **API vendor**. Its catalog loads from
+  `api.dirtcheaplabs.com/api/catalog/alacarte?lab=labcorp|quest` — one call per lab, each item with a
+  `lab_code` + `retail_cents`. The catalog scraper now supports API adapters (`CatalogAdapter.fetchAll`)
+  that return the whole priced catalog in one shot, no per-product crawl. We fetch both labs, merge by
+  slug, and take the **cheaper lab** per test (`MatchOptions.mergeCodeTiers`). Verified live: CBC $2.88
+  (Quest) vs $6.70 (LabCorp), CMP $3.78, Ferritin $5.99, etc.
+- **Matcher hardening (name corroboration).** A code match is now trusted only if the product name
+  also shares a *distinctive* token with our test (generic words like "vitamin"/"panel"/"total" don't
+  count). This (a) drops wrong-test code hits — e.g. our seed TSH Quest code `867` actually resolves
+  to "T4 Total" at Quest, so TSH now correctly prices at LabCorp instead of $2.99 T4 — and (b) stops
+  the name tier from matching "Vitamin B12" to "Vitamin A/C/E". New `strongTokens`/`sharesStrongToken`.
+- *(Note: seed TSH Quest code 867 is wrong — real Quest TSH is 899; a data fix for whoever curates.)*
 - **Second scraper — Own Your Labs** (`ownyourlabs.com`). A Phoenix/LiveView reseller: the `/shop`
   page lists every test as a card linking to `/test/<UUID>`; each product page carries a single lab
   **Order Code** (a Quest or LabCorp code) plus the price. Matching uses that order code against BOTH

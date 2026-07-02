@@ -43,19 +43,37 @@
   + persistence; only the parser is new. 11 new unit tests (50 total). Verified live: 9/9 seed tests
   matched (~12s) with exact product URLs.
 
+### Third scraper — Dirt Cheap Labs (DONE)
+- `dirtcheaplabs.com`, an **API vendor**: catalog from `api.dirtcheaplabs.com/api/catalog/alacarte?lab=`.
+  Added API-adapter support (`CatalogAdapter.fetchAll`) + `mergeCodeTiers` (cheaper of the two labs).
+  Also hardened the matcher: a code hit must share a *distinctive* name token (`sharesStrongToken`),
+  fixing wrong/stale-code hits (seed TSH quest 867 → "T4 Total") and generic-word collisions.
+  Verified live: 7 matched (CBC $2.88, CMP $3.78, Ferritin $5.99, TSH $6.50, VitD $10.35, …), 4
+  legit-ambiguous (Cortisol/Testosterone/Lipid/B12 variants), 1 unmatched (PSA). 57 unit tests total.
+
+### MitoHealth — NOT VIABLE for per-test comparison (see Next)
+
 ### Current live DB state
-- **2 vendors**: **Good Labs** (`good-labs`, adapter goodlabs) — 3 offerings; **Own Your Labs**
-  (`own-your-labs`, adapter ownyourlabs) — 9 offerings, all priced (CBC $8.40, CMP $10, Ferritin $15,
-  HbA1c $8.80, Lipid $10, PSA $16.80, TSH $13.20, Testosterone $29.80, Vitamin D $44.60).
+- **3 vendors**: **Good Labs** (`good-labs`, goodlabs) — 3 offerings; **Own Your Labs**
+  (`own-your-labs`, ownyourlabs) — 9 offerings; **Dirt Cheap Labs** (`dirt-cheap-labs`, dirtcheaplabs)
+  — 12 offerings (7 priced, 4 pending review, 1 unmatched).
 
 ---
 
 ## ⏭️ Next
 
-### 1. Third scraper — TBD
-- The adapter pattern is proven with two live vendors. Onboarding a new catalog vendor is now: write
-  a `<vendor>-parser.ts`, register in `adapters.ts`, add a config, set `selectors.adapter`. See the
-  SKILLS.md "onboard another catalog vendor" recipe.
+### 1. MitoHealth (`mitohealth.com/shop`) — DECISION NEEDED
+- **Not viable as-is**: MitoHealth is a $9/mo membership longevity vendor that sells only **3 bundled
+  panels** (Mito Essential/Core/Ultra) — no individual à-la-carte tests and no per-test Quest/LabCorp
+  codes exposed. Nothing to match our individual tests against. Product pages show member vs regular
+  price (e.g. $89.61 member / $125.51 regular).
+- **Member-pricing recommendation** (for whenever a membership vendor IS added): store BOTH prices;
+  rank/compare by the **non-member** price (apples-to-apples with non-membership vendors); show the
+  member price as a small **inline** secondary line ("$125.51 · $89.61 w/ $9/mo membership"), NOT a
+  hover tooltip (tooltips don't work on mobile). Needs a nullable `memberPrice` + membership note on
+  Offering (schema change) and a public-UI tweak.
+- **Options**: (a) skip MitoHealth; (b) add a separate "panel comparison" feature later; (c) revisit
+  if they expose an à-la-carte catalog/API.
 
 ### 2. Save / Price Alert (public test page) — **ON HOLD**
 - These require a **full customer auth flow (sign up / sign in)** — none exists today (only DB-backed
