@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // (GoodLabs), rather than fetching a per-offering product URL. When on, the CSS selectors below are
   // ignored; catalogPath / preferredProvider steer the catalog scraper instead.
   const isCatalog = body.mode === 'catalog';
-  const ADAPTERS = ['goodlabs', 'ownyourlabs', 'dirtcheaplabs'];
+  const ADAPTERS = ['goodlabs', 'ownyourlabs', 'dirtcheaplabs', 'mitohealth'];
   const selectors = {
     ...(isCatalog ? { mode: 'catalog' as const } : {}),
     ...(isCatalog && ADAPTERS.includes(body.adapter) ? { adapter: body.adapter } : {}),

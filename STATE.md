@@ -51,31 +51,23 @@
   Verified live: 7 matched (CBC $2.88, CMP $3.78, Ferritin $5.99, TSH $6.50, VitD $10.35, …), 4
   legit-ambiguous (Cortisol/Testosterone/Lipid/B12 variants), 1 unmatched (PSA). 57 unit tests total.
 
-### MitoHealth — NOT VIABLE for per-test comparison (see Next)
+### Fourth scraper — MitoHealth + member pricing (DONE)
+- `mitohealth.com` ($9/mo membership). Its /shop catalog is an à-la-carte set loaded from a tRPC API
+  (`marketplace.catalog.search`, paginated) with per-provider member + non-member prices; no lab codes
+  → name-matched. New `mitohealth` API adapter. **Member-price model built**: `Offering.memberPrice` +
+  `Vendor.membershipNote` (schema change, pushed); we rank on the non-member price and show the member
+  price inline on the test page ("$5.85 for members ($9/mo membership)"), not a tooltip. Verified live:
+  600 products, 8 seed tests matched with both prices. 62 unit tests total.
 
 ### Current live DB state
-- **3 vendors**: **Good Labs** (`good-labs`, goodlabs) — 3 offerings; **Own Your Labs**
-  (`own-your-labs`, ownyourlabs) — 9 offerings; **Dirt Cheap Labs** (`dirt-cheap-labs`, dirtcheaplabs)
-  — 12 offerings (7 priced, 4 pending review, 1 unmatched).
+- **4 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+  (dirtcheaplabs), **Mito Health** (mitohealth, member pricing). Each independently scrapeable.
 
 ---
 
 ## ⏭️ Next
 
-### 1. MitoHealth (`mitohealth.com/shop`) — DECISION NEEDED
-- **Not viable as-is**: MitoHealth is a $9/mo membership longevity vendor that sells only **3 bundled
-  panels** (Mito Essential/Core/Ultra) — no individual à-la-carte tests and no per-test Quest/LabCorp
-  codes exposed. Nothing to match our individual tests against. Product pages show member vs regular
-  price (e.g. $89.61 member / $125.51 regular).
-- **Member-pricing recommendation** (for whenever a membership vendor IS added): store BOTH prices;
-  rank/compare by the **non-member** price (apples-to-apples with non-membership vendors); show the
-  member price as a small **inline** secondary line ("$125.51 · $89.61 w/ $9/mo membership"), NOT a
-  hover tooltip (tooltips don't work on mobile). Needs a nullable `memberPrice` + membership note on
-  Offering (schema change) and a public-UI tweak.
-- **Options**: (a) skip MitoHealth; (b) add a separate "panel comparison" feature later; (c) revisit
-  if they expose an à-la-carte catalog/API.
-
-### 2. Save / Price Alert (public test page) — **ON HOLD**
+### 1. Save / Price Alert (public test page) — **ON HOLD**
 - These require a **full customer auth flow (sign up / sign in)** — none exists today (only DB-backed
   admin sessions). The buttons are already gated behind `session?.user`, so logged-out visitors don't
   see them; they're effectively dormant for real users.

@@ -84,8 +84,10 @@ pnpm dev:all             # web + worker (turbo dev)
    (`catalog/persist.ts` → `runVendorDiscovery`) are vendor-agnostic; each site's parsing is its own
    module. Live adapters: **GoodLabs** (JSON-LD + flight chunks; `/tests/<slug>`), **Own Your Labs**
    (Phoenix HTML; `/shop` → `/test/<UUID>`, single Order Code vs both codes via `codeMatchAnyProvider`),
-   and **Dirt Cheap Labs** (API vendor: `CatalogAdapter.fetchAll` pulls both lab catalogs from
-   `api.dirtcheaplabs.com`, `mergeCodeTiers` takes the cheaper lab). A vendor is catalog-mode when
+   **Dirt Cheap Labs** (API vendor: `CatalogAdapter.fetchAll` pulls both lab catalogs from
+   `api.dirtcheaplabs.com`, `mergeCodeTiers` takes the cheaper lab), and **MitoHealth** (API vendor,
+   tRPC catalog; $9/mo membership → `Offering.memberPrice`/`Vendor.membershipNote`, ranked on the
+   non-member price, no lab codes so name-matched). A vendor is catalog-mode when
    `selectors.mode === 'catalog'`, `selectors.adapter` picks the parser. Runs **inline in the web app**
    ("Scrape now"/add-test) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name;
    panels excluded; a code hit must also share a **distinctive** name token (guards wrong/stale codes);

@@ -20,7 +20,9 @@ export interface CatalogEntry {
 export interface ProviderOffering {
   labProvider: string; // 'quest' | 'labcorp' | 'bioreference' | ...
   labTestIDs: string[]; // the fulfilling lab's order code(s)
-  price: number | null;
+  price: number | null; // the price we compare on (non-member, where a membership exists)
+  /** Discounted member price, when the vendor has a membership program (MitoHealth). */
+  memberPrice?: number | null;
   isPanel: boolean;
   name: string;
   biomarkerCount?: number; // parsed from the description ("Measures N biomarkers")
@@ -58,6 +60,8 @@ export interface MatchResult {
   status: MatchStatus;
   matchedBy: MatchTier | null;
   price: number | null;
+  /** Member price of the matched provider, when applicable (MitoHealth). */
+  memberPrice?: number | null;
   provider: string | null;
   sourceUrl: string | null;
   candidates: MatchCandidate[];

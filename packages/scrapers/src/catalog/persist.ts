@@ -48,17 +48,20 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
   const adapter = getAdapter(selectors.adapter as string | undefined);
   const isOyl = adapter.name === 'ownyourlabs';
   const isDcl = adapter.name === 'dirtcheaplabs';
-  const defaultBase = isOyl ? 'https://ownyourlabs.com' : isDcl ? 'https://dirtcheaplabs.com' : 'https://goodlabs.com';
+  const isMito = adapter.name === 'mitohealth';
+  const defaultBase = isOyl ? 'https://ownyourlabs.com' : isDcl ? 'https://dirtcheaplabs.com' : isMito ? 'https://mitohealth.com' : 'https://goodlabs.com';
   // Strip a trailing slash so `${baseUrl}${path}` / `${baseUrl}/test/...` don't get a double slash.
   const base = (dbBaseUrl || websiteUrl || defaultBase).replace(/\/+$/, '');
+  const apiBaseDefault = isDcl ? 'https://api.dirtcheaplabs.com' : isMito ? 'https://trpc-bdhnb7m5vq-uc.a.run.app' : undefined;
   return {
     baseUrl: base,
-    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : isDcl ? '/alacarte' : '/book-tests?step=PANEL_SELECTION'),
+    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : isDcl ? '/alacarte' : isMito ? '/shop' : '/book-tests?step=PANEL_SELECTION'),
     adapter,
-    ...(isDcl ? { apiBase: (selectors.apiBase as string) || 'https://api.dirtcheaplabs.com' } : {}),
+    ...(apiBaseDefault ? { apiBase: (selectors.apiBase as string) || apiBaseDefault } : {}),
     rateLimitMs: 500,
     matchOptions: {
-      matchPriority: ['quest', 'labcorp', 'name'],
+      // MitoHealth has no lab codes → name matching only.
+      matchPriority: isMito ? ['name'] : ['quest', 'labcorp', 'name'],
       includePanels: false,
       flagAmbiguous: true,
       // OYL exposes one order code per test (Quest OR LabCorp) unlabelled — match against both.
@@ -153,8 +156,13 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
     // matched
     summary.matched++;
-    if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) {
-      await prisma.offering.update({ where: { id: offering.id }, data: { externalUrl: result.sourceUrl } });
+    // Store the product URL + member price (secondary info, updated live — not subject to the Change
+    // Queue, which governs only the compared non-member currentPrice).
+    const offeringUpdate: Record<string, unknown> = {};
+    if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
+    if (result.memberPrice != null) offeringUpdate.memberPrice = new Decimal(result.memberPrice);
+    if (Object.keys(offeringUpdate).length > 0) {
+      await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
     }
     const price = new Decimal(result.price!);
     const priceChanged = !offering.currentPrice || !price.equals(offering.currentPrice);

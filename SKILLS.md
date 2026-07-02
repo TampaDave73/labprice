@@ -138,7 +138,11 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     (`codeMatchAnyProvider`).
   - `dirtcheaplabs` — **API vendor** (`CatalogAdapter.fetchAll`): pulls both lab catalogs from
     `api.dirtcheaplabs.com/api/catalog/alacarte?lab=…` and takes the cheaper lab (`mergeCodeTiers`).
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs}.ts`.
+  - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
+    each product variant has member + non-member prices (no codes → name-matched). We rank on the
+    non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),
+    shown as an inline secondary line on the test page (not a tooltip — mobile-friendly).
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth}.ts`.
 - **Match safety**: a code hit is trusted only if the product name shares a *distinctive* token with
   our test (`sharesStrongToken`) — guards against wrong/stale codes (e.g. a bad Quest code resolving
   to a different test) and generic-word name collisions ("Vitamin B12" ≠ "Vitamin A").

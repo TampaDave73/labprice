@@ -24,6 +24,7 @@ export { ultaLabTestsConfig } from './configs/ulta-lab-tests';
 export { goodlabsCatalogConfig, GOODLABS_SLUG } from './configs/goodlabs';
 export { ownYourLabsCatalogConfig, OWNYOURLABS_SLUG } from './configs/ownyourlabs';
 export { dirtCheapLabsCatalogConfig, DIRTCHEAPLABS_SLUG } from './configs/dirtcheaplabs';
+export { mitoHealthCatalogConfig, MITOHEALTH_SLUG } from './configs/mitohealth';
 
 // Catalog scraper (search-and-match discovery: catalog → product pages → match by code/name)
 export type {
@@ -40,7 +41,8 @@ export type {
 export { parseGoodLabsCatalog, parseGoodLabsProduct } from './catalog/goodlabs-parser';
 export { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './catalog/ownyourlabs-parser';
 export { mergeDirtCheapLabsCatalog, fetchDirtCheapLabsCatalog } from './catalog/dirtcheaplabs-parser';
-export { goodlabsAdapter, ownYourLabsAdapter, dirtCheapLabsAdapter, ADAPTERS, getAdapter } from './catalog/adapters';
+export { parseMitoHealthCatalog, fetchMitoHealthCatalog } from './catalog/mitohealth-parser';
+export { goodlabsAdapter, ownYourLabsAdapter, dirtCheapLabsAdapter, mitoHealthAdapter, ADAPTERS, getAdapter } from './catalog/adapters';
 export type { CatalogAdapter } from './catalog/types';
 export { matchTestToProducts, nameMatches, nameTokens } from './catalog/matcher';
 export { decodeNextFlight, extractJsonObject } from './catalog/flight-parser';

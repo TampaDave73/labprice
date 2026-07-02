@@ -8,6 +8,8 @@ interface Offering {
   vendorName: string;
   vendorSlug: string;
   price: number;
+  memberPrice: number | null;
+  membershipNote: string | null;
   externalUrl: string | null;
 }
 
@@ -271,6 +273,14 @@ export default function TestDetailClient({ test, offerings }: Props) {
                     <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.18 280)' }}>
                       ${row.price.toFixed(2)}
                     </span>
+                    {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
+                        above is the compared/ranked one; this is the discounted member alternative. */}
+                    {row.memberPrice != null && row.memberPrice < row.price && (
+                      <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 280)', marginTop: 2, lineHeight: 1.3 }}>
+                        ${row.memberPrice.toFixed(2)} for members
+                        {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 280)' }}> ({row.membershipNote})</span> : null}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <a

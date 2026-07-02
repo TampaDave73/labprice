@@ -308,6 +308,8 @@ model Vendor {
   websiteUrl           String?    @map("website_url")
   affiliateUrlTemplate String?    @map("affiliate_url_template")
   logoUrl              String?    @map("logo_url")
+  // Short note about this vendor's membership program shown next to member prices, e.g. "$9/mo membership".
+  membershipNote       String?    @map("membership_note")
   isActive             Boolean    @default(true) @map("is_active")
   trustLevel           TrustLevel @default(MEDIUM) @map("trust_level")
   // Manual pin for trust. When null, effective trust = auto-computed from scraper health.
@@ -332,6 +334,10 @@ model Offering {
   vendorId       String    @map("vendor_id")
   currentPrice   Decimal?  @map("current_price") @db.Decimal(10, 2)
   previousPrice  Decimal?  @map("previous_price") @db.Decimal(10, 2)
+  // Optional discounted price for members of a vendor's membership program (e.g. MitoHealth $9/mo).
+  // `currentPrice` stays the non-member price so cross-vendor ranking is apples-to-apples; the member
+  // price is shown as a secondary inline note. See Vendor.membershipNote for the membership terms.
+  memberPrice    Decimal?  @map("member_price") @db.Decimal(10, 2)
   priceUpdatedAt DateTime? @map("price_updated_at")
   externalUrl    String?   @map("external_url")
   isActive       Boolean   @default(true) @map("is_active")

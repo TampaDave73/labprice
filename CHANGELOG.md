@@ -10,6 +10,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Member/non-member pricing + fourth scraper (MitoHealth).** MitoHealth (`mitohealth.com`) is a
+  $9/mo membership vendor; its /shop catalog loads from a tRPC API with per-provider variants carrying
+  both member and non-member prices (no lab codes → name matching). New `mitohealth` API adapter.
+  - **Data model**: added `Offering.memberPrice` and `Vendor.membershipNote`. We **compare/rank on the
+    non-member price** (apples-to-apples with non-membership vendors) and show the member price as a
+    small **inline** secondary line on the test page — e.g. "$5.85 for members ($9/mo membership)" —
+    not a hover tooltip (works on mobile). Threaded `memberPrice` through the matcher + persistence.
+  - Verified live: 600 products via the paginated API; 8 seed tests matched with both prices (CBC
+    $3.78/$2.70, Ferritin $8.19/$5.85, Vitamin D $13.63/$9.73, …).
 - **Third scraper — Dirt Cheap Labs** (`dirtcheaplabs.com`), an **API vendor**. Its catalog loads from
   `api.dirtcheaplabs.com/api/catalog/alacarte?lab=labcorp|quest` — one call per lab, each item with a
   `lab_code` + `retail_cents`. The catalog scraper now supports API adapters (`CatalogAdapter.fetchAll`)

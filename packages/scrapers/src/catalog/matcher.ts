@@ -152,6 +152,7 @@ function matched(tier: MatchTier, best: Flat, candidates: MatchCandidate[]): Mat
     status: 'matched',
     matchedBy: tier,
     price: best.provider.price,
+    memberPrice: best.provider.memberPrice ?? null,
     provider: best.provider.labProvider,
     sourceUrl: best.product.url,
     candidates,

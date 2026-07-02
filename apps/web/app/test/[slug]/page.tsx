@@ -61,6 +61,8 @@ export default async function TestDetailPage({ params }: Props) {
     vendorName: o.vendor.name,
     vendorSlug: o.vendor.slug,
     price: Number(o.currentPrice),
+    memberPrice: o.memberPrice != null ? Number(o.memberPrice) : null,
+    membershipNote: o.vendor.membershipNote ?? null,
     externalUrl: o.externalUrl,
   }));
 
