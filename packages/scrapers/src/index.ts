@@ -22,6 +22,7 @@ export { publishPriceChange } from './publisher';
 export { lifeExtensionConfig } from './configs/life-extension';
 export { ultaLabTestsConfig } from './configs/ulta-lab-tests';
 export { goodlabsCatalogConfig, GOODLABS_SLUG } from './configs/goodlabs';
+export { ownYourLabsCatalogConfig, OWNYOURLABS_SLUG } from './configs/ownyourlabs';
 
 // Catalog scraper (search-and-match discovery: catalog → product pages → match by code/name)
 export type {
@@ -36,6 +37,9 @@ export type {
   TestKey,
 } from './catalog/types';
 export { parseGoodLabsCatalog, parseGoodLabsProduct } from './catalog/goodlabs-parser';
+export { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './catalog/ownyourlabs-parser';
+export { goodlabsAdapter, ownYourLabsAdapter, ADAPTERS, getAdapter } from './catalog/adapters';
+export type { CatalogAdapter } from './catalog/types';
 export { matchTestToProducts, nameMatches, nameTokens } from './catalog/matcher';
 export { decodeNextFlight, extractJsonObject } from './catalog/flight-parser';
 export {

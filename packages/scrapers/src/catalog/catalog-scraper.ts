@@ -2,13 +2,15 @@
 // match OUR tests into it. Network access is injected (`fetchHtml`) so the whole flow is testable
 // against fixtures and the engine choice (HTTP vs browser) stays a caller concern.
 
-import { parseGoodLabsCatalog, parseGoodLabsProduct } from './goodlabs-parser';
-import { matchTestToProducts, nameTokens } from './matcher';
-import type { CatalogEntry, CatalogProduct, MatchOptions, MatchResult, TestKey } from './types';
+import { goodlabsAdapter } from './adapters';
+import { matchTestToProducts, nameMatches } from './matcher';
+import type { CatalogAdapter, CatalogEntry, CatalogProduct, MatchOptions, MatchResult, TestKey } from './types';
 
 export interface CatalogScrapeConfig {
   baseUrl: string;
   catalogPath: string;
+  /** Vendor adapter (parsers + product-URL builder). Defaults to GoodLabs. */
+  adapter?: CatalogAdapter;
   /** Milliseconds to wait between product-page fetches (be polite to the vendor). */
   rateLimitMs?: number;
   matchOptions?: MatchOptions;
@@ -29,14 +31,16 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Fetch + parse the vendor's catalog listing (every test/panel it sells). */
 export async function fetchCatalogEntries(deps: FetchDeps, cfg: CatalogScrapeConfig): Promise<CatalogEntry[]> {
+  const adapter = cfg.adapter ?? goodlabsAdapter;
   const html = await deps.fetchHtml(`${cfg.baseUrl}${cfg.catalogPath}`);
-  return parseGoodLabsCatalog(html);
+  return adapter.parseCatalog(html);
 }
 
 /** Fetch + parse one product detail page. Returns null if the page has no parseable product. */
 export async function fetchProduct(deps: FetchDeps, cfg: CatalogScrapeConfig, slug: string): Promise<CatalogProduct | null> {
-  const html = await deps.fetchHtml(`${cfg.baseUrl}/tests/${slug}`);
-  return parseGoodLabsProduct(html, cfg.baseUrl);
+  const adapter = cfg.adapter ?? goodlabsAdapter;
+  const html = await deps.fetchHtml(adapter.productUrl(cfg.baseUrl, slug));
+  return adapter.parseProduct(html, cfg.baseUrl, slug);
 }
 
 /**
@@ -58,11 +62,9 @@ export async function buildCatalogIndex(
 
   let selected = entries;
   if (candidateTests && candidateTests.length > 0) {
-    const testTokenSets = candidateTests.map((t) => nameTokens(t.name));
-    selected = entries.filter((e) => {
-      const et = nameTokens(e.name);
-      return testTokenSets.some((ts) => [...ts].some((tok) => et.has(tok)));
-    });
+    // Candidate = an entry whose name is a token-subset match of a linked test (same logic as the
+    // name-match tier). Tighter than "shares any token", so we don't fetch every "…Panel" page.
+    selected = entries.filter((e) => candidateTests.some((t) => nameMatches(t.name, e.name)));
     deps.onLog?.(`narrowed to ${selected.length}/${entries.length} candidate product page(s)`);
   }
 

@@ -79,12 +79,15 @@ pnpm dev:all             # web + worker (turbo dev)
    Resolve trust *before* creating a `ScrapeRun` — the in-progress RUNNING run counts against success
    rate and would force a brand-new vendor to LOW (see `apps/worker/src/discovery.ts`).
 7. **Two scrape strategies.** Per-URL (`scrape-execute`; offering stores a product URL) *and* catalog
-   discovery (`scrape-discover` → `apps/worker/src/discovery.ts` → `@labprice/scrapers` `catalog/*`)
-   for vendors like **GoodLabs** that publish a catalog instead of per-test URLs. A vendor is
-   catalog-mode when `ScrapeVendorConfig.selectors.mode === 'catalog'`. GoodLabs data comes from
-   JSON-LD + Next.js flight chunks over plain HTTP (no browser/CSS selectors); match priority is
-   Quest→LabCorp→name, panels (`isPanel`) excluded, and >1 surviving price ⇒ flagged ambiguous (never
-   guessed). Full details + how-to-run in `SKILLS.md`.
+   discovery for vendors that publish a catalog instead of per-test URLs. Catalog discovery is
+   **adapter-based** (`@labprice/scrapers` `catalog/adapters.ts`): the crawler/matcher/persistence
+   (`catalog/persist.ts` → `runVendorDiscovery`) are vendor-agnostic; each site's parsing is its own
+   module. Live adapters: **GoodLabs** (JSON-LD + Next.js flight chunks; `/tests/<slug>`) and **Own
+   Your Labs** (Phoenix HTML; `/shop` → `/test/<UUID>`, matches a single Order Code against both our
+   codes via `codeMatchAnyProvider`). A vendor is catalog-mode when `selectors.mode === 'catalog'`,
+   with `selectors.adapter` picking the parser. Runs **inline in the web app** ("Scrape now"/add-test,
+   no worker needed) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name, panels
+   excluded, >1 price ⇒ ambiguous (never guessed). All plain HTTP. Details in `SKILLS.md`.
 
 ## Verifying changes
 

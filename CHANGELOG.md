@@ -9,6 +9,21 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added
+- **Second scraper — Own Your Labs** (`ownyourlabs.com`). A Phoenix/LiveView reseller: the `/shop`
+  page lists every test as a card linking to `/test/<UUID>`; each product page carries a single lab
+  **Order Code** (a Quest or LabCorp code) plus the price. Matching uses that order code against BOTH
+  our Quest and LabCorp codes (`MatchOptions.codeMatchAnyProvider`). Verified live end-to-end: 9/9
+  seed tests matched (CBC $8.40, CMP $10, Ferritin $15, HbA1c $8.80, Lipid $10, PSA $16.80, TSH
+  $13.20, Testosterone $29.80, Vitamin D $44.60) in ~12s, with exact product URLs stored.
+- **Catalog scraper is now adapter-based** (`packages/scrapers/src/catalog/adapters.ts`): the crawler,
+  matcher, and persistence are vendor-agnostic; each site's parsing lives in its own module
+  (`goodlabs-parser.ts`, `ownyourlabs-parser.ts`). A vendor's `ScrapeVendorConfig.selectors.adapter`
+  (`goodlabs` | `ownyourlabs`) picks the parser — exposed as a **Catalog source** dropdown in the
+  admin Scraper Configuration.
+- Name-narrowing now uses token-subset matching (same as the name tier), cutting candidate fetches
+  (~46→18 for a 9-test vendor) and runtime (~36s→12s).
+
 ### Fixed
 - **Catalog discovery now runs inline in the web app** (`@labprice/scrapers` `catalog/persist.ts`),
   fixing two admin actions that hung/stalled by enqueuing to Redis:

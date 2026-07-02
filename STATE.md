@@ -36,25 +36,26 @@
 - Public **breadcrumb category is a link**; admin **catalog price shows `$` + 2 decimals**.
 - **Vendors trimmed to Good Labs only** — all other seed vendors + their offerings soft-deleted.
 
+### Second scraper — Own Your Labs (DONE)
+- `ownyourlabs.com` (Phoenix/LiveView). Adapter `ownyourlabs`: `/shop` cards → `/test/<UUID>` pages;
+  each product page has a single lab **Order Code** (Quest or LabCorp) matched against both our codes
+  (`codeMatchAnyProvider`). Catalog scraper refactored to **adapter-based** so this reused the matcher
+  + persistence; only the parser is new. 11 new unit tests (50 total). Verified live: 9/9 seed tests
+  matched (~12s) with exact product URLs.
+
 ### Current live DB state
-- **1 vendor: Good Labs** (`good-labs`), catalog mode (HTTP, `https://goodlabs.com`,
-  `/book-tests?step=PANEL_SELECTION`). 3 offerings: **CBC $4** and **Lipid Panel $15** (matched +
-  published, with product URLs); **Estradiol** unmatched (GoodLabs has no standalone Estradiol).
+- **2 vendors**: **Good Labs** (`good-labs`, adapter goodlabs) — 3 offerings; **Own Your Labs**
+  (`own-your-labs`, adapter ownyourlabs) — 9 offerings, all priced (CBC $8.40, CMP $10, Ferritin $15,
+  HbA1c $8.80, Lipid $10, PSA $16.80, TSH $13.20, Testosterone $29.80, Vitamin D $44.60).
 
 ---
 
 ## ⏭️ Next
 
-### 1. Second scraper — **Our Own Labs** (`ownyourlabs.com`)
-- Search endpoint (per user): **`https://ownyourlabs.com/shop?search=<query>`** — looks like a
-  **per-search / query-param** model (Shopify-style `/shop?search=`), *different* from GoodLabs'
-  single-catalog page. Likely a different engine path than catalog mode.
-- Steps: investigate the real page structure (is `/shop?search=` server-rendered? JSON-LD? a
-  products API? Shopify `/products.json`?), decide search-by-code/name strategy, add a parser in
-  `packages/scrapers/src/catalog/` (matcher + orchestrator + persist are vendor-agnostic and reusable),
-  wire a vendor config, add fixtures + tests, run end-to-end against a real vendor row + DB.
-- Reuse: the `matchTestToProducts` rules (Quest→LabCorp→name, panel exclusion, ambiguity flag) and
-  `runVendorDiscovery` persistence should carry over; only the site-specific fetch+parse is new.
+### 1. Third scraper — TBD
+- The adapter pattern is proven with two live vendors. Onboarding a new catalog vendor is now: write
+  a `<vendor>-parser.ts`, register in `adapters.ts`, add a config, set `selectors.adapter`. See the
+  SKILLS.md "onboard another catalog vendor" recipe.
 
 ### 2. Save / Price Alert (public test page) — **ON HOLD**
 - These require a **full customer auth flow (sign up / sign in)** — none exists today (only DB-backed

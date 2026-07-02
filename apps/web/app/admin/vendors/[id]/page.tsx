@@ -45,6 +45,7 @@ type ConfigForm = {
   engine: 'PLAYWRIGHT' | 'SELENIUM' | 'HTTP';
   baseUrl: string;
   catalogMode: boolean;
+  catalogAdapter: string;
   catalogPath: string;
   priceSelector: string;
   nameSelector: string;
@@ -56,7 +57,7 @@ type ConfigForm = {
 };
 
 const DEFAULT_CONFIG: ConfigForm = {
-  engine: 'HTTP', baseUrl: '', catalogMode: false, catalogPath: '', priceSelector: '', nameSelector: '', containerSelector: '',
+  engine: 'HTTP', baseUrl: '', catalogMode: false, catalogAdapter: 'goodlabs', catalogPath: '', priceSelector: '', nameSelector: '', containerSelector: '',
   scheduleCron: '', isEnabled: true, timeoutMs: 30000, maxRetries: 3,
 };
 
@@ -123,6 +124,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
           engine: c.engine ?? 'HTTP',
           baseUrl: c.baseUrl ?? '',
           catalogMode: sel.mode === 'catalog',
+          catalogAdapter: sel.adapter ?? 'goodlabs',
           catalogPath: sel.catalogPath ?? '',
           priceSelector: sel.priceSelector ?? '',
           nameSelector: sel.nameSelector ?? '',
@@ -161,7 +163,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     // Map the catalogMode checkbox to the `mode` the API persists into selectors.
     await fetch(`/api/v1/admin/vendors/${id}/scrape-config`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...config, mode: config.catalogMode ? 'catalog' : 'per-url' }),
+      body: JSON.stringify({ ...config, mode: config.catalogMode ? 'catalog' : 'per-url', adapter: config.catalogAdapter }),
     });
     setSavingConfig(false); setMsg('Scraper config saved.');
   };
@@ -357,10 +359,19 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
             <label htmlFor="catalogMode" className="text-sm font-medium text-brand-700">Catalog mode (crawl catalog &amp; match by Quest/LabCorp code or name)</label>
           </div>
           {config.catalogMode && (
-            <div className="mt-3">
-              <label className={labelCls}>Catalog path</label>
-              <input className="admin-input" placeholder="/book-tests?step=PANEL_SELECTION" value={config.catalogPath} onChange={(e) => setC('catalogPath', e.target.value)} />
-              <p className="mt-1 text-xs text-brand-400">The scraper fetches Base URL + this path to list all tests, then matches each linked test and stages prices. CSS selectors below are ignored in this mode. Use “Scrape now” or link a test to trigger discovery (worker must be running).</p>
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>Catalog source (adapter)</label>
+                <select className="admin-input" value={config.catalogAdapter} onChange={(e) => setC('catalogAdapter', e.target.value)}>
+                  <option value="goodlabs">GoodLabs (goodlabs.com)</option>
+                  <option value="ownyourlabs">Own Your Labs (ownyourlabs.com)</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Catalog path</label>
+                <input className="admin-input" placeholder="/shop" value={config.catalogPath} onChange={(e) => setC('catalogPath', e.target.value)} />
+              </div>
+              <p className="col-span-2 mt-1 text-xs text-brand-400">The scraper fetches Base URL + catalog path to list all tests, then matches each linked test by Quest/LabCorp code or name and stages prices. CSS selectors below are ignored. “Scrape now” runs it inline (no worker needed).</p>
             </div>
           )}
         </div>

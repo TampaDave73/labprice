@@ -38,6 +38,7 @@ export function matchTestToProducts(
   const priority = opts.matchPriority ?? DEFAULT_PRIORITY;
   const includePanels = opts.includePanels ?? false;
   const flagAmbiguous = opts.flagAmbiguous ?? true;
+  const anyProvider = opts.codeMatchAnyProvider ?? false;
 
   // Flatten to (product, provider) pairs, dropping panels unless explicitly included.
   const flat: Flat[] = [];
@@ -49,7 +50,7 @@ export function matchTestToProducts(
   }
 
   for (const tier of priority) {
-    const hits = flat.filter((f) => tierMatches(tier, test, f.provider, f.product));
+    const hits = flat.filter((f) => tierMatches(tier, test, f.provider, f.product, anyProvider));
     if (hits.length === 0) continue;
 
     const candidates = hits.map(toCandidate);
@@ -97,12 +98,18 @@ export function matchTestToProducts(
   };
 }
 
-function tierMatches(tier: MatchTier, test: TestKey, provider: ProviderOffering, product: CatalogProduct): boolean {
+function tierMatches(
+  tier: MatchTier,
+  test: TestKey,
+  provider: ProviderOffering,
+  product: CatalogProduct,
+  anyProvider: boolean,
+): boolean {
   if (tier === 'quest') {
-    return provider.labProvider === 'quest' && !!test.questCode && provider.labTestIDs.includes(test.questCode);
+    return (anyProvider || provider.labProvider === 'quest') && !!test.questCode && provider.labTestIDs.includes(test.questCode);
   }
   if (tier === 'labcorp') {
-    return provider.labProvider === 'labcorp' && !!test.labcorpCode && provider.labTestIDs.includes(test.labcorpCode);
+    return (anyProvider || provider.labProvider === 'labcorp') && !!test.labcorpCode && provider.labTestIDs.includes(test.labcorpCode);
   }
   // name: compare our test name against the product/provider name (normalized token-subset).
   return nameMatches(test.name, product.name) || nameMatches(test.name, provider.name);

@@ -81,4 +81,24 @@ export interface MatchOptions {
   flagAmbiguous?: boolean;
   /** Optional: prefer this lab when a tier matches several providers of the SAME product (e.g. 'quest'). */
   preferredProvider?: string;
+  /**
+   * When true, a code tier matches a provider regardless of its labProvider — i.e. the Quest tier
+   * matches any provider whose codes include our questCode, and likewise for LabCorp. Use for vendors
+   * (Own Your Labs) that expose a single "order code" per test which may be either a Quest OR a
+   * LabCorp code, without labelling which. Default false (GoodLabs: strict per-lab matching).
+   */
+  codeMatchAnyProvider?: boolean;
+}
+
+/**
+ * A per-vendor adapter: how to turn that vendor's catalog + product HTML into our shared shapes, and
+ * how to build a product URL from a slug. Lets the catalog scraper stay vendor-agnostic (GoodLabs,
+ * Own Your Labs, …) while each site's parsing lives in its own module.
+ */
+export interface CatalogAdapter {
+  name: string;
+  parseCatalog(html: string): CatalogEntry[];
+  /** `slug` is passed by the crawler (some sites, e.g. OYL, don't repeat their id in the page). */
+  parseProduct(html: string, baseUrl: string, slug?: string): CatalogProduct | null;
+  productUrl(baseUrl: string, slug: string): string;
 }

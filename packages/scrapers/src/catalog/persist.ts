@@ -14,6 +14,7 @@
 //   unmatched → ScrapeResult(UNMATCHED); nothing staged.
 import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
+import { getAdapter } from './adapters';
 import type { TestKey } from './types';
 
 const Decimal = Prisma.Decimal;
@@ -39,16 +40,24 @@ export interface DiscoverySummary {
   autoApprovedStagedIds: string[];
 }
 
-/** Default catalog config, overlaid with per-vendor DB config (baseUrl / catalogPath in selectors). */
+/**
+ * Build the catalog config from the vendor's DB config. `selectors.adapter` ('goodlabs' | 'ownyourlabs')
+ * picks the site parser + product-URL shape; the catalog path and match options default per adapter.
+ */
 function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, selectors: Record<string, unknown>): CatalogScrapeConfig {
+  const adapter = getAdapter(selectors.adapter as string | undefined);
+  const isOyl = adapter.name === 'ownyourlabs';
   return {
-    baseUrl: dbBaseUrl || websiteUrl || 'https://goodlabs.com',
-    catalogPath: (selectors.catalogPath as string) || '/book-tests?step=PANEL_SELECTION',
+    baseUrl: dbBaseUrl || websiteUrl || (isOyl ? 'https://ownyourlabs.com' : 'https://goodlabs.com'),
+    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : '/book-tests?step=PANEL_SELECTION'),
+    adapter,
     rateLimitMs: 500,
     matchOptions: {
       matchPriority: ['quest', 'labcorp', 'name'],
       includePanels: false,
       flagAmbiguous: true,
+      // OYL exposes one order code per test (Quest OR LabCorp) unlabelled — match against both.
+      codeMatchAnyProvider: isOyl,
       ...(typeof selectors.preferredProvider === 'string' ? { preferredProvider: selectors.preferredProvider } : {}),
     },
   };

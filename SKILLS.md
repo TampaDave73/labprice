@@ -131,10 +131,15 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   test (Catalog → Add) prices just that offering inline. Both use name-narrowing so only a few catalog
   pages are fetched (~2s). Clean matches auto-publish; ambiguous ones go to the Change Queue. The
   worker's `scrape-discover` queue still exists for scheduled/background runs (Redis storm fixed).
-- **To onboard another catalog vendor**: add a parser in `packages/scrapers/src/catalog/` (the
-  matcher, orchestrator, and worker are vendor-agnostic), set the vendor's `ScrapeVendorConfig`
-  selectors to `{ mode: 'catalog', catalogPath, preferredProvider? }` (via the admin toggle or
-  directly), and link its tests.
+- **Two live adapters** (`catalog/adapters.ts`): `goodlabs` (JSON-LD + Next.js flight chunks,
+  `/tests/<slug>`) and `ownyourlabs` (Phoenix HTML, `/shop` → `/test/<UUID>`, matches a single Order
+  Code against both our codes via `codeMatchAnyProvider`). Pick per vendor with the admin **Catalog
+  source** dropdown (`selectors.adapter`). E2E runner: `apps/worker/scripts/discover-ownyourlabs.ts`.
+- **To onboard another catalog vendor**: add a `<vendor>-parser.ts` in `packages/scrapers/src/catalog/`
+  exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
+  add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,
+  catalogPath }`. The matcher, crawler (with name-narrowing), and `runVendorDiscovery` persistence are
+  all reused — only the site-specific parsing is new.
 
 ### Verifying UI
 Use the preview tools (`preview_start`, `preview_eval`, `preview_screenshot`) with the admin
