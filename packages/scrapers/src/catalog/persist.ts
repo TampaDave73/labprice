@@ -47,8 +47,10 @@ export interface DiscoverySummary {
 function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, selectors: Record<string, unknown>): CatalogScrapeConfig {
   const adapter = getAdapter(selectors.adapter as string | undefined);
   const isOyl = adapter.name === 'ownyourlabs';
+  // Strip a trailing slash so `${baseUrl}${path}` / `${baseUrl}/test/...` don't get a double slash.
+  const base = (dbBaseUrl || websiteUrl || (isOyl ? 'https://ownyourlabs.com' : 'https://goodlabs.com')).replace(/\/+$/, '');
   return {
-    baseUrl: dbBaseUrl || websiteUrl || (isOyl ? 'https://ownyourlabs.com' : 'https://goodlabs.com'),
+    baseUrl: base,
     catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : '/book-tests?step=PANEL_SELECTION'),
     adapter,
     rateLimitMs: 500,
