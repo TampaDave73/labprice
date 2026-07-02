@@ -15,7 +15,8 @@
 import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
 import { getAdapter } from './adapters';
-import type { TestKey } from './types';
+import { matchTestToProducts } from './matcher';
+import type { CatalogProduct, TestKey } from './types';
 
 const Decimal = Prisma.Decimal;
 
@@ -114,9 +115,11 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
   const started = Date.now();
   let matches: OfferingMatch[];
+  let catalogProducts: CatalogProduct[] = [];
   try {
     const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(), onLog: log }, cfg, { narrow: !opts.exhaustive });
     matches = result.matches;
+    catalogProducts = result.products;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await prisma.scrapeRun.update({ where: { id: run.id }, data: { status: 'FAILED', errorsCount: 1, completedAt: new Date(), durationMs: Date.now() - started } });
@@ -127,15 +130,17 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
   const summary: DiscoverySummary = { runId: run.id, matched: 0, ambiguous: 0, unmatched: 0, staged: 0, autoApprovedStagedIds: [] };
   const fetchHtml = opts.fetchHtml ?? httpFetchHtml();
+  const productsBySlug = new Map(catalogProducts.map((p) => [p.slug, p]));
 
   for (const { test, result: rawResult } of matches) {
     const offering = testToOffering.get(test.id)!;
 
     // Manual-URL override: if a test didn't match by code/name but the admin pinned a product URL,
-    // fetch that exact page and price it directly (page-based adapters only — GoodLabs, OYL).
+    // price that exact product — by looking its slug up in the fetched catalog (works for API vendors
+    // like MitoHealth/DCL) or by fetching the page (page vendors GoodLabs/OYL).
     let result = rawResult;
     if (rawResult.status === 'unmatched' && offering.externalUrl) {
-      const pinned = await priceFromPinnedUrl(offering.externalUrl, cfg, fetchHtml).catch(() => null);
+      const pinned = await priceFromPinnedUrl(offering.externalUrl, test, cfg, fetchHtml, productsBySlug).catch(() => null);
       if (pinned) {
         log(`  pinned URL priced ${test.name} → $${pinned.price}`);
         result = { status: 'matched', matchedBy: 'name', price: pinned.price, memberPrice: pinned.memberPrice, provider: pinned.provider, sourceUrl: pinned.sourceUrl, candidates: [], reason: `Priced from pinned URL` };
@@ -221,15 +226,28 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
  */
 async function priceFromPinnedUrl(
   url: string,
+  test: TestKey,
   cfg: CatalogScrapeConfig,
   fetchHtml: (u: string) => Promise<string>,
+  productsBySlug: Map<string, CatalogProduct>,
 ): Promise<{ price: number; memberPrice: number | null; sourceUrl: string; provider: string } | null> {
-  const adapter = cfg.adapter;
-  if (!adapter?.parseProduct) return null; // API adapters (DCL, Mito) have no per-product page
-  const slug = url.split('/').pop()?.split('?')[0] || undefined;
-  const html = await fetchHtml(url);
-  const product = adapter.parseProduct(html, cfg.baseUrl, slug);
+  const slug = (url.split(/[?#]/)[0] ?? url).split('/').filter(Boolean).pop();
+  // 1. Look the slug up in the fetched catalog (API vendors fetch the whole catalog, so it's there).
+  let product = slug ? productsBySlug.get(slug) : undefined;
+  // 2. Page vendors: the narrowed crawl may not have fetched it — get the page directly.
+  if (!product && cfg.adapter?.parseProduct) {
+    const html = await fetchHtml(url);
+    product = cfg.adapter.parseProduct(html, cfg.baseUrl, slug) ?? undefined;
+  }
   if (!product) return null;
+
+  // Prefer the code/name match on the pinned product — this picks the RIGHT provider (e.g. our Quest
+  // code → the Quest variant), not just the cheapest. Fall back to the cheapest non-panel provider
+  // when nothing matches (the admin pinned this URL, so trust it).
+  const m = matchTestToProducts(test, [product], cfg.matchOptions);
+  if (m.status === 'matched' && m.price != null) {
+    return { price: m.price, memberPrice: m.memberPrice ?? null, sourceUrl: m.sourceUrl ?? product.url, provider: m.provider ?? '' };
+  }
   const best = product.providers
     .filter((p) => !p.isPanel && p.price != null)
     .sort((a, b) => a.price! - b.price!)[0];

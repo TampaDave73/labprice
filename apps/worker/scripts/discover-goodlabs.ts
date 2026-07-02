@@ -22,9 +22,9 @@ const SEED_TEST_SLUGS = [
 async function main() {
   // 1. GoodLabs vendor (catalog mode).
   const vendor = await prisma.vendor.upsert({
-    where: { slug: 'goodlabs' },
+    where: { slug: 'good-labs' },
     update: { websiteUrl: 'https://goodlabs.com', isActive: true },
-    create: { name: 'GoodLabs', slug: 'goodlabs', websiteUrl: 'https://goodlabs.com', isActive: true, trustLevel: 'MEDIUM' },
+    create: { name: 'Good Labs', slug: 'good-labs', websiteUrl: 'https://goodlabs.com', isActive: true, trustLevel: 'MEDIUM' },
   });
 
   // 2. Scraper config → catalog mode.
