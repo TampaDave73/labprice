@@ -3,7 +3,8 @@ import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { enqueueDiscover, isCatalogMode } from '@/lib/scrape-queue';
+import { isCatalogMode } from '@/lib/catalog-mode';
+import { runVendorDiscovery, publishStagedChange } from '@labprice/scrapers/src/catalog/persist';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,12 +28,24 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: { code: 'no_offerings', message: 'This vendor has no active offerings to scrape.' } }, { status: 400 });
   }
 
-  // Catalog-mode vendors (GoodLabs) use one discovery job that crawls the catalog and matches every
-  // linked test by code/name — not one fetch-a-URL job per offering.
+  // Catalog-mode vendors (GoodLabs): crawl the catalog and match every linked test by code/name,
+  // INLINE — no worker/Redis needed — so the admin gets an immediate result summary. Auto-approved
+  // changes are published here too; ambiguous ones land in the Change Queue.
   const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true } });
   if (isCatalogMode(config?.selectors)) {
-    await enqueueDiscover(vendorId, undefined, 'MANUAL');
-    return NextResponse.json({ data: { enqueued: 1, mode: 'catalog', offerings: offerings.length } });
+    const summary = await runVendorDiscovery({ vendorId, triggeredBy: 'MANUAL' });
+    let published = 0;
+    for (const id of summary.autoApprovedStagedIds) if (await publishStagedChange(id)) published++;
+    return NextResponse.json({
+      data: {
+        mode: 'catalog',
+        offerings: offerings.length,
+        matched: summary.matched,
+        ambiguous: summary.ambiguous,
+        unmatched: summary.unmatched,
+        published,
+      },
+    });
   }
 
   const connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });

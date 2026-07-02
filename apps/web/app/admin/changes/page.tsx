@@ -9,8 +9,9 @@ type Change = {
   status: string;
   createdAt: string;
   offering: {
+    externalUrl: string | null;
     test: { id: string; name: string };
-    vendor: { id: string; name: string };
+    vendor: { id: string; name: string; websiteUrl: string | null };
   };
 };
 
@@ -124,7 +125,21 @@ export default function ChangeQueuePage() {
                   <tr key={c.id} className="border-b border-brand-100 hover:bg-brand-50/50">
                     <td className="p-3"><input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} /></td>
                     <td className="p-3 font-medium text-brand-900">{c.offering.test.name}</td>
-                    <td className="p-3 text-brand-600">{c.offering.vendor.name}</td>
+                    <td className="p-3">
+                      {c.offering.externalUrl || c.offering.vendor.websiteUrl ? (
+                        <a
+                          href={(c.offering.externalUrl ?? c.offering.vendor.websiteUrl)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-600 underline decoration-dotted underline-offset-2 hover:text-brand-800"
+                          title="Open the vendor's page for this test to verify the price"
+                        >
+                          {c.offering.vendor.name} ↗
+                        </a>
+                      ) : (
+                        <span className="text-brand-600">{c.offering.vendor.name}</span>
+                      )}
+                    </td>
                     <td className="p-3 text-right text-brand-600">{c.oldPrice ? `$${Number(c.oldPrice).toFixed(2)}` : '—'}</td>
                     <td className="p-3 text-right font-medium text-brand-900">${Number(c.newPrice).toFixed(2)}</td>
                     <td className={`p-3 text-right font-medium ${pct === null ? '' : pct < 0 ? 'text-success-700' : 'text-red-600'}`}>

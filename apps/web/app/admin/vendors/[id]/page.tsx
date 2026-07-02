@@ -172,7 +172,15 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     const res = await fetch(`/api/v1/admin/vendors/${id}/scrape`, { method: 'POST' });
     const j = await res.json().catch(() => ({}));
     setScraping(false);
-    setMsg(res.ok ? `Queued ${j.data?.enqueued ?? 0} scrape job(s). Watch the Change Queue for results.` : (j.error?.message ?? 'Could not start scrape.'));
+    if (!res.ok) {
+      setMsg(j.error?.message ?? 'Could not start scrape.');
+    } else if (j.data?.mode === 'catalog') {
+      const d = j.data;
+      setMsg(`Scraped ${d.offerings} test(s): ${d.matched} matched, ${d.ambiguous} need review, ${d.unmatched} not found — ${d.published} price(s) published.`);
+      loadCatalog(); // refresh to show newly-published prices
+    } else {
+      setMsg(`Queued ${j.data?.enqueued ?? 0} scrape job(s). Watch the Change Queue for results.`);
+    }
   };
 
   const handleDelete = async () => {
@@ -256,12 +264,16 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
                       />
                     </td>
                     <td className="py-2 pr-3">
-                      <input
-                        type="number"
-                        className="admin-input"
-                        defaultValue={o.currentPrice ?? ''}
-                        onBlur={(e) => saveLink(o.id, { currentPrice: e.target.value })}
-                      />
+                      <div className="flex items-center gap-1">
+                        <span className="text-brand-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="admin-input"
+                          defaultValue={o.currentPrice != null ? Number(o.currentPrice).toFixed(2) : ''}
+                          onBlur={(e) => saveLink(o.id, { currentPrice: e.target.value })}
+                        />
+                      </div>
                     </td>
                     <td className="py-2 text-right">
                       <button onClick={() => unlink(o.id)} className="admin-btn admin-btn-sm admin-btn-danger" title="Unlink">✕</button>
@@ -386,8 +398,8 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button onClick={saveConfig} disabled={savingConfig} className="admin-btn">{savingConfig ? 'Saving...' : 'Save Scraper Config'}</button>
-          <button onClick={runScrape} disabled={scraping} className="admin-btn admin-btn-ghost">{scraping ? 'Queuing…' : 'Scrape now'}</button>
-          <span className="text-xs text-brand-400">Queues a price check for every linked test. Requires the worker to be running.</span>
+          <button onClick={runScrape} disabled={scraping} className="admin-btn admin-btn-ghost">{scraping ? 'Scraping…' : 'Scrape now'}</button>
+          <span className="text-xs text-brand-400">Prices every linked test now. Catalog vendors run inline; clean matches publish immediately, ambiguous ones go to the Change Queue.</span>
         </div>
       </div>
     </div>

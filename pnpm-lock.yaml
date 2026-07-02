@@ -20,6 +20,9 @@ importers:
       '@labprice/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@labprice/scrapers':
+        specifier: workspace:*
+        version: link:../../packages/scrapers
       '@labprice/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       offering: {
         include: {
           test: { select: { id: true, name: true } },
-          vendor: { select: { id: true, name: true, slug: true } },
+          vendor: { select: { id: true, name: true, slug: true, websiteUrl: true } },
         },
       },
       reviewedBy: { select: { id: true, name: true, email: true } },

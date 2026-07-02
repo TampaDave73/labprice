@@ -10,6 +10,21 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Fixed
+- **Catalog discovery now runs inline in the web app** (`@labprice/scrapers` `catalog/persist.ts`),
+  fixing two admin actions that hung/stalled by enqueuing to Redis:
+  - **Add test to a catalog vendor** now works — it prices the new offering immediately via a
+    name-narrowed crawl (~2s) instead of a Redis job that could hang.
+  - **"Scrape now"** runs synchronously and returns a real summary (`N matched, N need review, N not
+    found, N published`) shown in the admin, instead of getting stuck on "Queuing…". Clean matches
+    publish immediately; ambiguous ones go to the Change Queue.
+  - Name-narrowing: an interactive scrape only fetches catalog pages whose name overlaps a linked
+    test (a few fetches, not the whole ~50-page catalog). Exhaustive crawl still available.
+- **Change Queue: vendor name is now a link** to the exact product page (`externalUrl`, falling back
+  to the vendor site) so you can open it and verify the scraped price.
+- **Admin catalog price shows `$` + 2 decimals.**
+- **Test-page breadcrumb category is now a link** to that category's page (was plain text).
+- **Removed all seed/demo vendors except Good Labs** (and their offerings) so Vendors/Offerings show
+  only the live vendor. Soft-deleted (reversible).
 - **Change Queue Approve/Reject now works without the worker.** The approve routes enqueued a publish
   job to Redis (`maxRetriesPerRequest: null`), which could hang the request and only updated the live
   price if the worker was running. Approve/reject now publish **inline** in a DB transaction

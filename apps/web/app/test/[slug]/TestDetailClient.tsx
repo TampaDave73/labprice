@@ -121,7 +121,9 @@ export default function TestDetailClient({ test, offerings }: Props) {
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span>{test.category}</span>
+        <Link href={`/category/${test.categorySlug}`} className="td-home-link" style={{ color: 'oklch(0.52 0.15 280)', fontWeight: 500, textDecoration: 'none' }}>
+          {test.category}
+        </Link>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>

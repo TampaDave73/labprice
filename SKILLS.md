@@ -125,11 +125,12 @@ cd packages/scrapers && node ../../apps/worker/node_modules/tsx/dist/cli.mjs scr
 # Full end-to-end: set up GoodLabs vendor + offerings, crawl live, persist + publish (needs docker:dev):
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlabs.ts
 ```
-- **From the admin** (worker must be running — `pnpm dev:worker` or `dev:all`): open the vendor →
-  Scraper Configuration → tick **Catalog mode** + set the catalog path → Save. Then "Scrape now"
-  enqueues a `scrape-discover` job the worker processes; linking a test (Catalog → Add) requeues just
-  that offering. The Redis reconnect storm that used to break the worker is fixed (dedicated
-  per-Worker connections).
+- **From the admin** (no worker needed): open the vendor → Scraper Configuration → tick **Catalog
+  mode** + set the catalog path → Save. "Scrape now" runs discovery **inline** in the web request
+  (`@labprice/scrapers` `catalog/persist.ts` → `runVendorDiscovery`) and returns a summary; linking a
+  test (Catalog → Add) prices just that offering inline. Both use name-narrowing so only a few catalog
+  pages are fetched (~2s). Clean matches auto-publish; ambiguous ones go to the Change Queue. The
+  worker's `scrape-discover` queue still exists for scheduled/background runs (Redis storm fixed).
 - **To onboard another catalog vendor**: add a parser in `packages/scrapers/src/catalog/` (the
   matcher, orchestrator, and worker are vendor-agnostic), set the vendor's `ScrapeVendorConfig`
   selectors to `{ mode: 'catalog', catalogPath, preferredProvider? }` (via the admin toggle or

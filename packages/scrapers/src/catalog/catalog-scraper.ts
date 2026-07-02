@@ -3,7 +3,7 @@
 // against fixtures and the engine choice (HTTP vs browser) stays a caller concern.
 
 import { parseGoodLabsCatalog, parseGoodLabsProduct } from './goodlabs-parser';
-import { matchTestToProducts } from './matcher';
+import { matchTestToProducts, nameTokens } from './matcher';
 import type { CatalogEntry, CatalogProduct, MatchOptions, MatchResult, TestKey } from './types';
 
 export interface CatalogScrapeConfig {
@@ -40,18 +40,36 @@ export async function fetchProduct(deps: FetchDeps, cfg: CatalogScrapeConfig, sl
 }
 
 /**
- * Build the full product index for a vendor: catalog + every product page.
- * WHY fetch all pages (not just name-matches): the Quest/LabCorp codes we match on live only on the
- * detail pages, so narrowing by name first would silently drop code-only matches. The catalog is
- * small (~50 items); a full crawl once per run is the honest way to support code search.
+ * Build a product index for a vendor: catalog listing → product detail pages.
+ *
+ * `candidateTests` narrows which detail pages we fetch to catalog entries whose NAME shares a
+ * significant token with one of our tests. This makes an interactive scrape (one vendor, a few tests)
+ * fast — a few fetches instead of the whole ~50-page catalog. Omit it for an exhaustive crawl. The
+ * tradeoff: a test that only code-matches a catalog entry whose *name* is unrelated would be missed;
+ * in practice these vendors use standard lab nomenclature that overlaps our test names.
  */
-export async function buildCatalogIndex(deps: FetchDeps, cfg: CatalogScrapeConfig): Promise<CatalogProduct[]> {
+export async function buildCatalogIndex(
+  deps: FetchDeps,
+  cfg: CatalogScrapeConfig,
+  candidateTests?: TestKey[],
+): Promise<CatalogProduct[]> {
   const entries = await fetchCatalogEntries(deps, cfg);
   deps.onLog?.(`catalog: ${entries.length} products`);
+
+  let selected = entries;
+  if (candidateTests && candidateTests.length > 0) {
+    const testTokenSets = candidateTests.map((t) => nameTokens(t.name));
+    selected = entries.filter((e) => {
+      const et = nameTokens(e.name);
+      return testTokenSets.some((ts) => [...ts].some((tok) => et.has(tok)));
+    });
+    deps.onLog?.(`narrowed to ${selected.length}/${entries.length} candidate product page(s)`);
+  }
+
   const products: CatalogProduct[] = [];
   const delay = cfg.rateLimitMs ?? 800;
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
+  for (let i = 0; i < selected.length; i++) {
+    const entry = selected[i]!;
     try {
       const product = await fetchProduct(deps, cfg, entry.slug);
       if (product) products.push(product);
@@ -59,9 +77,9 @@ export async function buildCatalogIndex(deps: FetchDeps, cfg: CatalogScrapeConfi
     } catch (e) {
       deps.onLog?.(`  ! fetch failed: ${entry.slug} (${e instanceof Error ? e.message : String(e)})`);
     }
-    if (i < entries.length - 1 && delay > 0) await sleep(delay);
+    if (i < selected.length - 1 && delay > 0) await sleep(delay);
   }
-  deps.onLog?.(`indexed ${products.length}/${entries.length} product pages`);
+  deps.onLog?.(`indexed ${products.length}/${selected.length} product page(s)`);
   return products;
 }
 
@@ -70,13 +88,19 @@ export function matchOfferings(tests: TestKey[], products: CatalogProduct[], opt
   return tests.map((test) => ({ test, result: matchTestToProducts(test, products, opts) }));
 }
 
-/** Convenience: crawl the catalog and match a set of tests in one call. */
+/**
+ * Convenience: crawl the catalog and match a set of tests in one call.
+ * `opts.narrow` (default true) only fetches detail pages whose name overlaps a test — much faster for
+ * interactive/small runs. Pass `{ narrow: false }` for an exhaustive crawl.
+ */
 export async function discover(
   tests: TestKey[],
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
+  opts: { narrow?: boolean } = {},
 ): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[] }> {
-  const products = await buildCatalogIndex(deps, cfg);
+  const narrow = opts.narrow ?? true;
+  const products = await buildCatalogIndex(deps, cfg, narrow ? tests : undefined);
   const matches = matchOfferings(tests, products, cfg.matchOptions);
   return { products, matches };
 }

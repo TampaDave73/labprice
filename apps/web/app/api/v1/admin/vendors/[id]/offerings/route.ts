@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { enqueueDiscover, isCatalogMode } from '@/lib/scrape-queue';
+import { isCatalogMode } from '@/lib/catalog-mode';
+import { runVendorDiscovery, publishStagedChange } from '@labprice/scrapers/src/catalog/persist';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -66,19 +67,22 @@ export async function POST(req: NextRequest, { params }: Params) {
     create: { testId, vendorId, externalUrl, currentPrice, isActive: true },
   });
 
-  // Requeue-on-add: for catalog-mode vendors (e.g. GoodLabs), a newly-linked test has no price yet.
-  // Enqueue a discovery job scoped to just this offering so the scraper finds its price. Best-effort:
-  // if Redis/worker is down, the link still succeeds and a later full run will pick it up.
+  // For catalog-mode vendors (e.g. GoodLabs), a newly-linked test has no price yet. Run discovery
+  // INLINE, scoped to just this offering (name-narrowed → a couple of fetches, ~1-3s), so the price
+  // appears immediately. Best-effort: if the site is unreachable, the link still succeeds.
   const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true, isEnabled: true } });
+  let discovery: { matched: number; ambiguous: number; unmatched: number } | null = null;
   if (config?.isEnabled && isCatalogMode(config.selectors)) {
     try {
-      await enqueueDiscover(vendorId, [offering.id]);
+      const summary = await runVendorDiscovery({ vendorId, triggeredBy: 'MANUAL', offeringIds: [offering.id] });
+      for (const sid of summary.autoApprovedStagedIds) await publishStagedChange(sid);
+      discovery = { matched: summary.matched, ambiguous: summary.ambiguous, unmatched: summary.unmatched };
     } catch (e) {
-      console.error('[offerings] failed to enqueue discovery for new offering', e);
+      console.error('[offerings] inline discovery failed for new offering', e);
     }
   }
 
-  return NextResponse.json({ data: offering }, { status: 201 });
+  return NextResponse.json({ data: offering, discovery }, { status: 201 });
 }
 
 // Update an existing link's URL / price.

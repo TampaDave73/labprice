@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@labprice/database": "workspace:*",
+    "@labprice/scrapers": "workspace:*",
     "@labprice/shared": "workspace:*",
     "@labprice/ui": "workspace:*",
     "next": "^15.3.0",
