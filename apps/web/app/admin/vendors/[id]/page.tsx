@@ -102,11 +102,14 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     loadCatalog();
   };
 
+  // Catalog rows save on blur (click away) — no separate Save button. Flash a confirmation so it's
+  // clear the change persisted without touching "Save Scraper Config".
   const saveLink = async (offeringId: string, patch: { externalUrl?: string; currentPrice?: string }) => {
-    await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
+    const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ offeringId, ...patch }),
     });
+    setMsg(res.ok ? 'Catalog saved.' : 'Could not save catalog change.');
   };
 
   const unlink = async (offeringId: string) => {
@@ -237,7 +240,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
       <div className="admin-card space-y-4 p-6">
         <div>
           <h2 className="admin-h2">Catalog</h2>
-          <p className="mt-1 text-sm text-brand-400">The tests this vendor offers. Each links to the product URL its scraper reads for the price.</p>
+          <p className="mt-1 text-sm text-brand-400">The tests this vendor offers. Edits to a URL or price <span className="font-medium">save automatically</span> when you click away (no separate Save button). For catalog vendors, a discovered test fills its own Product URL; if a test is unmatched, paste the correct product page URL here and the next scrape will price it directly.</p>
         </div>
 
         <div className="overflow-x-auto">

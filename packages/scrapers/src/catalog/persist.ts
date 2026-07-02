@@ -126,9 +126,21 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   }
 
   const summary: DiscoverySummary = { runId: run.id, matched: 0, ambiguous: 0, unmatched: 0, staged: 0, autoApprovedStagedIds: [] };
+  const fetchHtml = opts.fetchHtml ?? httpFetchHtml();
 
-  for (const { test, result } of matches) {
+  for (const { test, result: rawResult } of matches) {
     const offering = testToOffering.get(test.id)!;
+
+    // Manual-URL override: if a test didn't match by code/name but the admin pinned a product URL,
+    // fetch that exact page and price it directly (page-based adapters only — GoodLabs, OYL).
+    let result = rawResult;
+    if (rawResult.status === 'unmatched' && offering.externalUrl) {
+      const pinned = await priceFromPinnedUrl(offering.externalUrl, cfg, fetchHtml).catch(() => null);
+      if (pinned) {
+        log(`  pinned URL priced ${test.name} → $${pinned.price}`);
+        result = { status: 'matched', matchedBy: 'name', price: pinned.price, memberPrice: pinned.memberPrice, provider: pinned.provider, sourceUrl: pinned.sourceUrl, candidates: [], reason: `Priced from pinned URL` };
+      }
+    }
 
     if (result.status === 'unmatched') {
       summary.unmatched++;
@@ -138,6 +150,12 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
     if (result.status === 'ambiguous') {
       summary.ambiguous++;
+      // Point the offering at the cheapest candidate's product page so the "verify" link resolves
+      // somewhere useful (instead of the vendor homepage) while it awaits review.
+      const cheapest = [...result.candidates].filter((c) => c.price != null).sort((a, b) => a.price! - b.price!)[0];
+      if (cheapest?.url && cheapest.url !== offering.externalUrl) {
+        await prisma.offering.update({ where: { id: offering.id }, data: { externalUrl: cheapest.url } });
+      }
       const prices = result.candidates.map((c) => c.price).filter((p): p is number => p != null).sort((a, b) => a - b);
       const suggested = prices[0];
       await prisma.scrapeResult.create({
@@ -194,6 +212,29 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
   log(`done: ${summary.matched} matched, ${summary.ambiguous} ambiguous, ${summary.unmatched} unmatched, ${summary.staged} staged`);
   return summary;
+}
+
+/**
+ * Price a test from an admin-pinned product URL (page-based adapters only). Fetches the page, parses
+ * it with the vendor adapter, and returns the cheapest non-panel provider. Returns null if the vendor
+ * is an API adapter (no per-product page) or the page can't be priced.
+ */
+async function priceFromPinnedUrl(
+  url: string,
+  cfg: CatalogScrapeConfig,
+  fetchHtml: (u: string) => Promise<string>,
+): Promise<{ price: number; memberPrice: number | null; sourceUrl: string; provider: string } | null> {
+  const adapter = cfg.adapter;
+  if (!adapter?.parseProduct) return null; // API adapters (DCL, Mito) have no per-product page
+  const slug = url.split('/').pop()?.split('?')[0] || undefined;
+  const html = await fetchHtml(url);
+  const product = adapter.parseProduct(html, cfg.baseUrl, slug);
+  if (!product) return null;
+  const best = product.providers
+    .filter((p) => !p.isPanel && p.price != null)
+    .sort((a, b) => a.price! - b.price!)[0];
+  if (!best) return null;
+  return { price: best.price!, memberPrice: best.memberPrice ?? null, sourceUrl: product.url || url, provider: best.labProvider };
 }
 
 /** Same trust-modulated auto-approve rules as scrape-execute (BR-6..BR-9). */

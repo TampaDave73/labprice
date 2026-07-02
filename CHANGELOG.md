@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed
+- **Change Queue "verify" links for ambiguous matches** now point at the cheapest candidate's product
+  page instead of the vendor homepage (e.g. MitoHealth Testosterone → `/products/testosterone-total`).
+  (Dirt Cheap Labs still links to `/alacarte` — it has no per-test pages.)
+- **Manual product-URL override.** For catalog vendors with product pages (GoodLabs, Own Your Labs),
+  pasting the correct URL on an *unmatched* offering makes the next scrape fetch that page and price
+  it directly — so admins can fix a test the name/code matcher missed. (API vendors DCL/MitoHealth
+  have no per-product page, so this doesn't apply.)
+- **Catalog edits save on blur** with a "Catalog saved." confirmation + inline hint, so it's clear the
+  URL/price persisted without needing "Save Scraper Config".
+
 ### Added
 - **Member/non-member pricing + fourth scraper (MitoHealth).** MitoHealth (`mitohealth.com`) is a
   $9/mo membership vendor; its /shop catalog loads from a tRPC API with per-provider variants carrying
