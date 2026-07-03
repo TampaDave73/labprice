@@ -5,6 +5,7 @@ import { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './ownyourlabs-
 import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
 import { fetchMitoHealthCatalog } from './mitohealth-parser';
 import { parseWalkInLabCatalog, parseWalkInLabProduct, parseWalkInLabNextPage } from './walkinlab-parser';
+import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextPage } from './personalabs-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -39,6 +40,14 @@ export const walkInLabAdapter: CatalogAdapter = {
   nextCatalogPage: (html, currentUrl) => parseWalkInLabNextPage(html, currentUrl),
 };
 
+export const personalabsAdapter: CatalogAdapter = {
+  name: 'personalabs',
+  parseCatalog: (html) => parsePersonalabsCatalog(html),
+  parseProduct: (html, baseUrl, slug) => parsePersonalabsProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/product/${slug}/`,
+  nextCatalogPage: (html, currentUrl) => parsePersonalabsNextPage(html, currentUrl),
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -48,6 +57,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   dcl: dirtCheapLabsAdapter,
   mitohealth: mitoHealthAdapter,
   walkinlab: walkInLabAdapter,
+  personalabs: personalabsAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

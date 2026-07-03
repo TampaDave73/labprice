@@ -16,7 +16,7 @@ import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel }
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
 import { getAdapter } from './adapters';
 import { matchTestToProducts } from './matcher';
-import type { CatalogProduct, TestKey } from './types';
+import type { CatalogProduct, MatchTier, TestKey } from './types';
 
 const Decimal = Prisma.Decimal;
 
@@ -42,45 +42,46 @@ export interface DiscoverySummary {
 }
 
 /**
- * Build the catalog config from the vendor's DB config. `selectors.adapter` ('goodlabs' | 'ownyourlabs')
- * picks the site parser + product-URL shape; the catalog path and match options default per adapter.
+ * Per-adapter defaults: base URL, catalog path, and match options that differ per vendor site. All
+ * are overridable per-vendor via `ScrapeVendorConfig.selectors` (`catalogPath`, `apiBase`,
+ * `preferredProvider`). Keyed by `CatalogAdapter.name`; falls back to the GoodLabs defaults.
+ */
+const ADAPTER_DEFAULTS: Record<
+  string,
+  { baseUrl: string; catalogPath: string; apiBase?: string; matchPriority?: MatchTier[]; codeMatchAnyProvider?: boolean; mergeCodeTiers?: boolean }
+> = {
+  goodlabs: { baseUrl: 'https://goodlabs.com', catalogPath: '/book-tests?step=PANEL_SELECTION' },
+  ownyourlabs: { baseUrl: 'https://ownyourlabs.com', catalogPath: '/shop', codeMatchAnyProvider: true },
+  dirtcheaplabs: { baseUrl: 'https://dirtcheaplabs.com', catalogPath: '/alacarte', apiBase: 'https://api.dirtcheaplabs.com', mergeCodeTiers: true },
+  mitohealth: { baseUrl: 'https://mitohealth.com', catalogPath: '/shop', apiBase: 'https://trpc-bdhnb7m5vq-uc.a.run.app', matchPriority: ['name'] },
+  // Walk-In Lab exposes BOTH lab codes together on one product; Personalabs labels the provider
+  // directly per product, so it uses strict per-lab tiers (no codeMatchAnyProvider).
+  walkinlab: { baseUrl: 'https://www.walkinlab.com', catalogPath: '/categories/view/all-products', codeMatchAnyProvider: true },
+  personalabs: { baseUrl: 'https://www.personalabs.com', catalogPath: '/products/all-test/' },
+};
+
+/**
+ * Build the catalog config from the vendor's DB config. `selectors.adapter` picks the site parser +
+ * product-URL shape (see `ADAPTERS`); the catalog path and match options default per adapter above.
  */
 function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, selectors: Record<string, unknown>): CatalogScrapeConfig {
   const adapter = getAdapter(selectors.adapter as string | undefined);
-  const isOyl = adapter.name === 'ownyourlabs';
-  const isDcl = adapter.name === 'dirtcheaplabs';
-  const isMito = adapter.name === 'mitohealth';
-  const isWil = adapter.name === 'walkinlab';
-  const defaultBase = isOyl
-    ? 'https://ownyourlabs.com'
-    : isDcl
-      ? 'https://dirtcheaplabs.com'
-      : isMito
-        ? 'https://mitohealth.com'
-        : isWil
-          ? 'https://www.walkinlab.com'
-          : 'https://goodlabs.com';
+  const defaults = ADAPTER_DEFAULTS[adapter.name] ?? ADAPTER_DEFAULTS.goodlabs!;
   // Strip a trailing slash so `${baseUrl}${path}` / `${baseUrl}/test/...` don't get a double slash.
-  const base = (dbBaseUrl || websiteUrl || defaultBase).replace(/\/+$/, '');
-  const apiBaseDefault = isDcl ? 'https://api.dirtcheaplabs.com' : isMito ? 'https://trpc-bdhnb7m5vq-uc.a.run.app' : undefined;
+  const base = (dbBaseUrl || websiteUrl || defaults.baseUrl).replace(/\/+$/, '');
+  const apiBase = (selectors.apiBase as string) || defaults.apiBase;
   return {
     baseUrl: base,
-    catalogPath:
-      (selectors.catalogPath as string) ||
-      (isOyl ? '/shop' : isDcl ? '/alacarte' : isMito ? '/shop' : isWil ? '/categories/view/all-products' : '/book-tests?step=PANEL_SELECTION'),
+    catalogPath: (selectors.catalogPath as string) || defaults.catalogPath,
     adapter,
-    ...(apiBaseDefault ? { apiBase: (selectors.apiBase as string) || apiBaseDefault } : {}),
+    ...(apiBase ? { apiBase } : {}),
     rateLimitMs: 500,
     matchOptions: {
-      // MitoHealth has no lab codes → name matching only.
-      matchPriority: isMito ? ['name'] : ['quest', 'labcorp', 'name'],
+      matchPriority: defaults.matchPriority ?? ['quest', 'labcorp', 'name'],
       includePanels: false,
       flagAmbiguous: true,
-      // OYL exposes one order code per test (Quest OR LabCorp) unlabelled; Walk-In Lab exposes BOTH
-      // codes together on one product — either way, match against both without caring which is which.
-      codeMatchAnyProvider: isOyl || isWil,
-      // DCL sells the same test at two labs — take the cheaper.
-      mergeCodeTiers: isDcl,
+      codeMatchAnyProvider: defaults.codeMatchAnyProvider ?? false,
+      mergeCodeTiers: defaults.mergeCodeTiers ?? false,
       ...(typeof selectors.preferredProvider === 'string' ? { preferredProvider: selectors.preferredProvider } : {}),
     },
   };

@@ -21,6 +21,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   narrowing-heuristic gap, not an adapter bug — see `STATE.md`).
 - Added `apps/worker/scripts/dev-admin-session.ts` — prints a ready `authjs.session-token` for the seed
   admin, for verifying admin-gated pages in the preview browser without a configured login provider.
+- **Sixth catalog scraper — Personalabs** (`personalabs.com`, adapter `personalabs`). WooCommerce store,
+  27+ paginated listing pages (reuses the `nextCatalogPage` pagination added for Walk-In Lab). Each
+  product is labelled with its one fulfilling lab directly in the markup, so matching uses strict
+  per-lab tiers instead of `codeMatchAnyProvider`. Panels are detected by counting hidden order-code
+  elements on the page (a bundle carries one per constituent test). Also refactored `persist.ts`'s
+  `buildConfig` from a ternary chain into a per-adapter defaults map — cleaner at 6 vendors, no behavior
+  change. 14 new unit tests over real fixtures (88 total). Verified live: 6/11 matched + auto-published,
+  4 correctly flagged ambiguous, 1 unmatched (same narrowing-heuristic tradeoff as Walk-In Lab).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

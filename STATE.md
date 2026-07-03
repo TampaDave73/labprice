@@ -2,12 +2,13 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `f9614e3` + uncommitted
-> Walk-In Lab scraper work (not yet committed/pushed — pending user confirmation, see Next #0).
+> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `d79ce91` (Walk-In Lab commit)
+> + uncommitted Personalabs scraper work. User said they'll batch-check the queue later rather than
+> confirm each vendor — proceeding through #4 (HealthLabs.com) without waiting.
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0) — Walk-In Lab (5th scraper) just built + verified live,
-> waiting on user confirmation before starting Personalabs (#3).
+> the **new-vendor scraper queue** (Next #0) — Walk-In Lab + Personalabs (5th/6th scrapers) built +
+> verified live; HealthLabs.com (#4) in progress.
 
 ---
 
@@ -118,10 +119,34 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   browser to an actual image CAPTCHA (`captcha.awswaf.com`) — needs a paid solving service + proxies to
   pursue, a real cost/ToS-risk decision, not a quick adapter fix. User chose to skip and revisit later.
 
+### Sixth scraper — Personalabs (DONE)
+- `personalabs.com`, a WooCommerce store: `/products/all-test/` (27+ paginated pages via the same
+  `nextCatalogPage` mechanism as Walk-In Lab) → `/product/<slug>/` detail pages.
+- New `personalabs` adapter (`catalog/personalabs-parser.ts`). Unlike Walk-In Lab, each product is
+  labelled with its ONE fulfilling lab directly in the markup (`provider-cart-button labcorp`), so this
+  uses **strict per-lab tiers** (no `codeMatchAnyProvider`) — the labProvider is read straight off the
+  page instead of guessed.
+- **Panel detection**: a single test's order code lives in exactly one hidden `.hidden_test_code` div;
+  a bundle (e.g. "Healthy Male Checkup") carries one such div **per constituent test** (verified live:
+  2 divs → 2 codes). `isPanel = codes.length > 1` — a code-count heuristic rather than GoodLabs'
+  explicit flag or Walk-In Lab's "See Individual Tests" text, but the same underlying idea: let the
+  vendor's own markup tell us, don't guess from the name.
+- Refactored `persist.ts`'s `buildConfig` from a growing if/else-per-vendor ternary chain into an
+  `ADAPTER_DEFAULTS` lookup map (baseUrl/catalogPath/matchOptions per adapter name) — the ternary chain
+  was becoming unreadable at 6 vendors; every existing vendor's behavior is unchanged.
+- 14 new unit tests over real fixtures (88 total). Verified live end-to-end (real DB): 6/11 seed tests
+  matched + auto-published, 4 correctly flagged **ambiguous** (Testosterone/TSH/PSA/B12 — each has
+  multiple real Personalabs product variants at different prices), 1 **unmatched** (CBC — same
+  narrowing-tokenization tradeoff as Walk-In Lab's HbA1c: our test name "CBC (Complete Blood Count)"
+  vs. the vendor's "CBC with Differential and Platelet Count Blood Test" don't token-subset-match, so
+  the candidate page was never fetched; confirmed via unit test the parser reads it correctly once
+  fetched). Confirmed visible in the admin Vendors list.
+
 ### Current live DB state
-- **5 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **6 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
-  catalog). Each independently scrapeable.
+  catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product). Each
+  independently scrapeable.
 
 ---
 
@@ -131,16 +156,19 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
 Web-research pass (order-code marketplaces only — buy online, walk into a Quest/LabCorp/BioReference
 draw site, matching our 4 existing vendors' model; at-home kit brands excluded by decision) prioritized
 by confirmed public affiliate program. Build order below: each vendor gets an adapter (`@labprice/scrapers`
-`catalog/adapters.ts`) + unit tests over real fixtures + a live discovery verification, then **wait for
-user confirmation** before starting the next one. Tracked via TaskCreate/TaskList this session (task IDs
-#1–#11, same order as below).
+`catalog/adapters.ts`) + unit tests over real fixtures + a live discovery verification. Originally one
+vendor at a time with a confirmation gate between each — **user changed this mid-queue**: proceed
+through #3 and #4 without waiting, they'll batch-check the whole queue later. Tracked via
+TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 
 1. ~~**Ulta Lab Tests** (ultalabtests.com)~~ — **DEFERRED**: AWS WAF Bot Control escalates to an image
    CAPTCHA; needs a paid solving service + proxies. Revisit if/when that's worth building.
 2. **Walk-In Lab** (walkinlab.com) — Quest+LabCorp, ShareASale affiliate, 45-day cookie. **DONE** (see
-   "Fifth scraper" above). ← **waiting on user confirmation before starting #3**
+   "Fifth scraper" above). Committed `d79ce91`, pushed.
 3. **Personalabs** (personalabs.com) — LabCorp-primary, Awin/Commission Junction affiliate 10–15%.
-4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%.
+   **DONE** (see "Sixth scraper" above).
+4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%. ←
+   in progress
 5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
 6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).

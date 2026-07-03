@@ -159,7 +159,16 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     Code(s)" field reads a real code for a single test but literally **"See Individual Tests"** for a
     multi-test bundle — a reliable vendor-supplied `isPanel` signal (verified live), unlike GoodLabs'
     explicit JSON flag or DCL/OYL's separate-endpoint/URL-shape exclusion.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab}.ts`.
+  - `personalabs` — WooCommerce store, plain HTTP, paginated (`/products/all-test/`, 27+ pages). Each
+    product is labelled with its ONE fulfilling lab directly in the markup
+    (`provider-cart-button labcorp`), so it uses **strict per-lab tiers** (no `codeMatchAnyProvider`) —
+    the labProvider is read off the page, not guessed. **Panel detection**: a single test's order code
+    lives in exactly one hidden `.hidden_test_code` div; a bundle carries one per constituent test, so
+    `isPanel = codes.length > 1`.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs}.ts`.
+- **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
+  name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
+  adding one entry.
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds
