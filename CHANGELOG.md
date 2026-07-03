@@ -12,15 +12,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ### Added
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
-  - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` resolves the
-    Quest/LabCorp order codes from our vendor catalogs first (Dirt Cheap Labs' API carries both codes
-    per test — authoritative, non-hallucinated; `packages/scrapers/.../code-lookup.ts` name-matches via
-    the shared matcher helpers), then calls **Claude (`claude-opus-4-8`)** to generate the five content
-    fields (description / purpose / how it's performed / how to prepare / normal ranges) and, only as a
-    *fallback*, any order code the catalog missed (model is told to return null unless confident).
-    Fills **blank fields only** (never clobbers admin edits); shows a note listing sources + a
-    "verify AI-suggested codes" warning. Needs `ANTHROPIC_API_KEY` in `.env` — degrades gracefully to
-    catalog-codes-only with a note when it's absent.
+  - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for
+    review: **short name, slug, categories, the five content fields** (description / purpose / how it's
+    performed / how to prepare / normal ranges), and **Quest/LabCorp codes**. Codes come from our vendor
+    catalogs first (Dirt Cheap Labs' API — authoritative, non-hallucinated; `code-lookup.ts` trusts only
+    a **same-significant-name** match so combos/panels like "Testosterone, Free and Total" can't supply a
+    wrong code), then **Claude (`claude-opus-4-8`)** for any code the catalog missed. Claude also writes
+    the short name + content and picks the best-fitting **existing** categories (never invents new ones);
+    the slug is derived from the name. Fills **blank fields only** (categories only when none are
+    selected) so it never clobbers admin edits; shows a note listing sources + a "verify AI-suggested
+    codes" warning. Needs `ANTHROPIC_API_KEY` in `.env` — degrades to catalog-codes + slug when absent.
   - **Vendors** checklist on the editor (existing tests only). `GET/POST/DELETE
     /api/v1/admin/tests/[id]/vendors` attaches/detaches offerings from the test side; attaching a
     catalog vendor runs discovery **inline** so the price appears immediately (same as the vendor

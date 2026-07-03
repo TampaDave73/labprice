@@ -1,22 +1,24 @@
 // AI-assisted test metadata generation (Claude).
 //
-// WHY: when an admin adds a lab test, we auto-fill patient-facing copy (description / purpose /
-// how it's performed / how to prepare / normal ranges) and, as a *fallback only*, the Quest/LabCorp
-// order codes when our vendor catalogs didn't have them. Codes are safety-critical, so the model is
-// instructed to leave a code null unless it is confident it's the standard order code — the catalog
-// lookup (see @labprice/scrapers code-lookup) remains the authoritative source and always wins.
+// WHY: when an admin adds a lab test, we auto-fill the metadata for review — a short name, the
+// patient-facing copy (description / purpose / how it's performed / how to prepare / normal ranges),
+// the best-fitting existing categories, and (as a *fallback only*, when our vendor catalogs missed
+// them) the Quest/LabCorp order codes. The catalog lookup (see @labprice/scrapers code-lookup) stays
+// the authoritative code source and always wins; AI-supplied codes are flagged for admin verification.
 //
 // Uses the official Anthropic SDK. Reads ANTHROPIC_API_KEY from the environment; when it's absent the
 // caller degrades gracefully (codes-from-catalog only, no generated content).
 import Anthropic from '@anthropic-ai/sdk';
 
 export interface GeneratedTestContent {
+  shortName: string; // concise common name / abbreviation, e.g. "HbA1c", "CMP"
   description: string;
   purpose: string;
   procedure: string; // "How It's Performed"
   preparation: string; // "How To Prepare"
   normalRange: string; // "Normal Ranges"
-  questCode: string | null; // only when confident AND not already supplied
+  categoryNames: string[]; // chosen strictly from the provided existing-category list
+  questCode: string | null; // only when not already supplied by the catalog
   labcorpCode: string | null;
 }
 
@@ -29,15 +31,17 @@ export function hasAnthropicKey(): boolean {
 const OUTPUT_SCHEMA = {
   type: 'object',
   properties: {
+    shortName: { type: 'string' },
     description: { type: 'string' },
     purpose: { type: 'string' },
     procedure: { type: 'string' },
     preparation: { type: 'string' },
     normalRange: { type: 'string' },
+    categoryNames: { type: 'array', items: { type: 'string' } },
     questCode: { type: ['string', 'null'] },
     labcorpCode: { type: ['string', 'null'] },
   },
-  required: ['description', 'purpose', 'procedure', 'preparation', 'normalRange', 'questCode', 'labcorpCode'],
+  required: ['shortName', 'description', 'purpose', 'procedure', 'preparation', 'normalRange', 'categoryNames', 'questCode', 'labcorpCode'],
   additionalProperties: false,
 } as const;
 
@@ -48,17 +52,24 @@ const SYSTEM = [
   'If a field genuinely does not apply to this test, give a short honest note rather than inventing specifics.',
   'For normal ranges, state that reference ranges vary by lab, sex, and age, and give typical adult ranges only',
   'when they are well-established and standard.',
-  'Order codes are safety-critical: only fill questCode / labcorpCode when you are confident it is the standard',
-  'order code for THIS exact test; otherwise return null. Never guess a code.',
+  'shortName: a concise common name or abbreviation for the test (e.g. "HbA1c", "CMP", "Vitamin D");',
+  'if none is standard, use a short form of the full name.',
+  'categoryNames: choose the 1-2 best-fitting categories STRICTLY from the provided list, copied exactly;',
+  'if none fit, return an empty array — never invent a category.',
+  'Order codes: provide the standard Quest / LabCorp order code for THIS specific test when you know it.',
+  'Return null for a code only when you are genuinely unsure or the test name is too ambiguous to pin one down.',
+  'A downstream reviewer verifies AI-supplied codes, so prefer a correct standard code over null, but never guess wildly.',
 ].join(' ');
 
 /**
- * Generate the five content fields for a test, plus optional code fallbacks.
+ * Generate metadata for a test: short name, five content fields, category picks, and code fallbacks.
  * @param knownCodes codes already resolved from catalogs — passed so the model skips them (returns null).
+ * @param availableCategories existing category names the model may choose from (it won't invent new ones).
  */
 export async function generateTestContent(
   name: string,
   knownCodes: { questCode: string | null; labcorpCode: string | null } = { questCode: null, labcorpCode: null },
+  availableCategories: string[] = [],
 ): Promise<GeneratedTestContent> {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
@@ -66,12 +77,15 @@ export async function generateTestContent(
   const needLabcorp = !knownCodes.labcorpCode;
   const codeInstruction =
     needQuest || needLabcorp
-      ? `We still need${needQuest ? ' the Quest order code' : ''}${needQuest && needLabcorp ? ' and' : ''}${needLabcorp ? ' the LabCorp order code' : ''} — fill only if confident, else null.`
+      ? `Provide${needQuest ? ' the Quest order code' : ''}${needQuest && needLabcorp ? ' and' : ''}${needLabcorp ? ' the LabCorp order code' : ''} if you know the standard code for this exact test; null only if unsure.`
       : 'Both order codes are already known; return null for questCode and labcorpCode.';
+  const categoryInstruction = availableCategories.length
+    ? `Existing categories to choose from (use exact strings): ${availableCategories.join(', ')}.`
+    : 'No category list was provided — return an empty categoryNames array.';
 
   const response = await client.messages.create({
     model: 'claude-opus-4-8',
-    max_tokens: 3000, // room for adaptive thinking + five content fields (JSON truncation → parse error)
+    max_tokens: 3000, // room for adaptive thinking + content fields (JSON truncation → parse error)
     thinking: { type: 'adaptive' },
     system: SYSTEM,
     output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA }, effort: 'medium' },
@@ -79,9 +93,9 @@ export async function generateTestContent(
       {
         role: 'user',
         content:
-          `Lab test: "${name}".\n${codeInstruction}\n` +
-          'Return the five content fields (description, purpose, procedure = how it\'s performed, ' +
-          'preparation = how to prepare, normalRange = normal ranges) plus questCode and labcorpCode.',
+          `Lab test: "${name}".\n${codeInstruction}\n${categoryInstruction}\n` +
+          'Return shortName, the five content fields (description, purpose, procedure = how it\'s performed, ' +
+          'preparation = how to prepare, normalRange = normal ranges), categoryNames, questCode and labcorpCode.',
       },
     ],
   });
@@ -93,5 +107,6 @@ export async function generateTestContent(
   // Never let the model override codes we already trust from the catalog.
   if (knownCodes.questCode) parsed.questCode = null;
   if (knownCodes.labcorpCode) parsed.labcorpCode = null;
+  if (!Array.isArray(parsed.categoryNames)) parsed.categoryNames = [];
   return parsed;
 }

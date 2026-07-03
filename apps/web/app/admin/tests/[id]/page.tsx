@@ -39,9 +39,9 @@ const EMPTY: TestData = {
   categoryIds: [], isPopular: false, displayOrder: 0,
 };
 
-// Fields the "auto-fill from name" lookup populates — only when currently blank, so it never
-// clobbers something the admin already typed.
-const LOOKUP_FIELDS = ['questCode', 'labcorpCode', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
+// Text fields the "auto-fill from name" lookup populates — only when currently blank, so it never
+// clobbers something the admin already typed. (Categories are handled separately, as an array.)
+const LOOKUP_FIELDS = ['shortName', 'slug', 'questCode', 'labcorpCode', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
 
 export default function TestEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -109,6 +109,10 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           if ((cur == null || String(cur).trim() === '') && incoming != null && incoming !== '') {
             (next as Record<string, unknown>)[f] = incoming;
           }
+        }
+        // Categories: only auto-select when none are chosen yet (don't override the admin's picks).
+        if (prev.categoryIds.length === 0 && Array.isArray(d.categoryIds) && d.categoryIds.length > 0) {
+          next.categoryIds = d.categoryIds;
         }
         return next;
       });
