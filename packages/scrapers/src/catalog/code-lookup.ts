@@ -6,7 +6,7 @@
 // the test name into the DCL catalog and read the codes off the matched product. This is the
 // authoritative, non-hallucinated source; the AI fallback only fills gaps the catalog can't.
 import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
-import { nameMatches, sharesStrongToken, strongTokens } from './matcher';
+import { nameTokens } from './matcher';
 import type { CatalogProduct } from './types';
 
 export interface CodeLookupResult {
@@ -21,39 +21,35 @@ export interface CodeLookupDeps {
   onLog?: (m: string) => void;
 }
 
-/** Number of distinctive tokens the query shares with a candidate product name (higher = better). */
-function overlapScore(query: string, candidate: string): number {
-  const q = strongTokens(query);
-  const c = strongTokens(candidate);
-  let n = 0;
-  for (const t of q) if (c.has(t)) n++;
-  return n;
+/** True when two names reduce to the SAME set of significant tokens (differ only by stopwords). */
+function sameSignificantName(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size || a.size === 0) return false;
+  for (const t of a) if (!b.has(t)) return false;
+  return true;
 }
 
 /**
- * Pick the single best catalog product for `name`, or null when the match is unconfident.
- * A candidate must both pass `nameMatches` (token-subset) AND `sharesStrongToken` (guards against
- * matching on a generic word alone). Among survivors we take the highest distinctive-token overlap;
- * if the top score is TIED between products with different codes we bail (ambiguous → let the caller
- * fall back to AI / manual entry rather than guess a wrong code).
+ * Pick the single best catalog product for `name`, or null when the match isn't confident enough to
+ * trust the codes (the caller then falls back to AI / manual, which is flagged for verification).
+ *
+ * WHY so strict: order codes are safety-critical, so we only trust the catalog when the product is the
+ * SAME test — its significant tokens (name minus pure qualifiers like "serum"/"panel"/"blood", which
+ * `nameTokens` strips) exactly equal the query's. That rejects broader combos/panels whose codes
+ * belong to a *different* test — e.g. "Testosterone, Free and Total" for "Testosterone, Total" (adds
+ * `free`), "Vitamin B12 and Folate" for "Vitamin B12" (adds `folate`), "Iron, TIBC and Ferritin Panel"
+ * for "Ferritin" (adds `iron`, `tibc`). Anything that isn't a same-name match falls through to AI.
+ * If two same-name products carry different codes we bail (genuinely ambiguous).
  */
 function bestProduct(name: string, products: CatalogProduct[]): CatalogProduct | null {
-  const candidates = products.filter((p) => nameMatches(name, p.name) && sharesStrongToken(name, p.name));
-  if (candidates.length === 0) return null;
+  const qTokens = nameTokens(name);
+  if (qTokens.size === 0) return null;
 
-  const scored = candidates
-    .map((p) => ({ p, score: overlapScore(name, p.name) }))
-    .sort((a, b) => b.score - a.score);
+  const matches = products.filter((p) => sameSignificantName(qTokens, nameTokens(p.name)));
+  if (matches.length === 0) return null;
 
-  const top = scored[0]!;
-  const tiedAtTop = scored.filter((s) => s.score === top.score);
-  if (tiedAtTop.length > 1) {
-    // Tie is fine only if every tied product yields the same code pair (same test listed twice).
-    const key = (p: CatalogProduct) => `${codeFor(p, 'quest') ?? ''}|${codeFor(p, 'labcorp') ?? ''}`;
-    const distinct = new Set(tiedAtTop.map((s) => key(s.p)));
-    if (distinct.size > 1) return null;
-  }
-  return top.p;
+  const key = (p: CatalogProduct) => `${codeFor(p, 'quest') ?? ''}|${codeFor(p, 'labcorp') ?? ''}`;
+  if (new Set(matches.map(key)).size > 1) return null; // same name, conflicting codes → ambiguous
+  return matches[0]!;
 }
 
 /** Read the first order code for a given lab off a product's providers. */
