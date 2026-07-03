@@ -2,10 +2,12 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `f9614e3` (pushed, in sync).
+> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `f9614e3` + uncommitted
+> Walk-In Lab scraper work (not yet committed/pushed — pending user confirmation, see Next #0).
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **Add Test auto-fill + vendor multiselect** section below.
+> the **new-vendor scraper queue** (Next #0) — Walk-In Lab (5th scraper) just built + verified live,
+> waiting on user confirmation before starting Personalabs (#3).
 
 ---
 
@@ -88,13 +90,70 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
 - New dep: **`@anthropic-ai/sdk`** in `apps/web`. Requires **`ANTHROPIC_API_KEY` in root `.env`**
   (see gotchas — dev loads env via `dotenv -e ../../.env`, so **restart `pnpm dev` after adding it**).
 
+### Fifth scraper — Walk-In Lab (DONE)
+- `walkinlab.com`, a custom server-rendered store (plain HTTP, no bot wall) with a **paginated**
+  catalog: `/categories/view/all-products?page=N` across 40+ pages (~1,238 products). Added generic
+  pagination to the shared crawler (`CatalogAdapter.nextCatalogPage`, optional — single-page adapters
+  unaffected); `fetchCatalogEntries` now follows it with a 100-page safety cap.
+- New `walkinlab` adapter (`catalog/walkinlab-parser.ts`). A product page exposes **both** lab order
+  codes together ("Test Code(s): 001453, 496" — LabCorp + Quest), so it matches like Own Your Labs
+  (`codeMatchAnyProvider`) rather than needing to know which code is which.
+- **Panel detection**: no explicit bundle flag like GoodLabs, but the page's own "CPT Code(s)" field
+  reads a real code for a single test (e.g. "83036") and literally **"See Individual Tests"** for a
+  multi-test bundle (verified live on the CBC+CMP-14 combo) — a reliable vendor-supplied `isPanel`
+  signal. Bundles also get their own distinct test code(s), never reusing a constituent's own code, so
+  they're doubly unlikely to false-positive match a single test even without the CPT-text check.
+- 12 new unit tests over real fixtures (86 total). Verified live end-to-end (real DB): 9/11 seed tests
+  matched + auto-published, 1 correctly flagged **ambiguous** (PSA — 3 distinct price tiers), 1
+  **unmatched** (HbA1c — our test name "HbA1c (Hemoglobin A1c)" tokenizes to `hba1c` as one token while
+  the vendor writes "Hemoglobin (Hb) A1c" as three separate tokens, so the narrowing pre-filter never
+  selected its product page for a code-check; confirmed via unit test that the adapter parses it
+  correctly once fetched — a known, documented narrowing tradeoff, not an adapter bug). Confirmed
+  visible in the admin Vendors list (screenshot taken).
+- Added `apps/worker/scripts/dev-admin-session.ts`: prints a ready `authjs.session-token` for the seed
+  admin — no login provider is configured locally, so this is now the fast path for verifying any
+  admin-gated page in the preview browser (used to confirm this vendor showed up in the UI).
+- Ulta Lab Tests (originally #1 in the queue below) was attempted first and **deferred**: it sits
+  behind AWS WAF Bot Control, which escalates a plain fetch AND a stealth-patched headless Playwright
+  browser to an actual image CAPTCHA (`captcha.awswaf.com`) — needs a paid solving service + proxies to
+  pursue, a real cost/ToS-risk decision, not a quick adapter fix. User chose to skip and revisit later.
+
 ### Current live DB state
-- **4 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
-  (dirtcheaplabs), **Mito Health** (mitohealth, member pricing). Each independently scrapeable.
+- **5 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+  (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
+  catalog). Each independently scrapeable.
 
 ---
 
 ## ⏭️ Next
+
+### 0. New scraper vendors — queued, building one at a time (started 2026-07-03)
+Web-research pass (order-code marketplaces only — buy online, walk into a Quest/LabCorp/BioReference
+draw site, matching our 4 existing vendors' model; at-home kit brands excluded by decision) prioritized
+by confirmed public affiliate program. Build order below: each vendor gets an adapter (`@labprice/scrapers`
+`catalog/adapters.ts`) + unit tests over real fixtures + a live discovery verification, then **wait for
+user confirmation** before starting the next one. Tracked via TaskCreate/TaskList this session (task IDs
+#1–#11, same order as below).
+
+1. ~~**Ulta Lab Tests** (ultalabtests.com)~~ — **DEFERRED**: AWS WAF Bot Control escalates to an image
+   CAPTCHA; needs a paid solving service + proxies. Revisit if/when that's worth building.
+2. **Walk-In Lab** (walkinlab.com) — Quest+LabCorp, ShareASale affiliate, 45-day cookie. **DONE** (see
+   "Fifth scraper" above). ← **waiting on user confirmation before starting #3**
+3. **Personalabs** (personalabs.com) — LabCorp-primary, Awin/Commission Junction affiliate 10–15%.
+4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%.
+5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
+6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
+7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).
+8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.
+9. **True Health Labs** (truehealthlabs.com) — Quest+LabCorp+specialty labs, in-house + "LabShop" white-label affiliate.
+10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate network.
+11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact affiliate, 12%.
+
+Gotcha: the *original research pass* only WebFetch'd Ulta, Request A Test, DirectLabs, and True Health
+Labs and got 403s on all four (Ulta's is confirmed AWS WAF CAPTCHA — see above; the other three weren't
+re-checked). Walk-In Lab was never WebFetch'd in that pass but turned out to load fine with a plain
+`curl` + browser UA (no bot wall at all) — so don't assume the other three are CAPTCHA-gated like Ulta;
+each needs its own quick `curl -A "<browser UA>"` probe before investing adapter-building effort.
 
 ### 1. Save / Price Alert (public test page) — **ON HOLD**
 - These require a **full customer auth flow (sign up / sign in)** — none exists today (only DB-backed
@@ -133,6 +192,10 @@ pnpm dev                                          # web on :3000 (currently runn
 # Scrape a catalog vendor: Admin → Vendors → Good Labs → "Scrape now" (inline, no worker needed)
 pnpm --filter @labprice/scrapers test            # scraper unit tests
 cd apps/web && npx tsc --noEmit                  # web typecheck (must stay clean)
+# Walk-In Lab live discovery (needs docker:dev up):
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-walkinlab.ts
+# Get an admin session token for the preview browser (no login provider configured locally):
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/dev-admin-session.ts
 ```
 
 ## ✅ Verified this session / ⏳ not yet
@@ -142,3 +205,8 @@ cd apps/web && npx tsc --noEmit                  # web typecheck (must stay clea
 - **Not yet exercised end-to-end**: the browser Auto-fill round-trip through the admin UI (needs a logged-in
   admin session), and the vendor attach/auto-scrape from the test page (needs DB up + admin login). Logic
   mirrors the proven vendor-side offerings route; worth a manual click-through to confirm.
+- **Walk-In Lab (this session)**: 86 unit tests pass, web `tsc --noEmit` clean, live end-to-end discovery
+  against real Postgres (9 matched + published, 1 ambiguous, 1 unmatched — see "Fifth scraper" above),
+  and confirmed showing up in the admin Vendors list via a real browser session (screenshot taken).
+  **Not yet committed/pushed** — holding for user confirmation per their "confirm it works, then move to
+  #2" instruction.

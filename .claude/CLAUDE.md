@@ -96,6 +96,10 @@ from the vendor catalogs (Dirt Cheap Labs) and just skips the generated copy.
    ("Scrape now"/add-test) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name;
    panels excluded; a code hit must also share a **distinctive** name token (guards wrong/stale codes);
    >1 surviving price ⇒ ambiguous. Details in `SKILLS.md`.
+8. **`git push` hangs over HTTP/2 on this Windows box.** Always push with
+   `git -c http.version=HTTP/1.1 push`. Git Credential Manager can also stall a push waiting on an
+   auth popup; retrying (or backgrounding the push) usually clears it. Push after every commit unless
+   told otherwise.
 
 ## Verifying changes
 

@@ -10,6 +10,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Fifth catalog scraper — Walk-In Lab** (`walkinlab.com`, adapter `walkinlab`). Custom server-rendered
+  store (plain HTTP, no bot wall), but its catalog spans 40+ paginated listing pages — added generic
+  pagination support to the catalog crawler (`CatalogAdapter.nextCatalogPage`, optional, single-page
+  adapters unaffected). A product page exposes both lab order codes together ("Test Code(s): 001453,
+  496") so it matches like Own Your Labs (`codeMatchAnyProvider`); panel/bundle products are detected
+  from the page's own "CPT Code(s): See Individual Tests" text (a real code appears for single tests).
+  12 new unit tests over real fixtures (86 total). Verified live: 9/11 seed tests matched + auto-
+  published, 1 correctly flagged ambiguous (PSA, 3 price tiers), 1 unmatched (a name-tokenization
+  narrowing-heuristic gap, not an adapter bug — see `STATE.md`).
+- Added `apps/worker/scripts/dev-admin-session.ts` — prints a ready `authjs.session-token` for the seed
+  admin, for verifying admin-gated pages in the preview browser without a configured login provider.
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

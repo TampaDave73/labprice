@@ -98,7 +98,9 @@ pnpm --filter @labprice/database db:seed          # (re)seed demo data
 pnpm dev                                           # web only, :3000
 ```
 Seed admin: `admin@labprice.com` (SUPER_ADMIN). Local login providers aren't configured; for dev,
-create a DB session row and set the `authjs.session-token` cookie (database-backed sessions).
+create a DB session row and set the `authjs.session-token` cookie (database-backed sessions) — or just
+run `cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/dev-admin-session.ts`, which prints
+a ready token to paste into `document.cookie` in the preview browser.
 
 ### Making a schema change (mind the Windows Prisma lock)
 1. Edit `packages/database/prisma/schema.prisma`.
@@ -150,7 +152,20 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),
     shown as an inline secondary line on the test page (not a tooltip — mobile-friendly).
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth}.ts`.
+  - `walkinlab` — custom server-rendered store (not Magento), plain HTTP, **paginated** catalog listing
+    (`/categories/view/all-products?page=N`, 40+ pages — see "Paginated catalogs" below). A product
+    page exposes **both** lab codes together ("Test Code(s): 001453, 496") rather than one ambiguous
+    code, so it uses `codeMatchAnyProvider` like OYL. **Panel detection**: the page's own "CPT
+    Code(s)" field reads a real code for a single test but literally **"See Individual Tests"** for a
+    multi-test bundle — a reliable vendor-supplied `isPanel` signal (verified live), unlike GoodLabs'
+    explicit JSON flag or DCL/OYL's separate-endpoint/URL-shape exclusion.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab}.ts`.
+- **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
+  listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
+  cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds
+  real latency for large catalogs (Walk-In Lab's ~1,240-product catalog is ~41 listing-page fetches
+  before narrowing even starts, versus GoodLabs' ~2s single-page scrape) — a vendor-catalog-size
+  tradeoff, not a bug, and still fine for an interactive "Scrape now".
 - **Match safety**: a code hit is trusted only if the product name shares a *distinctive* token with
   our test (`sharesStrongToken`) — guards against wrong/stale codes (e.g. a bad Quest code resolving
   to a different test) and generic-word name collisions ("Vitamin B12" ≠ "Vitamin A").

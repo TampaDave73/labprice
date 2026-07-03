@@ -113,6 +113,12 @@ export interface CatalogAdapter {
   parseProduct?(html: string, baseUrl: string, slug?: string): CatalogProduct | null;
   productUrl?(baseUrl: string, slug: string): string;
   /**
+   * Paginated catalog listings (Walk-In Lab: 40+ pages of `/categories/view/all-products?page=N`).
+   * Given the just-fetched listing page's HTML + the URL that produced it, return the next page's
+   * URL, or null when there's no more pagination. Omit for single-page catalogs (GoodLabs, OYL).
+   */
+  nextCatalogPage?(html: string, currentUrl: string): string | null;
+  /**
    * API vendors (Dirt Cheap Labs): fetch the whole priced catalog in one shot (no per-product pages).
    * When present, the crawler uses this instead of parseCatalog/parseProduct.
    */

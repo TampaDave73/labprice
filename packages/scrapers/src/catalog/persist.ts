@@ -50,13 +50,24 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
   const isOyl = adapter.name === 'ownyourlabs';
   const isDcl = adapter.name === 'dirtcheaplabs';
   const isMito = adapter.name === 'mitohealth';
-  const defaultBase = isOyl ? 'https://ownyourlabs.com' : isDcl ? 'https://dirtcheaplabs.com' : isMito ? 'https://mitohealth.com' : 'https://goodlabs.com';
+  const isWil = adapter.name === 'walkinlab';
+  const defaultBase = isOyl
+    ? 'https://ownyourlabs.com'
+    : isDcl
+      ? 'https://dirtcheaplabs.com'
+      : isMito
+        ? 'https://mitohealth.com'
+        : isWil
+          ? 'https://www.walkinlab.com'
+          : 'https://goodlabs.com';
   // Strip a trailing slash so `${baseUrl}${path}` / `${baseUrl}/test/...` don't get a double slash.
   const base = (dbBaseUrl || websiteUrl || defaultBase).replace(/\/+$/, '');
   const apiBaseDefault = isDcl ? 'https://api.dirtcheaplabs.com' : isMito ? 'https://trpc-bdhnb7m5vq-uc.a.run.app' : undefined;
   return {
     baseUrl: base,
-    catalogPath: (selectors.catalogPath as string) || (isOyl ? '/shop' : isDcl ? '/alacarte' : isMito ? '/shop' : '/book-tests?step=PANEL_SELECTION'),
+    catalogPath:
+      (selectors.catalogPath as string) ||
+      (isOyl ? '/shop' : isDcl ? '/alacarte' : isMito ? '/shop' : isWil ? '/categories/view/all-products' : '/book-tests?step=PANEL_SELECTION'),
     adapter,
     ...(apiBaseDefault ? { apiBase: (selectors.apiBase as string) || apiBaseDefault } : {}),
     rateLimitMs: 500,
@@ -65,8 +76,9 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
       matchPriority: isMito ? ['name'] : ['quest', 'labcorp', 'name'],
       includePanels: false,
       flagAmbiguous: true,
-      // OYL exposes one order code per test (Quest OR LabCorp) unlabelled — match against both.
-      codeMatchAnyProvider: isOyl,
+      // OYL exposes one order code per test (Quest OR LabCorp) unlabelled; Walk-In Lab exposes BOTH
+      // codes together on one product — either way, match against both without caring which is which.
+      codeMatchAnyProvider: isOyl || isWil,
       // DCL sells the same test at two labs — take the cheaper.
       mergeCodeTiers: isDcl,
       ...(typeof selectors.preferredProvider === 'string' ? { preferredProvider: selectors.preferredProvider } : {}),

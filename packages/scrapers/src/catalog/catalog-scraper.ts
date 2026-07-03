@@ -31,12 +31,29 @@ export interface OfferingMatch {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** Fetch + parse the vendor's catalog listing (every test/panel it sells). Page-based adapters only. */
+/**
+ * Fetch + parse the vendor's catalog listing (every test/panel it sells). Page-based adapters only.
+ * Follows `adapter.nextCatalogPage` across multiple pages when present (Walk-In Lab: 40+ pages); a
+ * safety cap guards against an accidental infinite loop if a site's "next" link ever points at itself.
+ */
 export async function fetchCatalogEntries(deps: FetchDeps, cfg: CatalogScrapeConfig): Promise<CatalogEntry[]> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
   if (!adapter.parseCatalog) throw new Error(`Adapter '${adapter.name}' is not page-based (no parseCatalog)`);
-  const html = await deps.fetchHtml(`${cfg.baseUrl}${cfg.catalogPath}`);
-  return adapter.parseCatalog(html);
+  const MAX_PAGES = 100;
+
+  const seen = new Map<string, CatalogEntry>();
+  const pageDelay = Math.min(cfg.rateLimitMs ?? 800, 300);
+  let url = `${cfg.baseUrl}${cfg.catalogPath}`;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const html = await deps.fetchHtml(url);
+    for (const entry of adapter.parseCatalog(html)) if (!seen.has(entry.slug)) seen.set(entry.slug, entry);
+    const next = adapter.nextCatalogPage?.(html, url);
+    if (!next) break;
+    deps.onLog?.(`  catalog page ${page}: ${seen.size} product(s) so far`);
+    url = next;
+    if (pageDelay > 0) await sleep(pageDelay);
+  }
+  return [...seen.values()];
 }
 
 /** Fetch + parse one product detail page. Returns null if the page has no parseable product. */
