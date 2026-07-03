@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
     orderBy,
     include: {
       category: true,
-      _count: { select: { offerings: true } },
+      // Count only live offerings on live vendors, so the "Offerings" column matches what's listed.
+      _count: { select: { offerings: { where: { deletedAt: null, vendor: { deletedAt: null } } } } },
     },
   });
 

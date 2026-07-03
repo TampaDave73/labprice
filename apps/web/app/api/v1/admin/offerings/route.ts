@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
   const dir: Prisma.SortOrder = params.get('dir') === 'desc' ? 'desc' : 'asc';
   const limit = Math.min(Number(params.get('limit') ?? 200), 500);
 
-  const where: Prisma.OfferingWhereInput = { deletedAt: null };
+  // Exclude offerings whose vendor is soft-deleted (otherwise orphaned offerings on a removed vendor
+  // still surface here — e.g. duplicate vendors that were retired).
+  const where: Prisma.OfferingWhereInput = { deletedAt: null, vendor: { deletedAt: null } };
   if (vendorId) where.vendorId = vendorId;
   if (testId) where.testId = testId;
 
