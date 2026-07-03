@@ -9,6 +9,24 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added
+- **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
+  from one page:
+  - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` resolves the
+    Quest/LabCorp order codes from our vendor catalogs first (Dirt Cheap Labs' API carries both codes
+    per test — authoritative, non-hallucinated; `packages/scrapers/.../code-lookup.ts` name-matches via
+    the shared matcher helpers), then calls **Claude (`claude-opus-4-8`)** to generate the five content
+    fields (description / purpose / how it's performed / how to prepare / normal ranges) and, only as a
+    *fallback*, any order code the catalog missed (model is told to return null unless confident).
+    Fills **blank fields only** (never clobbers admin edits); shows a note listing sources + a
+    "verify AI-suggested codes" warning. Needs `ANTHROPIC_API_KEY` in `.env` — degrades gracefully to
+    catalog-codes-only with a note when it's absent.
+  - **Vendors** checklist on the editor (existing tests only). `GET/POST/DELETE
+    /api/v1/admin/tests/[id]/vendors` attaches/detaches offerings from the test side; attaching a
+    catalog vendor runs discovery **inline** so the price appears immediately (same as the vendor
+    screen). New tests show "Save first, then attach vendors."
+  - New dep: `@anthropic-ai/sdk` in `apps/web`.
+
 ### Fixed
 - **Change Queue "verify" links for ambiguous matches** now point at the cheapest candidate's product
   page instead of the vendor homepage (e.g. MitoHealth Testosterone → `/products/testosterone-total`).

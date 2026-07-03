@@ -23,11 +23,25 @@ type TestData = {
 
 type Category = { id: string; name: string };
 
+type VendorRow = {
+  vendorId: string;
+  vendorName: string;
+  offered: boolean;
+  offeringId: string | null;
+  currentPrice: number | null;
+  externalUrl: string | null;
+  isActive: boolean;
+};
+
 const EMPTY: TestData = {
   id: '', name: '', shortName: '', slug: '', description: '', purpose: '', procedure: '',
   preparation: '', normalRange: '', questCode: '', labcorpCode: '', categoryId: '',
   categoryIds: [], isPopular: false, displayOrder: 0,
 };
+
+// Fields the "auto-fill from name" lookup populates — only when currently blank, so it never
+// clobbers something the admin already typed.
+const LOOKUP_FIELDS = ['questCode', 'labcorpCode', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
 
 export default function TestEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -38,6 +52,10 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [lookupNote, setLookupNote] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<VendorRow[]>([]);
+  const [vendorBusy, setVendorBusy] = useState<Set<string>>(new Set());
   const isNew = id === 'new';
 
   useEffect(() => {
@@ -52,6 +70,8 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
       const ids = Array.from(new Set([d.categoryId, ...(d.categories ?? []).map((c: { categoryId: string }) => c.categoryId)].filter(Boolean)));
       setTest({ ...d, categoryIds: ids });
     });
+    // Which vendors offer this test (managed inline below). Existing tests only.
+    fetch(`/api/v1/admin/tests/${id}/vendors`).then((r) => r.json()).then((j) => setVendors(j.data ?? []));
   }, [id, isNew]);
 
   const toggleCategory = (catId: string) =>
@@ -63,6 +83,68 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
 
   const handleChange = (field: keyof TestData, value: string | boolean | number) => {
     setTest((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
+
+  // Auto-fill codes + content from the test name (catalogs first, AI fallback). Fills blanks only.
+  const handleLookup = async () => {
+    if (!test?.name.trim()) { setError('Enter a test name first.'); return; }
+    setError(null);
+    setLookupNote(null);
+    setLookingUp(true);
+    try {
+      const res = await fetch('/api/v1/admin/tests/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: test.name }),
+      });
+      const j = await res.json();
+      if (!res.ok) { setError(j.error?.message ?? 'Lookup failed'); return; }
+      const d = j.data ?? {};
+      setTest((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        for (const f of LOOKUP_FIELDS) {
+          const cur = prev[f];
+          const incoming = d[f];
+          if ((cur == null || String(cur).trim() === '') && incoming != null && incoming !== '') {
+            (next as Record<string, unknown>)[f] = incoming;
+          }
+        }
+        return next;
+      });
+      setLookupNote(Array.isArray(d.notes) && d.notes.length ? d.notes.join(' ') : 'Auto-fill complete.');
+    } catch {
+      setError('Lookup failed — check your connection and try again.');
+    } finally {
+      setLookingUp(false);
+    }
+  };
+
+  // Attach / detach a vendor from the test side. Attaching a catalog vendor auto-scrapes the price.
+  const toggleVendor = async (row: VendorRow) => {
+    if (vendorBusy.has(row.vendorId)) return;
+    setVendorBusy((prev) => new Set(prev).add(row.vendorId));
+    try {
+      if (row.offered) {
+        await fetch(`/api/v1/admin/tests/${id}/vendors?vendorId=${row.vendorId}`, { method: 'DELETE' });
+        setVendors((prev) => prev.map((v) => (v.vendorId === row.vendorId
+          ? { ...v, offered: false, offeringId: null, currentPrice: null, externalUrl: null } : v)));
+      } else {
+        const res = await fetch(`/api/v1/admin/tests/${id}/vendors`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId: row.vendorId }),
+        });
+        const j = await res.json();
+        const d = j.data ?? {};
+        setVendors((prev) => prev.map((v) => (v.vendorId === row.vendorId
+          ? { ...v, offered: true, offeringId: d.offeringId ?? null, currentPrice: d.currentPrice ?? null, externalUrl: d.externalUrl ?? null } : v)));
+      }
+    } catch {
+      setError('Could not update vendor link — try again.');
+    } finally {
+      setVendorBusy((prev) => { const n = new Set(prev); n.delete(row.vendorId); return n; });
+    }
   };
 
   const handleAddCategory = async () => {
@@ -123,7 +205,22 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
 
         <div>
           <label className={labelCls}>Name</label>
-          <input type="text" className="admin-input" value={test.name} onChange={(e) => handleChange('name', e.target.value)} />
+          <div className="flex items-center gap-2">
+            <input type="text" className="admin-input" value={test.name} onChange={(e) => handleChange('name', e.target.value)} />
+            <button
+              type="button"
+              className="admin-btn admin-btn-ghost shrink-0"
+              onClick={handleLookup}
+              disabled={lookingUp || !test.name.trim()}
+              title="Find Quest/LabCorp codes and generate description, purpose, prep and ranges from the name"
+            >
+              {lookingUp ? 'Looking up…' : '✨ Auto-fill'}
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-brand-400">Auto-fill pulls order codes from vendor catalogs and generates the content fields. It only fills blanks — review before saving.</p>
+          {lookupNote && (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{lookupNote}</div>
+          )}
         </div>
         <div>
           <label className={labelCls}>Short Name</label>
@@ -207,6 +304,45 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
             <input type="checkbox" id="isPopular" className="h-4 w-4 rounded" checked={test.isPopular} onChange={(e) => handleChange('isPopular', e.target.checked)} />
             <label htmlFor="isPopular" className="text-sm font-medium text-brand-700">Popular Test</label>
           </div>
+        </div>
+
+        {/* Vendors — which services offer this test. Attaching a catalog vendor auto-scrapes its price. */}
+        <div>
+          <label className={labelCls}>Vendors</label>
+          {isNew ? (
+            <p className="text-xs text-brand-400">Save the test first, then attach vendors here.</p>
+          ) : vendors.length === 0 ? (
+            <p className="text-xs text-brand-400">No vendors yet.</p>
+          ) : (
+            <div className="space-y-1">
+              {vendors.map((v) => {
+                const busy = vendorBusy.has(v.vendorId);
+                return (
+                  <label
+                    key={v.vendorId}
+                    className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                      v.offered ? 'border-brand-300 bg-brand-50' : 'border-brand-100 bg-white'
+                    } ${busy ? 'opacity-60' : 'cursor-pointer hover:bg-brand-50'}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded"
+                        checked={v.offered}
+                        disabled={busy}
+                        onChange={() => toggleVendor(v)}
+                      />
+                      <span className="font-medium text-brand-700">{v.vendorName}</span>
+                    </span>
+                    <span className="text-xs text-brand-500">
+                      {busy ? 'Working…' : v.offered ? (v.currentPrice != null ? `$${v.currentPrice.toFixed(2)}` : 'No price yet') : ''}
+                    </span>
+                  </label>
+                );
+              })}
+              <p className="mt-1 text-xs text-brand-400">Checking a catalog vendor scrapes the current price automatically.</p>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 pt-4">

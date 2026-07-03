@@ -55,6 +55,10 @@ pnpm dev:worker          # the scrape worker (only when working on scraping)
 pnpm dev:all             # web + worker (turbo dev)
 ```
 
+**Env:** the admin **Add Test → ✨ Auto-fill** feature calls Claude for content generation, so it needs
+`ANTHROPIC_API_KEY` in `.env`. It's optional — without the key, auto-fill still returns order codes
+from the vendor catalogs (Dirt Cheap Labs) and just skips the generated copy.
+
 ## ⚠️ Gotchas that have bitten us (do not relearn the hard way)
 
 1. **Tailwind v4 + arbitrary values are unreliable here.** `text-[oklch(...)]`, `bg-[...]`, `p-[..]`

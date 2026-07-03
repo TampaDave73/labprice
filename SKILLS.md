@@ -27,6 +27,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Dashboard** — KPI counts + recent audit activity.
 - **Tests** — list (sortable, search) + editor: name/codes/copy fields, **Categories multi-select
   (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete.
+  - **✨ Auto-fill** (next to the name): `POST /api/v1/admin/tests/lookup` fills the order codes +
+    the five content fields from the test name. Codes come from vendor catalogs first (DCL API →
+    `code-lookup.ts`), then **Claude** (`claude-opus-4-8`) for gaps + all content. Fills blanks only,
+    for review before saving. Needs `ANTHROPIC_API_KEY`; without it, returns catalog codes only.
+  - **Vendors** checklist (existing tests only): attach/detach offerings from the test side via
+    `/api/v1/admin/tests/[id]/vendors`; attaching a catalog vendor auto-scrapes the price inline.
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
 - **Vendors** — list (sortable incl. by trust) + **Add Vendor**; editor has: details, **Trust
