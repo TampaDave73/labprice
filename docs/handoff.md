@@ -1,5 +1,9 @@
 # LabTestCompare — Session Handoff
 
+> ⚠️ **Most current resume snapshot is `STATE.md` (repo root)** — read that first for the latest work
+> (Add Test auto-fill + inline vendor multiselect, as of 2026-07-03 @ `f9614e3`). This file is the
+> general onboarding intro; `STATE.md` has the point-in-time status.
+
 Read this first, then **`.claude/CLAUDE.md`** (conventions + gotchas, auto-loaded),
 **`SKILLS.md`** (feature catalog + workflows), and **`CHANGELOG.md`** (full history).
 Those three are the living source of truth — keep them current with every change.
