@@ -337,14 +337,22 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   (walkinlab, paginated catalog), **Personalabs** (personalabs, paginated catalog, provider labelled
   per-product), **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD
   Labs** (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel
-  heuristic), **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated,
-  worker/script-only for now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API
-  vendor across 46 hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs**
-  (discountedlabs, Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent),
-  **True Health Labs** (truehealthlabs, sitemap-as-catalog, best code exposure of any vendor, $0-price
-  bundle guard), **Quest Health** (questhealth, Quest's own first-party store, code embedded in the
-  URL), **LabCorp OnDemand** (labcorpondemand, LabCorp's own first-party store, explicit
-  `data-isbundleproduct` flag — best isPanel signal of any vendor). Each independently scrapeable.
+  heuristic), **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated; inline
+  "Scrape now" now queues to the `scrape-discover` worker rather than being script-only, see the "Save
+  Scraper Config"/Request A Test fix entry below), **DirectLabs** (directlabs, API vendor across 46
+  hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs** (discountedlabs,
+  Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent), **True Health
+  Labs** (truehealthlabs, sitemap-as-catalog, best code exposure of any vendor, $0-price bundle guard),
+  **Quest Health** (questhealth, Quest's own first-party store, code embedded in the URL), **LabCorp
+  OnDemand** (labcorpondemand, LabCorp's own first-party store, explicit `data-isbundleproduct` flag —
+  best isPanel signal of any vendor). Each independently scrapeable.
+- **35 tests, 490 possible offerings (35×14), 324 priced** after the 2026-07-04 "Lab Test Transparency
+  Project" expansion (see `CHANGELOG.md`) — 21 new tests added from that community spreadsheet, all 35
+  linked to all 14 vendors and discovery re-run for each. The gap between 324 and 490 is mostly the
+  same accepted name-only-matching tradeoff documented throughout this file (an unmatched/ambiguous
+  result isn't automatically a bug — see the per-vendor entries above and the pinned-URL override), plus
+  68 pending Change Queue entries from the new, more granular tests (ApoB, Lp(a), Iron Panel, etc.) that
+  need a human pick between real candidates.
 
 ### Thirteenth scraper — Quest Health (DONE)
 - `questhealth.com` is Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware —

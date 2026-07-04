@@ -10,6 +10,28 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **21 new tests from "The Lab Test Transparency Project" community spreadsheet** (a Reddit-maintained
+  cross-vendor price sheet, v1.0 June 2026): Testosterone Free (calc)+Total, Testosterone Free Direct,
+  MTHFR Genetic Test, hs-CRP, Mercury, Lead, Magnesium, Zinc, Lipase, Amylase, PSA Total+Free+%Free,
+  IGF-1, Vitamin B12+Folate Panel, Apolipoprotein B, Homocysteine, Lipoprotein(a), Cystatin C with
+  eGFR, Progesterone, Iron Panel, GGT, Fasting Insulin — plus 4 new categories (Genetics, Inflammation,
+  Heavy Metals, Cardiovascular). The sheet's other 10 tests (CBC, CMP, TSH, Vitamin D, Ferritin, HbA1c,
+  Lipid Panel, Cortisol, Vitamin B12, Estradiol) matched existing tests by name and were **not**
+  duplicated, even where the sheet's Quest code differs from ours (Quest has had multiple valid codes
+  for the same test; ours were verified live against real vendor catalogs and stay authoritative) — all
+  31 of the sheet's tests are now represented. Fixed a pre-existing data issue found while auditing
+  categories: CBC was tagged with leftover test/dev categories ("Male Enhancement", "Test", "Daves
+  Test") instead of the (existing but unused) "Blood Count" category.
+- **Bulk vendor coverage expansion**: linked all 35 tests to all 14 vendors (490 possible offerings) and
+  ran discovery for every vendor — 324 offerings now have a real price. Cross-checked the spreadsheet's
+  10 vendor columns against ours: **Mito Health, GoodLabs, Walk-In Lab (sheet's "Walkinlabs"), Quest
+  Health (sheet's "Quest direct"), and LabCorp OnDemand (sheet's "Labcorp direct")** are the same
+  vendors we already have (confirmed `walkinlabs.com` doesn't resolve — it's just informal naming for
+  `walkinlab.com`); **Ulta Labs** remains blocked by an image CAPTCHA (see `STATE.md`); **Function
+  Health, Marek Health, DrSays, and Jason Health** are not yet built — candidates for future scraper
+  additions. `apps/worker/scripts/add-transparency-project-tests.ts` and
+  `link-all-tests-all-vendors.ts` document how this was done and can be adapted for future bulk
+  expansions.
 - **Vendor verification harness** (`apps/worker/scripts/verify-vendor.ts`) — a repeatable, automated
   check to run against every vendor (required step for onboarding any new one — see SKILLS.md's "Vendor
   verification checklist"): adapter resolves to itself (not a silent GoodLabs fallback), catalog crawl
