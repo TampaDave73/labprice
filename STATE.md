@@ -2,14 +2,14 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `85173de` (Personalabs commit,
-> pushed) + uncommitted HealthLabs.com scraper work. User said they'll batch-check the whole new-vendor
-> queue later rather than confirm each one — proceeded through #3 and #4 without waiting.
+> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld`, pushed through the HealthLabs.com
+> isPanel fix. User then found a SECOND bug (Cortisol: matched the right URL but no price) which turned
+> out to be a shared-code bug affecting every vendor, not a HealthLabs-only issue — fixed in `persist.ts`
+> (see "Pinned-URL fix" below). User said to fix it and then work straight through the rest of the
+> new-vendor queue (#5–#11) without stopping to confirm each one, and to keep the final report terse.
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0) — Walk-In Lab, Personalabs, HealthLabs.com (5th/6th/7th
-> scrapers) built + verified live. Next up would be #5 (Private MD Labs) — **check with the user first**
-> since they haven't said to keep going past #4.
+> the **new-vendor scraper queue** (Next #0).
 
 ---
 
@@ -172,6 +172,22 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   successfully** — 9 matched + published, 2 correctly flagged **ambiguous** (PSA, B12 — multiple real
   product variants), **0 unmatched** (the pinned-URL retry now resolves all 4 that narrowing missed).
   Confirmed visible in the admin Vendors list.
+
+### Pinned-URL fix — was shared code, not a HealthLabs-only bug (affected ALL catalog vendors)
+- User reported a second HealthLabs.com issue: Cortisol had matched the **correct** URL but still
+  showed no price. Root cause was NOT vendor-specific this time — `packages/scrapers/src/catalog/
+  persist.ts`'s manual-URL-override only retried a pinned `externalUrl` when the automatic match status
+  was `'unmatched'`. Cortisol was `'ambiguous'` (two HealthLabs products both name-match "Cortisol" at
+  $109 vs $129) — ambiguous already auto-pins the *cheapest* candidate's URL for the admin to verify,
+  but the pinned-URL retry never even looked at it, so it stayed stuck in the Change Queue forever even
+  after the admin confirmed the page was right.
+- **Fix**: `persist.ts` now retries the pinned URL for `'unmatched'` **or** `'ambiguous'` results — a
+  pinned URL is the admin resolving an ambiguity by hand, so it should always win. One-line condition
+  change in shared code, no adapter changes needed.
+- **This was never HealthLabs-specific** — verified it also silently fixed pre-existing ambiguous+pinned
+  cases on **Walk-In Lab** (PSA: was ambiguous → now $49) and **Personalabs** (Testosterone $92, TSH $78,
+  PSA $87, Vitamin B12 $81: all four were ambiguous → now resolved). Re-ran all 3 already-built vendors'
+  E2E discovery scripts after the fix to confirm no regressions and pick up these improvements.
 
 ### Current live DB state
 - **7 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**

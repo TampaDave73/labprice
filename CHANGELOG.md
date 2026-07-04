@@ -66,6 +66,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   pasting the correct URL on an *unmatched* offering makes the next scrape fetch that page and price
   it directly — so admins can fix a test the name/code matcher missed. (API vendors DCL/MitoHealth
   have no per-product page, so this doesn't apply.)
+- **Pinned-URL override now also applies to `ambiguous` results, not just `unmatched`** (`persist.ts`).
+  Found via a real HealthLabs.com case: Cortisol name-matched two products at different prices
+  ($109/$129, correctly flagged ambiguous), the admin confirmed the right one, but the pinned URL was
+  never consulted because the override only fired on `unmatched`. Shared code, so this was never
+  HealthLabs-specific — re-running Walk-In Lab and Personalabs after the fix resolved 5 more
+  pre-existing ambiguous offerings across those two vendors for free.
 - **Catalog edits save on blur** with a "Catalog saved." confirmation + inline hint, so it's clear the
   URL/price persisted without needing "Save Scraper Config".
 

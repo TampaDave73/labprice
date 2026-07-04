@@ -186,6 +186,12 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
 - **Match safety**: a code hit is trusted only if the product name shares a *distinctive* token with
   our test (`sharesStrongToken`) — guards against wrong/stale codes (e.g. a bad Quest code resolving
   to a different test) and generic-word name collisions ("Vitamin B12" ≠ "Vitamin A").
+- **Manual pinned-URL override** (`persist.ts`): pasting the correct product URL on an offering makes
+  the next scrape fetch that exact page and price it directly, for **both** `unmatched` (narrowing found
+  nothing) and `ambiguous` (narrowing found several candidates and refused to guess) results — a pinned
+  URL is the admin resolving the ambiguity by hand, so it always wins. This is vendor-agnostic shared
+  code (`priceFromPinnedUrl`), so a bug here affects every vendor at once — don't assume a "no price on
+  a pinned URL" report is specific to whichever vendor it was noticed on; check `persist.ts` first.
 - **To onboard another catalog vendor**: add a `<vendor>-parser.ts` in `packages/scrapers/src/catalog/`
   exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
   add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,

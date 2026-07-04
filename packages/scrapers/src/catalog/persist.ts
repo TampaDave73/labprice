@@ -151,11 +151,16 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   for (const { test, result: rawResult } of matches) {
     const offering = testToOffering.get(test.id)!;
 
-    // Manual-URL override: if a test didn't match by code/name but the admin pinned a product URL,
-    // price that exact product — by looking its slug up in the fetched catalog (works for API vendors
-    // like MitoHealth/DCL) or by fetching the page (page vendors GoodLabs/OYL).
+    // Manual-URL override: if the admin pinned a product URL, price that exact product and trust it
+    // over the automatic match — by looking its slug up in the fetched catalog (works for API vendors
+    // like MitoHealth/DCL) or by fetching the page (page vendors GoodLabs/OYL). Covers BOTH
+    // 'unmatched' (narrowing found nothing) and 'ambiguous' (narrowing found several candidates and
+    // refused to guess) — a pinned URL is the admin resolving that ambiguity by hand, so it should
+    // always win, not just when there were zero automatic candidates. (Bug: an ambiguous test like
+    // Cortisol — two name-matched HealthLabs products at different prices — never got its pinned URL
+    // consulted at all, staying stuck in the Change Queue even after the admin confirmed the right page.)
     let result = rawResult;
-    if (rawResult.status === 'unmatched' && offering.externalUrl) {
+    if ((rawResult.status === 'unmatched' || rawResult.status === 'ambiguous') && offering.externalUrl) {
       const pinned = await priceFromPinnedUrl(offering.externalUrl, test, cfg, fetchHtml, productsBySlug).catch(() => null);
       if (pinned) {
         log(`  pinned URL priced ${test.name} → $${pinned.price}`);
