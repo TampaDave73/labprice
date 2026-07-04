@@ -84,6 +84,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   timing out) — a real, current outage, not a scraper defect. Bumped the shared `httpFetchHtml` default
   timeout 20s→45s as a general safety margin while investigating. Follow-up: re-run
   `discover-truehealthlabs.ts` once the site recovers.
+- **Thirteenth catalog scraper — Quest Health** (`questhealth.com`, adapter `questhealth`). Quest
+  Diagnostics' own first-party store. `sitemap_0.xml` lists the ~160-product catalog in one fetch, with
+  the Quest order code embedded directly in the URL (`/product/hemoglobin-a1c-test/496M.html` → 496).
+  Every product is Quest-fulfilled by definition. 10 new unit tests over real fixtures (154 total).
+  Verified live: 8/11 seed tests price successfully (6 clean matches, 2 resolved via the pinned-URL fix,
+  3 unmatched — the usual tradeoff).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for
@@ -118,6 +124,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   pre-existing ambiguous offerings across those two vendors for free.
 - **Catalog edits save on blur** with a "Catalog saved." confirmation + inline hint, so it's clear the
   URL/price persisted without needing "Save Scraper Config".
+- **Quest Health pinned-URL double-extension bug.** The shared pinned-URL retry derives a "slug" from
+  the last path segment of a pinned URL — fine for one-segment slugs, but Quest Health's are two
+  segments (`name-slug/codeM`), so the generic logic handed the adapter just `496M.html`, and
+  reconstructing `${baseUrl}/product/${slug}.html` produced `.../496M.html.html`, corrupting the stored
+  `externalUrl` on every pinned-URL resolution. Fixed by trusting the product page's own
+  `<link rel="canonical">` instead of reconstructing the URL from `slug`.
 
 ### Added
 - **Member/non-member pricing + fourth scraper (MitoHealth).** MitoHealth (`mitohealth.com`) is a

@@ -294,6 +294,25 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   was created since the E2E script never got to run (see "Twelfth scraper" above); run
   `discover-truehealthlabs.ts` to add it once the site is back up.
 
+### Thirteenth scraper — Quest Health (DONE)
+- `questhealth.com` is Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware —
+  the "dwvar_"/"data-pid" attributes and `.html` URLs are SFCC tells). `sitemap_0.xml` lists the whole
+  catalog (~160 products, single flat fetch, no pagination), with the **Quest order code embedded
+  directly in the URL**: `/product/hemoglobin-a1c-test/496M.html` → code 496 (also confirmed on the page
+  itself via `data-pid="496"`). Every product is Quest-fulfilled by definition (it's Quest's own site) —
+  strict tiers, `labProvider` always `'quest'`.
+- **Bug found + fixed during build**: the shared pinned-URL retry (`priceFromPinnedUrl` in `persist.ts`)
+  derives a "slug" from the LAST path segment of a pinned URL — fine for every other vendor's one-
+  segment slugs, but Quest Health's slug is two segments (`name-slug/codeM`), so that generic logic
+  handed the adapter just `496M.html`, and naively rebuilding `${baseUrl}/product/${slug}.html` produced
+  a double extension (`.../product/496M.html.html`), corrupting `externalUrl` on every pinned-URL
+  resolution. Fixed by trusting the product page's own `<link rel="canonical">` URL instead of
+  reconstructing one from `slug` — added a regression test simulating the truncated-slug case.
+- 10 new unit tests over real fixtures (154 total). Verified live end-to-end (real DB), fast (~16-20s):
+  8/11 seed tests price successfully across two runs (6 clean matches, 2 resolved via the pinned-URL
+  fix, 3 unmatched — Estradiol/PSA/TSH, the usual narrowing tradeoff). Confirmed the canonical-URL fix
+  by re-running a third time and checking `externalUrl` values are clean single-extension URLs.
+
 ---
 
 ## ⏭️ Next
@@ -330,7 +349,9 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
    white-label affiliate. **Built + unit-tested (see "Twelfth scraper" above) but NOT live-verified** —
    the site went unresponsive mid-session (real vendor outage). Re-run
    `discover-truehealthlabs.ts` once it's back up.
-10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate network.
+10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate
+    network. **DONE** (see "Thirteenth scraper" above — found + fixed a shared pinned-URL bug along
+    the way, double-`.html` URLs).
 11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact affiliate, 12%.
 
 Gotcha: the *original research pass* only WebFetch'd Ulta, Request A Test, DirectLabs, and True Health

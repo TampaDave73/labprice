@@ -200,7 +200,16 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     segment to ignore (`Quest_17306_303`). Strict per-lab tiers. Built + unit-tested against real
     fixtures but not yet live-verified — the site had a real outage mid-build session; re-run its E2E
     script once it recovers before treating it as fully done.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs}.ts`.
+  - `questhealth` — Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware).
+    `sitemap_0.xml` (single fetch, ~160 products) embeds the Quest order code directly in the URL
+    (`/product/hemoglobin-a1c-test/496M.html` → 496), also confirmed via `data-pid` on the page. Every
+    product is Quest-fulfilled by definition. **Gotcha found here, fixed in shared code**: its slug is
+    two path segments (`name-slug/codeM`), but the pinned-URL retry's generic "slug = last path
+    segment" logic only grabs the code segment — reconstructing a URL from that alone doubles the
+    `.html` extension. Fixed by having the adapter trust the product page's own
+    `<link rel="canonical">` instead of reconstructing a URL from `slug`. Worth remembering for any
+    future vendor whose slug isn't a single flat segment.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs,questhealth}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.

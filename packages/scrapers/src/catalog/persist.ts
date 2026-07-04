@@ -99,6 +99,9 @@ const ADAPTER_DEFAULTS: Record<
   // encodes "<Lab>_<code>", explicitly labelled per product — strict per-lab tiers, no
   // codeMatchAnyProvider needed.
   truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml' },
+  // Quest's own first-party store (Salesforce Commerce Cloud). Sitemap embeds the Quest order code
+  // directly in the URL; every product is Quest-fulfilled by definition.
+  questhealth: { baseUrl: 'https://www.questhealth.com', catalogPath: '/sitemap_0.xml' },
 };
 
 /**
