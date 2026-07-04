@@ -7,6 +7,7 @@ import { fetchMitoHealthCatalog } from './mitohealth-parser';
 import { parseWalkInLabCatalog, parseWalkInLabProduct, parseWalkInLabNextPage } from './walkinlab-parser';
 import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextPage } from './personalabs-parser';
 import { parseHealthLabsCatalog, parseHealthLabsProduct } from './healthlabs-parser';
+import { parsePrivateMDLabsCatalog, parsePrivateMDLabsProduct, parsePrivateMDLabsNextPage } from './privatemdlabs-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -57,6 +58,14 @@ export const healthLabsAdapter: CatalogAdapter = {
   // Single flat sitemap.xml fetch — no pagination (nextCatalogPage omitted).
 };
 
+export const privateMDLabsAdapter: CatalogAdapter = {
+  name: 'privatemdlabs',
+  parseCatalog: (html) => parsePrivateMDLabsCatalog(html),
+  parseProduct: (html, baseUrl, slug) => parsePrivateMDLabsProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/product/${slug}`,
+  nextCatalogPage: (html, currentUrl) => parsePrivateMDLabsNextPage(html, currentUrl),
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -68,6 +77,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   walkinlab: walkInLabAdapter,
   personalabs: personalabsAdapter,
   healthlabs: healthLabsAdapter,
+  privatemdlabs: privateMDLabsAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

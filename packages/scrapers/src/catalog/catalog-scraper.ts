@@ -16,6 +16,12 @@ export interface CatalogScrapeConfig {
   /** Milliseconds to wait between product-page fetches (be polite to the vendor). */
   rateLimitMs?: number;
   matchOptions?: MatchOptions;
+  /**
+   * Extra headers every fetch for this vendor needs (e.g. Private MD Labs' catalog pagination is an
+   * AJAX endpoint that only returns JSON when `X-Requested-With: XMLHttpRequest` is present — plain
+   * HTTP still works, just needs this one header, no browser required).
+   */
+  extraHeaders?: Record<string, string>;
 }
 
 export interface FetchDeps {
@@ -137,7 +143,7 @@ export async function discover(
 }
 
 /** Default HTTP fetcher: plain GET with a browser-ish UA and a timeout. No JS execution needed. */
-export function httpFetchHtml(timeoutMs = 20_000): (url: string) => Promise<string> {
+export function httpFetchHtml(timeoutMs = 20_000, extraHeaders?: Record<string, string>): (url: string) => Promise<string> {
   return async (url: string) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -148,6 +154,7 @@ export function httpFetchHtml(timeoutMs = 20_000): (url: string) => Promise<stri
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
           Accept: 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9',
+          ...extraHeaders,
         },
         signal: controller.signal,
       });

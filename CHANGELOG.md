@@ -40,6 +40,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   ambiguity detection is the real backstop against a genuine bundle instead (see `STATE.md` for the full
   story). 11 new unit tests over real fixtures (99 total). Verified live: after the fix, **11/11 seed
   tests price successfully** — 9 matched + auto-published, 2 correctly flagged ambiguous, 0 unmatched.
+- **Eighth catalog scraper — Private MD Labs** (`privatemdlabs.com`, adapter `privatemdlabs`). A huge,
+  granular catalog (3,545 products) paginated via same-URL AJAX that only returns JSON with an
+  `X-Requested-With: XMLHttpRequest` header — added generic extra-header support
+  (`CatalogScrapeConfig.extraHeaders`) rather than needing a browser. No lab order codes anywhere on
+  this vendor's site at all, so matching is name-only (like MitoHealth); no isPanel heuristic either
+  (same reasoning as HealthLabs). 13 new unit tests over real fixtures (112 total). Verified live: full
+  crawl ~70 pages/~2min; 11/11 seed tests price successfully (4 clean matches, 7 resolved via the
+  pinned-URL fix above — this vendor's granular catalog produces genuine name ambiguity far more than
+  any other vendor so far).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

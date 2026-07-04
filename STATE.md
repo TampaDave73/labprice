@@ -189,12 +189,31 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   PSA $87, Vitamin B12 $81: all four were ambiguous → now resolved). Re-ran all 3 already-built vendors'
   E2E discovery scripts after the fix to confirm no regressions and pick up these improvements.
 
+### Eighth scraper — Private MD Labs (DONE)
+- `privatemdlabs.com`: single catalog entry point `/tests?view=all`, but it's a **huge** catalog (site's
+  own JSON-LD says "over 100 blood tests"; actual count is **3,545** very granular products) paginated
+  via same-URL AJAX (`&page=N`) that only returns JSON instead of a full HTML page when the request
+  carries `X-Requested-With: XMLHttpRequest` — still plain HTTP, no browser, just one header. Added
+  generic header support (`CatalogScrapeConfig.extraHeaders`, threaded through `httpFetchHtml`) since
+  this is the first vendor needing anything beyond a default UA.
+- **No lab order codes anywhere on this vendor's site** (checked live: no sku/identifier/mpn in the
+  product JSON-LD, no populated data-labcorp-id/data-quest-id on the listing — the attribute exists in
+  their markup but is always an unfilled JS template string). Matching is **name-only**, like MitoHealth.
+- **No isPanel heuristic** either (same reasoning as HealthLabs — no reliable signal found).
+- 13 new unit tests over real fixtures (112 total). Verified live end-to-end (real DB): full catalog
+  crawl is ~70 pages/~125-150s (large-catalog tradeoff, same category as Walk-In Lab's 41 pages — slower
+  "Scrape now" but still fine for interactive use). 11/11 seed tests price successfully after two runs
+  (4 matched clean, 7 ambiguous → all 7 resolved via the pinned-URL fix above, since this vendor's huge
+  granular catalog produces genuinely ambiguous name variants far more often than any other vendor so
+  far — e.g. 13 distinct "Lipid Panel"-ish products at different prices).
+
 ### Current live DB state
-- **7 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **8 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
-  **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic — see above, matcher's
-  ambiguity guard is the backstop). Each independently scrapeable.
+  **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
+  (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic).
+  Each independently scrapeable.
 
 ---
 
@@ -217,9 +236,10 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
    **DONE** (see "Sixth scraper" above). Committed `85173de`, pushed.
 4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%.
    **DONE** (see "Seventh scraper" above — isPanel heuristic removed after a real bug the user caught;
-   0/11 unmatched now). ← **user said they'll batch-check the whole queue later; next is #5, Private MD
-   Labs, unless told otherwise**
+   0/11 unmatched now).
 5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
+   **DONE** (see "Eighth scraper" above). ← **user said to fix the shared bug then run straight through
+   #5–#11, terse final report only — no per-vendor confirmation from here on**
 6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).
 8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.

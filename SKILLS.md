@@ -173,10 +173,18 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     panels, which silently broke their manually-pinned-URL price; see `STATE.md` "Seventh scraper" for
     the full incident). `isPanel` is always `false` for this vendor; the matcher's ambiguity detection
     (>1 distinct price on a code hit) is the real backstop against a genuine bundle.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs}.ts`.
+  - `privatemdlabs` — huge granular catalog (3,545 products), paginated via same-URL AJAX
+    (`/tests?view=all&page=N`) that only returns JSON when the request carries
+    `X-Requested-With: XMLHttpRequest` (see "Extra headers" below) — still plain HTTP. No lab codes
+    anywhere on the site → name-only matching (`matchPriority: ['name']`, like MitoHealth). No isPanel
+    heuristic (same reasoning as HealthLabs).
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.
+- **Extra headers**: `CatalogScrapeConfig.extraHeaders` (threaded through `httpFetchHtml`) lets a vendor
+  need one non-default header (e.g. Private MD Labs' AJAX pagination) without reaching for a full
+  browser engine. Set via `ADAPTER_DEFAULTS[name].extraHeaders`.
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds

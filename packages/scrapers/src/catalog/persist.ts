@@ -48,7 +48,15 @@ export interface DiscoverySummary {
  */
 const ADAPTER_DEFAULTS: Record<
   string,
-  { baseUrl: string; catalogPath: string; apiBase?: string; matchPriority?: MatchTier[]; codeMatchAnyProvider?: boolean; mergeCodeTiers?: boolean }
+  {
+    baseUrl: string;
+    catalogPath: string;
+    apiBase?: string;
+    matchPriority?: MatchTier[];
+    codeMatchAnyProvider?: boolean;
+    mergeCodeTiers?: boolean;
+    extraHeaders?: Record<string, string>;
+  }
 > = {
   goodlabs: { baseUrl: 'https://goodlabs.com', catalogPath: '/book-tests?step=PANEL_SELECTION' },
   ownyourlabs: { baseUrl: 'https://ownyourlabs.com', catalogPath: '/shop', codeMatchAnyProvider: true },
@@ -61,6 +69,15 @@ const ADAPTER_DEFAULTS: Record<
   // No dedicated catalog page at all — sitemap.xml doubles as the full product index (single fetch,
   // no pagination); codes are unlabelled per-lab like Walk-In Lab.
   healthlabs: { baseUrl: 'https://www.healthlabs.com', catalogPath: '/sitemap.xml', codeMatchAnyProvider: true },
+  // No lab order codes anywhere on this vendor's site at all (checked live) — name-only, like
+  // MitoHealth. The catalog is paginated via an AJAX endpoint (same URL, `page=N`) that only returns
+  // JSON instead of a full HTML page when this header is present — no browser needed, just one header.
+  privatemdlabs: {
+    baseUrl: 'https://www.privatemdlabs.com',
+    catalogPath: '/tests?view=all',
+    matchPriority: ['name'],
+    extraHeaders: { 'X-Requested-With': 'XMLHttpRequest' },
+  },
 };
 
 /**
@@ -78,6 +95,7 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
     catalogPath: (selectors.catalogPath as string) || defaults.catalogPath,
     adapter,
     ...(apiBase ? { apiBase } : {}),
+    ...(defaults.extraHeaders ? { extraHeaders: defaults.extraHeaders } : {}),
     rateLimitMs: 500,
     matchOptions: {
       matchPriority: defaults.matchPriority ?? ['quest', 'labcorp', 'name'],
@@ -133,7 +151,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   let matches: OfferingMatch[];
   let catalogProducts: CatalogProduct[] = [];
   try {
-    const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(), onLog: log }, cfg, { narrow: !opts.exhaustive });
+    const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(20_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
     matches = result.matches;
     catalogProducts = result.products;
   } catch (e) {
@@ -145,7 +163,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   }
 
   const summary: DiscoverySummary = { runId: run.id, matched: 0, ambiguous: 0, unmatched: 0, staged: 0, autoApprovedStagedIds: [] };
-  const fetchHtml = opts.fetchHtml ?? httpFetchHtml();
+  const fetchHtml = opts.fetchHtml ?? httpFetchHtml(20_000, cfg.extraHeaders);
   const productsBySlug = new Map(catalogProducts.map((p) => [p.slug, p]));
 
   for (const { test, result: rawResult } of matches) {
