@@ -166,11 +166,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     lives in exactly one hidden `.hidden_test_code` div; a bundle carries one per constituent test, so
     `isPanel = codes.length > 1`.
   - `healthlabs` — **no catalog page at all**; `sitemap.xml` is the catalog (single flat fetch, no
-    pagination — the fastest of the recent vendors, ~21s). Clean JSON-LD `Product` blocks
-    (`JSON.parse`-able directly), unlabelled per-lab codes (`codeMatchAnyProvider`). **Panel detection
-    has no reliable signal here** — `category`, "Panel" in the name, and a hard testCode-count cutoff
-    were all checked live and ruled out (see `STATE.md` "Seventh scraper"). Uses `codes.length > 12` as
-    a documented, imperfect heuristic; the matcher's ambiguity detection is the real backstop.
+    pagination — the fastest of the recent vendors, ~20s). Clean JSON-LD `Product` blocks
+    (`JSON.parse`-able directly), unlabelled per-lab codes (`codeMatchAnyProvider`). **No isPanel
+    heuristic at all** — `category`, "Panel" in the name, and a testCode-count cutoff were all tried and
+    disproved live (a count cutoff mis-flagged CBC/CMP — genuine single tests with 17 codes each — as
+    panels, which silently broke their manually-pinned-URL price; see `STATE.md` "Seventh scraper" for
+    the full incident). `isPanel` is always `false` for this vendor; the matcher's ambiguity detection
+    (>1 distinct price on a code hit) is the real backstop against a genuine bundle.
   - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by

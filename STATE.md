@@ -154,28 +154,31 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
 - New `healthlabs` adapter (`catalog/healthlabs-parser.ts`). Each product page embeds a clean,
   directly-`JSON.parse`-able JSON-LD `Product` block with `testCode` values (unlabelled per-lab, like
   Walk-In Lab → `codeMatchAnyProvider`).
-- **Panel detection is a known-weak spot for this vendor** — no reliable signal exists. Checked and
-  ruled out live: `category` field (absent on genuine single tests too, e.g. Ferritin), name containing
-  "Panel" (CMP/Lipid Panel are legitimately single tests we price directly; unrelated vendors have
-  bundles that DON'T say "Panel"), testCode count as a clean threshold (a single test's code count
-  varies 3–6 depending on how many labs carry it — Almond=3, Ferritin=6 — while a real bundle reuses
-  each constituent test's OWN codes verbatim rather than getting a distinct bundle code, so a small
-  bundle could land in the same range). Settled on **`codes.length > 12`** — comfortable headroom over
-  the largest single test seen (6), verified catching the one real bundle tested (46 codes). A small
-  2–3-test bundle could theoretically slip through as `isPanel:false`; the matcher's ambiguity
-  detection (>1 distinct price on a code hit) is the actual backstop, not this count. Flagged here so a
-  future session doesn't assume this heuristic is as solid as the other 4 vendors' panel signals.
-- 10 new unit tests over real fixtures (98 total). Verified live end-to-end (real DB), and **fast**
-  (21s total — no pagination): 5/11 matched + published, 2 correctly flagged **ambiguous** (PSA, B12 —
-  multiple real product variants), 4 unmatched (same narrowing-tokenization tradeoff seen on every
-  vendor so far). Confirmed visible in the admin Vendors list.
+- **Panel detection: NO isPanel heuristic — `isPanel` is always `false` for this vendor.** Originally
+  shipped as `codes.length > 12` (headroom over Almond=3, Ferritin=6), but the user hit a real bug: they
+  manually pinned product URLs for CBC/CMP/Estradiol/HbA1c (the 4 originally-unmatched seed tests) and
+  re-scraped, and CBC + CMP still came back with no price. Root cause: CBC and the Comprehensive
+  Metabolic Panel are genuine **single tests** that HealthLabs sources from far more than 3 labs, so
+  each carries **17 testCodes** — comfortably over the "safe" 12 cutoff, so they got mis-flagged as
+  panels, and `priceFromPinnedUrl`'s `!isPanel` filter zeroed their price. `category` field and "Panel"
+  in the name were already ruled out earlier (Ferritin lacks `category` too; CMP/Lipid Panel are
+  legitimately single tests despite the name). With every tried signal disproved, removed isPanel
+  detection entirely rather than keep guessing at a threshold — a false "is a panel" silently breaks
+  pricing (worse), while `isPanel:false` always just means a genuine bundle can survive as a code-tier
+  candidate, caught by the matcher's existing ambiguity guard (>1 distinct price) instead of silently
+  mismatching. Added a regression fixture/test using the real CBC page (17 codes, must stay unpanelled).
+- 11 new unit tests over real fixtures (99 total, one added for the regression). Verified live
+  end-to-end (real DB), **fast** (~20s, no pagination): after the fix, **11/11 seed tests price
+  successfully** — 9 matched + published, 2 correctly flagged **ambiguous** (PSA, B12 — multiple real
+  product variants), **0 unmatched** (the pinned-URL retry now resolves all 4 that narrowing missed).
+  Confirmed visible in the admin Vendors list.
 
 ### Current live DB state
 - **7 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
-  **HealthLabs.com** (healthlabs, sitemap-as-catalog, weak panel-detection heuristic — see above). Each
-  independently scrapeable.
+  **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic — see above, matcher's
+  ambiguity guard is the backstop). Each independently scrapeable.
 
 ---
 
@@ -197,8 +200,9 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 3. **Personalabs** (personalabs.com) — LabCorp-primary, Awin/Commission Junction affiliate 10–15%.
    **DONE** (see "Sixth scraper" above). Committed `85173de`, pushed.
 4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%.
-   **DONE** (see "Seventh scraper" above — weak panel-detection heuristic, flagged there). ← **user said
-   they'll batch-check the whole queue later; next is #5, Private MD Labs, unless told otherwise**
+   **DONE** (see "Seventh scraper" above — isPanel heuristic removed after a real bug the user caught;
+   0/11 unmatched now). ← **user said they'll batch-check the whole queue later; next is #5, Private MD
+   Labs, unless told otherwise**
 5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
 6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).

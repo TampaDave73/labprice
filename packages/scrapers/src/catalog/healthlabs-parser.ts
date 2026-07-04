@@ -61,16 +61,17 @@ export function parseHealthLabsProduct(html: string, baseUrl = 'https://www.heal
     labProvider: 'quest', // unlabelled per-code (like Walk-In Lab); matched via codeMatchAnyProvider.
     labTestIDs: codes,
     price,
-    // WEAK signal, unlike our other adapters: HealthLabs has no explicit bundle flag, no "See
-    // Individual Tests" text, and `category` is absent on plenty of genuine single tests too (checked
-    // live) — so it can't be used either. A single test's testCode count varies 3–6 in practice
-    // (one code per carrying lab); a real bundle reuses each constituent test's OWN codes verbatim
-    // (verified live: the Almond test's codes 1727/2820/602479 appear again inside the Basic Food
-    // Allergy Panel's 46), so a small 2–3 test bundle could land in the same 6–12 range as a single
-    // test with many labs. We pick 12 for headroom over the largest single test seen (6) and accept
-    // that a small bundle might slip through as isPanel:false — the matcher's ambiguity detection
-    // (>1 distinct price on a code hit) is the real backstop here, not this count.
-    isPanel: codes.length > 12,
+    // No isPanel detection for this vendor — every signal we tried was disproved live. `category`
+    // absence, "Panel" in the name, and a testCode-count cutoff (originally 12, based on Almond=3 and
+    // Ferritin=6) all looked plausible until real seed tests broke them: CBC and the Comprehensive
+    // Metabolic Panel are genuine SINGLE tests with 17 testCodes each (HealthLabs sources many more
+    // partner/regional labs than just Quest/LabCorp/BioReference), well above the "safe" threshold —
+    // which silently zeroed their price via the manual-pinned-URL path (`priceFromPinnedUrl` filters
+    // `!isPanel` before picking a price). A false "is a panel" is worse than a false "isn't" here: it
+    // breaks pricing outright, while leaving isPanel always false just means a genuine bundle can
+    // survive as a code-tier candidate — caught by the matcher's ambiguity detection (>1 distinct
+    // price) instead of silently mismatching. That's the real backstop for this vendor.
+    isPanel: false,
     name: data.name,
   };
 

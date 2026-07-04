@@ -45,14 +45,23 @@ describe('parseHealthLabsProduct', () => {
     expect(p.providers[0]!.isPanel).toBe(false);
   });
 
-  it('flags a real multi-test bundle as a panel (46 codes, reusing constituent tests\' own codes)', () => {
+  it('parses a bundle panel with many codes — isPanel is always false (see matcher tests for why)', () => {
     const p = product('healthlabs-food-panel.html');
     expect(p.name).toMatch(/basic food allergy panel/i);
     expect(p.providers[0]!.labTestIDs.length).toBeGreaterThan(40);
-    expect(p.providers[0]!.isPanel).toBe(true);
-    // The bundle's codes are the same codes as its constituent Almond test (verified live) — a
-    // structural reason isPanel exclusion matters here, unlike Walk-In Lab's distinct bundle codes.
-    expect(p.providers[0]!.labTestIDs).toEqual(expect.arrayContaining(['1727', '2820', '602479']));
+    expect(p.providers[0]!.isPanel).toBe(false);
+  });
+
+  it('regression: a genuine SINGLE test can have as many codes as a bundle — no count cutoff', () => {
+    // Live bug (2026-07-03): CBC is one test, but HealthLabs sources it from far more than 3 labs, so
+    // it carries 17 testCodes — more than Ferritin's 6, in the same range as small bundles. The
+    // original `codes.length > 12` heuristic mis-flagged this as a panel, which meant the manual
+    // pinned-URL price lookup (`priceFromPinnedUrl` filters `!isPanel`) silently returned no price.
+    const p = product('healthlabs-cbc.html');
+    expect(p.name).toMatch(/complete blood count/i);
+    expect(p.providers[0]!.labTestIDs.length).toBeGreaterThan(12);
+    expect(p.providers[0]!.labTestIDs).toEqual(expect.arrayContaining(['6399', '005009']));
+    expect(p.providers[0]!.isPanel).toBe(false);
   });
 
   it('returns null for a page with no JSON-LD Product block', () => {
@@ -77,13 +86,15 @@ describe('HealthLabs matching (codeMatchAnyProvider)', () => {
     expect(r.price).toBe(29);
   });
 
-  it('never matches the bundle panel even though it shares codes with a constituent test', () => {
-    // Almond's own code (602479) also appears inside the panel — isPanel excludes the panel from
-    // candidacy, so only the standalone Almond product can win this match.
+  it('flags ambiguous (not silently wrong) when a bundle shares a code with a constituent test', () => {
+    // With no isPanel exclusion, Almond's own code (602479) code-matches BOTH the standalone product
+    // AND the panel that reuses it, at two different prices ($49 vs $160) — the matcher's existing
+    // ambiguity guard is what keeps this safe, not panel detection. Worse UX (manual review) but never
+    // a silently wrong price, which is the accepted tradeoff documented in healthlabs-parser.ts.
     const test: TestKey = { id: 't', name: 'Almond Allergy Test', questCode: '602479', labcorpCode: '999999' };
     const r = matchTestToProducts(test, [panel, almond], OPTS);
-    expect(r.status).toBe('matched');
-    expect(r.price).toBe(49); // resolved from the standalone almond product, not the panel
+    expect(r.status).toBe('ambiguous');
+    expect(r.candidates.map((c) => c.price).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([49, 160]);
   });
 
   it('unmatched when neither code nor name matches', () => {
