@@ -90,6 +90,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   Every product is Quest-fulfilled by definition. 10 new unit tests over real fixtures (154 total).
   Verified live: 8/11 seed tests price successfully (6 clean matches, 2 resolved via the pinned-URL fix,
   3 unmatched — the usual tradeoff).
+- **Fourteenth catalog scraper — LabCorp OnDemand** (`ondemand.labcorp.com`, adapter `labcorpondemand`,
+  last vendor in the research queue). LabCorp's own first-party store. `sitemap.xml` lists the
+  ~132-product catalog in one fetch. Best isPanel signal of any vendor this session: every product page
+  carries an explicit `data-isbundleproduct` true/false flag from the vendor itself, plus bundle SKUs
+  are non-numeric (never trusted as a real order code) vs a real test's 6-digit LabCorp code. 9 new unit
+  tests over real fixtures (163 total). Verified live: 9/11 seed tests price successfully (8 clean
+  matches, 1 resolved via the pinned-URL fix, 2 unmatched — the usual tradeoff). **This completes the
+  11-vendor research queue.**
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

@@ -2,14 +2,15 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld`, pushed through the HealthLabs.com
-> isPanel fix. User then found a SECOND bug (Cortisol: matched the right URL but no price) which turned
-> out to be a shared-code bug affecting every vendor, not a HealthLabs-only issue — fixed in `persist.ts`
-> (see "Pinned-URL fix" below). User said to fix it and then work straight through the rest of the
-> new-vendor queue (#5–#11) without stopping to confirm each one, and to keep the final report terse.
+> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld`. **The 11-vendor new-scraper
+> research queue is complete** (#1 Ulta deferred on an AWS WAF CAPTCHA; #2–#11 all built, unit-tested,
+> and live-verified except True Health Labs, which is built+tested but blocked on a live-verification
+> retry by a site outage — see "Twelfth scraper"). Along the way, found + fixed two shared-code bugs
+> affecting every vendor at once (pinned-URL retry not covering `ambiguous` results; a double-`.html`
+> URL bug from slug reconstruction) — both documented below with the vendor whose testing surfaced them.
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0).
+> the **new-vendor scraper queue** (Next #0) — now complete pending the True Health Labs retry.
 
 ---
 
@@ -281,7 +282,7 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   has completed yet.
 
 ### Current live DB state
-- **11 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **13 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
   **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
@@ -289,10 +290,13 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated, worker/script-only for
   now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API vendor across 46
   hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs** (discountedlabs,
-  Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent). Each independently
-  scrapeable. **True Health Labs is built + tested but NOT yet added to the live DB** — no vendor row
-  was created since the E2E script never got to run (see "Twelfth scraper" above); run
-  `discover-truehealthlabs.ts` to add it once the site is back up.
+  Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent), **Quest Health**
+  (questhealth, Quest's own first-party store, code embedded in the URL), **LabCorp OnDemand**
+  (labcorpondemand, LabCorp's own first-party store, explicit `data-isbundleproduct` flag — best isPanel
+  signal of any vendor). Each independently scrapeable. **True Health Labs is built + tested but NOT yet
+  added to the live DB** — no vendor row was created since the E2E script never got to run (see
+  "Twelfth scraper" above); run `discover-truehealthlabs.ts` to add it once the site is back up
+  (would make 14 once added — the full queue, minus Ulta which is deferred on the CAPTCHA).
 
 ### Thirteenth scraper — Quest Health (DONE)
 - `questhealth.com` is Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware —
@@ -312,6 +316,22 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   8/11 seed tests price successfully across two runs (6 clean matches, 2 resolved via the pinned-URL
   fix, 3 unmatched — Estradiol/PSA/TSH, the usual narrowing tradeoff). Confirmed the canonical-URL fix
   by re-running a third time and checking `externalUrl` values are clean single-extension URLs.
+
+### Fourteenth scraper — LabCorp OnDemand (DONE — last vendor in the queue)
+- `ondemand.labcorp.com` is LabCorp's own first-party store (Adobe Experience Manager —
+  `/content/labcorp-ondemand/...` paths). `sitemap.xml` lists the whole catalog (~132 `/lab-tests/<slug>`
+  URLs, single flat fetch, no pagination).
+- **Best isPanel signal of any vendor this session**: every product page's add-to-cart button carries
+  an explicit `data-isbundleproduct` true/false flag (verified live: `false` for Ferritin/CMP — CMP
+  stays unflagged despite being a clinical panel, consistent with precedent — `true` for an actual
+  build-your-own bundle, "Custom Men's Health Test"). A bundle's SKU is also non-numeric (`LAB022`) vs a
+  real test's 6-digit LabCorp code (`004598`) — only numeric SKUs are trusted as order codes. Strict
+  LabCorp-only tiers (it's LabCorp's own site).
+- 9 new unit tests over real fixtures (163 total). Verified live end-to-end (real DB), fast (~9-25s):
+  9/11 seed tests price successfully across two runs (8 clean matches, 1 resolved via the pinned-URL
+  fix, 2 unmatched — HbA1c/PSA, the usual narrowing tradeoff).
+- **This completes the 11-vendor research queue** (#1 Ulta deferred/CAPTCHA-gated, #2–#11 all built and
+  live-verified except True Health Labs pending a site-outage retry — see "Twelfth scraper").
 
 ---
 
@@ -352,7 +372,8 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate
     network. **DONE** (see "Thirteenth scraper" above — found + fixed a shared pinned-URL bug along
     the way, double-`.html` URLs).
-11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact affiliate, 12%.
+11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact
+    affiliate, 12%. **DONE** (see "Fourteenth scraper" above). **Queue complete.**
 
 Gotcha: the *original research pass* only WebFetch'd Ulta, Request A Test, DirectLabs, and True Health
 Labs and got 403s on all four (Ulta's is confirmed AWS WAF CAPTCHA; Request A Test confirmed as a

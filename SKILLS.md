@@ -209,7 +209,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     `.html` extension. Fixed by having the adapter trust the product page's own
     `<link rel="canonical">` instead of reconstructing a URL from `slug`. Worth remembering for any
     future vendor whose slug isn't a single flat segment.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs,questhealth}.ts`.
+  - `labcorpondemand` — LabCorp's own first-party store (Adobe Experience Manager). `sitemap.xml`
+    (single fetch, ~132 products). **Best isPanel signal of any vendor**: an explicit
+    `data-isbundleproduct` true/false flag on every product page, vendor-supplied (verified live: CMP
+    stays `false` despite being a clinical panel — consistent with precedent — an actual build-your-own
+    bundle is `true`). Bundle SKUs are also non-numeric, unlike a real 6-digit LabCorp code. Last vendor
+    in the 11-vendor research queue — see `STATE.md` for the full list and status.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs,questhealth,labcorpondemand}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.

@@ -102,6 +102,10 @@ const ADAPTER_DEFAULTS: Record<
   // Quest's own first-party store (Salesforce Commerce Cloud). Sitemap embeds the Quest order code
   // directly in the URL; every product is Quest-fulfilled by definition.
   questhealth: { baseUrl: 'https://www.questhealth.com', catalogPath: '/sitemap_0.xml' },
+  // LabCorp's own first-party store (Adobe Experience Manager). Sitemap lists every /lab-tests/<slug>
+  // page; each page's own `data-isbundleproduct` flag tells us panels explicitly (a real vendor-
+  // supplied signal, unlike most other name-only-matching vendors this session).
+  labcorpondemand: { baseUrl: 'https://www.ondemand.labcorp.com', catalogPath: '/sitemap.xml' },
 };
 
 /**
