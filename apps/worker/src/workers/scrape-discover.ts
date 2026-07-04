@@ -3,6 +3,9 @@
 // matches OUR tests into it by Quest code / LabCorp code / name — see apps/worker/src/discovery.ts.
 // Auto-approved changes are handed to the scrape-publish queue, exactly like scrape-execute.
 import { Worker, type Job } from 'bullmq';
+import { prisma } from '@labprice/database';
+import { adapterNeedsBrowser } from '@labprice/scrapers/src/catalog/persist';
+import { browserFetchHtml } from '@labprice/scrapers/src/catalog/browser-fetch';
 import { redisConnection } from '../redis';
 import { scrapePublishQueue } from '../queues';
 import { runVendorDiscovery } from '../discovery';
@@ -20,10 +23,19 @@ export function createDiscoverWorker() {
       const { vendorId, triggeredBy, offeringIds } = job.data;
       console.log(`[discover] vendor=${vendorId} offerings=${offeringIds?.length ?? 'all'}`);
 
+      // A few adapters (Request A Test) are JS-challenge-gated and need stealth Playwright instead of
+      // plain HTTP — this queue never checked that (bug found live 2026-07-04 alongside the identical
+      // gap in the web app's inline "Scrape now"), so every scheduled/queued Request A Test run failed
+      // the same way the inline one did.
+      const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true } });
+      const selectors = config?.selectors as Record<string, unknown> | null;
+      const needsBrowser = adapterNeedsBrowser(selectors?.adapter as string | undefined);
+
       const summary = await runVendorDiscovery({
         vendorId,
         triggeredBy: triggeredBy ?? 'SCHEDULE',
         offeringIds,
+        ...(needsBrowser ? { fetchHtml: browserFetchHtml() } : {}),
         onLog: (m) => console.log(`[discover]   ${m}`),
       });
 

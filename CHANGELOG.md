@@ -10,6 +10,50 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Vendor verification harness** (`apps/worker/scripts/verify-vendor.ts`) — a repeatable, automated
+  check to run against every vendor (required step for onboarding any new one — see SKILLS.md's "Vendor
+  verification checklist"): adapter resolves to itself (not a silent GoodLabs fallback), catalog crawl
+  returns a plausible product count, a fresh canary test auto-matches end-to-end, every stored product
+  URL actually resolves, and the discovery run completes without throwing. Verified it correctly passes
+  a healthy vendor and correctly fails (2/5) when the Discounted Labs adapter-drop bug below is
+  deliberately reproduced.
+- **"Recent Runs" panel on the vendor editor** (`GET /api/v1/admin/vendors/[id]/runs`) — the "live
+  insight into scraping" an admin needs to see *why* a scrape failed without a DB query: last 15
+  `ScrapeRun`s with status/trigger/duration/found-updated counts, and inline `ScrapeError` messages
+  (e.g. `"HTTP 403 for https://requestatest.com/tests"`) for failed ones.
+
+### Fixed
+- **Request A Test's "Scrape now" always failed** (user-reported, alongside "Last success" never
+  updating and the Catalog-source dropdown showing "goodlabs" instead of "Request A Test"). Root causes,
+  all found live:
+  - The admin vendor editor's adapter dropdown only listed the original 4 adapters
+    (goodlabs/ownyourlabs/dirtcheaplabs/mitohealth) — Request A Test's real `requestatest` adapter had
+    no matching `<option>`, so the UI showed the first option instead.
+  - Neither the web app's inline "Scrape now" NOR the worker's own scheduled `scrape-discover`
+    processor ever checked whether an adapter needs a real browser (Cloudflare JS challenge) — both
+    silently used plain HTTP and got an instant `HTTP 403`, which is why "Last success" stayed stale.
+    Added `adapterNeedsBrowser()` (exported from `persist.ts`) and wired it into both places.
+  - A **direct** import of `browser-fetch.ts` (stealth Playwright) into the web app's API route was
+    tried and fails at runtime — Turbopack can't bundle the stealth plugin for the Next.js server
+    (`utils.typeOf is not a function`); `serverExternalPackages` didn't fix it either. Settled on:
+    browser-needing adapters get queued to the `scrape-discover` BullMQ worker (a plain tsx process,
+    no bundler) instead of running inline; the admin sees a "queued — needs the worker running" message.
+  - Discovered and fixed along the way: `localhost` intermittently resolves to IPv6 on this Windows
+    Docker Desktop setup, causing a `new IORedis('redis://localhost:6379')` connection to "succeed"
+    (TCP connects) then reset on every read/write — an ECONNRESET storm that looks exactly like a Redis
+    outage. `apps/worker/src/redis.ts` already normalized this for the worker; the web route's own
+    ad-hoc Redis connections needed the identical `127.0.0.1` fix.
+  - Verified end-to-end through the real admin UI: Scrape now → queued → worker picks it up → browser
+    crawl → 11/11 matched, Last success updates to today, dropdown shows the correct adapter.
+- **Discounted Labs' "Save Scraper Config" silently dropped its adapter, breaking ALL of that vendor's
+  offerings** (user-reported via a stuck CBC price after pinning its URL). The scrape-config API route
+  validated the adapter against a hand-kept 4-item whitelist instead of the scraper package's real
+  `ADAPTERS` registry — every vendor added after the original 4 would lose its adapter on save,
+  silently falling back to parsing the site with the GoodLabs parser (0 matches). Fixed to source from
+  the real registry; also fixed the vendor editor's dropdown, which had the identical stale 4-option
+  list. Restored Discounted Labs' config and re-verified.
+
+### Added
 - **Fifth catalog scraper — Walk-In Lab** (`walkinlab.com`, adapter `walkinlab`). Custom server-rendered
   store (plain HTTP, no bot wall), but its catalog spans 40+ paginated listing pages — added generic
   pagination support to the catalog crawler (`CatalogAdapter.nextCatalogPage`, optional, single-page

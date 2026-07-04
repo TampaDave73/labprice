@@ -41,6 +41,30 @@ type CatalogItem = {
   isActive: boolean;
 };
 
+type RunError = { message: string; errorType: string; url: string | null };
+type ScrapeRunRow = {
+  id: string;
+  status: 'QUEUED' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'CANCELLED';
+  testsFound: number | null;
+  pricesUpdated: number | null;
+  pricesUnchanged: number | null;
+  errorsCount: number | null;
+  durationMs: number | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  job: { triggeredBy: string } | null;
+  errors: RunError[];
+};
+
+const RUN_STATUS_BADGE: Record<ScrapeRunRow['status'], string> = {
+  SUCCESS: 'bg-green-100 text-green-700',
+  PARTIAL: 'bg-amber-100 text-amber-700',
+  FAILED: 'bg-red-100 text-red-700',
+  RUNNING: 'bg-blue-100 text-blue-700',
+  QUEUED: 'bg-brand-100 text-brand-500',
+  CANCELLED: 'bg-brand-100 text-brand-500',
+};
+
 type ConfigForm = {
   engine: 'PLAYWRIGHT' | 'SELENIUM' | 'HTTP';
   baseUrl: string;
@@ -91,6 +115,15 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     setAvailableTests(j.data?.availableTests ?? []);
   };
   useEffect(() => { loadCatalog(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recent scrape runs + errors — the "live insight into scraping" view, so an admin can see *why* a
+  // run failed (e.g. "HTTP 403 for https://...") without querying the DB directly.
+  const [runs, setRuns] = useState<ScrapeRunRow[]>([]);
+  const loadRuns = async () => {
+    const j = await fetch(`/api/v1/admin/vendors/${id}/runs`).then((r) => r.json());
+    setRuns(j.data ?? []);
+  };
+  useEffect(() => { loadRuns(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addLink = async () => {
     if (!newTestId) return;
@@ -183,9 +216,12 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
       const d = j.data;
       setMsg(`Scraped ${d.offerings} test(s): ${d.matched} matched, ${d.ambiguous} need review, ${d.unmatched} not found — ${d.published} price(s) published.`);
       loadCatalog(); // refresh to show newly-published prices
+    } else if (j.data?.mode === 'catalog-queued') {
+      setMsg('This vendor needs a browser-based crawl, so it runs via the background worker, not inline — queued. Make sure `pnpm dev:worker` (or the production worker) is running; check back here or the Change Queue shortly for results.');
     } else {
       setMsg(`Queued ${j.data?.enqueued ?? 0} scrape job(s). Watch the Change Queue for results.`);
     }
+    loadRuns(); // refresh the run log either way (inline runs show up immediately; queued ones once the worker finishes)
   };
 
   const handleDelete = async () => {
@@ -335,6 +371,55 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
         <p className="text-xs text-brand-400">Trust is computed from recent run success rate, how recently a run succeeded, and how often staged changes get rejected. LOW trust sends every price change to the Change Queue; HIGH trust auto-approves a wider range.</p>
+      </div>
+
+      {/* Recent runs / error log — live insight into scraping, so a failure's actual cause (e.g. an
+          HTTP status or a parse error) is visible here instead of requiring a DB query. */}
+      <div className="admin-card max-w-2xl space-y-3 p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="admin-h2">Recent Runs</h2>
+          <button onClick={loadRuns} className="admin-btn admin-btn-ghost text-xs">Refresh</button>
+        </div>
+        {runs.length === 0 ? (
+          <p className="text-sm text-brand-400">No scrape runs yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-brand-100 text-left text-brand-600">
+                  <th className="py-2 pr-3">When</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">Trigger</th>
+                  <th className="py-2 pr-3">Duration</th>
+                  <th className="py-2 pr-3">Found / Updated</th>
+                  <th className="py-2">Errors</th>
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.id} className="border-b border-brand-100">
+                    <td className="py-2 pr-3 whitespace-nowrap">{r.startedAt ? new Date(r.startedAt).toLocaleString() : '—'}</td>
+                    <td className="py-2 pr-3"><span className={`rounded px-2 py-0.5 text-xs font-medium ${RUN_STATUS_BADGE[r.status]}`}>{r.status}</span></td>
+                    <td className="py-2 pr-3">{r.job?.triggeredBy ?? '—'}</td>
+                    <td className="py-2 pr-3">{r.durationMs != null ? `${(r.durationMs / 1000).toFixed(1)}s` : '—'}</td>
+                    <td className="py-2 pr-3">{r.testsFound ?? '—'} / {r.pricesUpdated ?? '—'}</td>
+                    <td className="py-2">
+                      {r.errors.length === 0 ? (
+                        (r.errorsCount ?? 0) > 0 ? `${r.errorsCount} error(s)` : '—'
+                      ) : (
+                        <ul className="space-y-0.5">
+                          {r.errors.map((e, i) => (
+                            <li key={i} className="text-xs text-red-700" title={e.url ?? undefined}>{e.message}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Scraper config */}

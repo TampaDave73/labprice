@@ -38,9 +38,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
 - **Vendors** — list (sortable incl. by trust) + **Add Vendor**; editor has: details, **Trust
-  Override + Scraper Health panel**, **Scraper Configuration** (engine/base URL/selectors/schedule +
-  a **Catalog mode** toggle & catalog path for catalog-scraper vendors like GoodLabs),
-  **Catalog** (link/unlink tests + product URL + price), and **Scrape now**.
+  Override + Scraper Health panel**, **Recent Runs** (last 15 `ScrapeRun`s with status/trigger/
+  duration/found-updated counts + any `ScrapeError` messages inline — `GET
+  /api/v1/admin/vendors/[id]/runs` — the live insight into scraping failures, so an admin doesn't need
+  a DB query to see e.g. `"HTTP 403 for https://..."`), **Scraper Configuration** (engine/base URL/
+  selectors/schedule + a **Catalog mode** toggle, **Catalog source (adapter)** dropdown, and catalog
+  path for catalog-scraper vendors), **Catalog** (link/unlink tests + product URL + price), and
+  **Scrape now** (runs inline for most catalog vendors; queues to the `scrape-discover` worker and
+  shows a "queued" message for `needsBrowser` vendors like Request A Test).
 - **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
   to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
 - **Change Queue** — review staged price changes (Approve/Reject); has an in-UI workflow explainer.
@@ -227,12 +232,28 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   `curl -A "<browser UA>"` first — don't assume), `catalog/browser-fetch.ts`'s `browserFetchHtml()` is a
   drop-in `fetchHtml` replacement using stealth-patched headless Chromium. It's a SEPARATE module from
   `persist.ts` on purpose (see its top comment) — `persist.ts` must stay Playwright-free to be safe to
-  deep-import into Next.js, so only worker-side callers pass `browserFetchHtml()` explicitly via
-  `runVendorDiscovery({..., fetchHtml: browserFetchHtml()})`. **This means inline "Scrape now" in the web
-  admin doesn't work for these vendors yet** — that route always uses the plain-HTTP default. Mark such
-  a vendor `needsBrowser: true` in `ADAPTER_DEFAULTS` (documentation-only flag, not auto-consumed).
+  deep-import into Next.js. Mark such a vendor `needsBrowser: true` in `ADAPTER_DEFAULTS` and use
+  `adapterNeedsBrowser(selectors.adapter)` (exported from `persist.ts`) to decide whether a caller needs
+  it. **Inline "Scrape now" in the web admin queues to the `scrape-discover` worker instead of running
+  browser vendors in-process** (`apps/web/.../vendors/[id]/scrape/route.ts`) — a *direct* static import of
+  `browser-fetch.ts` into a Next.js route was tried and fails at runtime (`utils.typeOf is not a
+  function` from inside the stealth plugin — Turbopack can't bundle it for the server, confirmed live,
+  not just a bundle-size worry); `serverExternalPackages` did not fix it either. So: the worker process
+  (`apps/worker`, plain tsx, no bundler) is the only place that actually runs `browserFetchHtml()` —
+  both the worker's `scrape-discover.ts` processor AND the web route must independently check
+  `adapterNeedsBrowser` (found live 2026-07-04: the worker processor never checked this either, so even
+  scheduled runs for Request A Test silently used plain HTTP and 403'd). The admin sees "queued — needs
+  `pnpm dev:worker` running" instead of an inline result summary for these vendors.
   Not every WAF is passable this way — Ulta Lab Tests escalates to an actual image CAPTCHA even with
   this, which is a different, unsolved problem (see `STATE.md`).
+- **Windows Redis gotcha, second location**: `localhost` intermittently resolves to IPv6 (`::1`) on
+  Windows, which this Docker Desktop setup's port forwarding doesn't reliably answer on — a fresh
+  `ioredis` connection "succeeds" (TCP connects) then resets on the first real read/write, over and over,
+  looking exactly like a Redis outage even though `redis-cli PING` and Postgres both work fine at the
+  same time. `apps/worker/src/redis.ts` already normalizes `localhost` → `127.0.0.1` for the worker's own
+  connections; `apps/web/.../vendors/[id]/scrape/route.ts` needed the identical fix for its own ad-hoc
+  `new IORedis(...)` calls (found live 2026-07-04 debugging the queued-scrape fix above — don't add a raw
+  `new IORedis('redis://localhost:6379')` anywhere in this codebase again).
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds
@@ -252,7 +273,57 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
   add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,
   catalogPath }`. The matcher, crawler (with name-narrowing), and `runVendorDiscovery` persistence are
-  all reused — only the site-specific parsing is new.
+  all reused — only the site-specific parsing is new. **Then run the verification checklist below —
+  required for every new vendor, not optional.**
+
+### Vendor verification checklist (run for every new vendor, and after any shared-code change)
+
+Every bug found in this vendor build-out was a *systemic* one hiding behind an apparently-healthy
+vendor: a shared whitelist going stale, a site re-theming and silently zeroing the catalog, a wrong base
+domain, a fetcher mismatch nobody wired up. Unit tests against frozen fixtures don't catch any of these —
+they need a real, current, end-to-end run. `apps/worker/scripts/verify-vendor.ts` automates the checks
+that can be automated; the rest needs a real click-through in the admin UI.
+
+```bash
+# From apps/worker — runs the exact code path "Scrape now" uses, no admin UI needed:
+DOTENV_CONFIG_PATH=../../.env npx tsx scripts/verify-vendor.ts <vendor-slug>
+# Force a specific canary test (default: first not-yet-linked test from a standard candidate list):
+DOTENV_CONFIG_PATH=../../.env npx tsx scripts/verify-vendor.ts <vendor-slug> --canary=<test-slug>
+```
+
+What it checks, and the real incident behind each one:
+1. **Adapter resolves to itself, not a silent GoodLabs fallback** — a hand-kept adapter whitelist going
+   stale silently strips `selectors.adapter` on save (Discounted Labs, 2026-07-04: `Save Scraper Config`
+   wiped it because the API route validated against `['goodlabs','ownyourlabs','dirtcheaplabs',
+   'mitohealth']` instead of the real `ADAPTERS` registry).
+2. **Catalog crawl finds a plausible number of products, not zero** — a vendor re-themes their site and
+   the catalog-listing regex stops matching anything (Discounted Labs, same date: 100 products → 0
+   after a markup change, silent — the crawl itself never throws).
+3. **A canary test the vendor doesn't currently carry gets linked fresh and matches** — proves *new*-test
+   onboarding works end-to-end, not just that already-cached prices still look fine. If it comes back
+   unmatched, check whether it's a genuine wording mismatch (an accepted, documented tradeoff for
+   name-only vendors — see the per-vendor entries above) before treating it as a bug.
+4. **Every stored product URL actually resolves (no 404s)** — a wrong base domain in URL construction
+   (DirectLabs, 2026-07-04: built `https://directlabs.com/testinfo/<id>` — the WordPress marketing site
+   — instead of `https://store.directlabs.com/testinfo/<id>`, the real store).
+5. **The discovery run completes without throwing** — the wrong-fetcher-for-a-JS-gated-vendor class of
+   bug (Request A Test, same date: the web route's inline "Scrape now" and the worker's own scheduled
+   `scrape-discover` processor both defaulted to plain HTTP against a Cloudflare-gated site and 403'd
+   every time — neither ever checked `adapterNeedsBrowser`).
+
+What it does **not** check — do these by hand in the admin UI before calling a vendor done:
+- Click **Save Scraper Config** once, reload the page, and confirm the Catalog source dropdown still
+  shows the vendor's real adapter (not silently reverted to GoodLabs) — the round-trip itself, not just
+  the stored value.
+- Click **Scrape now** for real in the browser and read the message shown — inline summary for a normal
+  vendor, or the "queued — needs the worker running" message for a `needsBrowser` one. Confirm **Recent
+  Runs** (below Scraper Health on the vendor page) shows a fresh `SUCCESS` row afterward, and that
+  **Scraper Health → Last success** updated to today.
+- Spot-check one matched price against the vendor's live site by eye (a matcher bug can pick the wrong
+  candidate at a real, plausible-looking price — the DB alone won't tell you that).
+- If anything came back `FAILED` or with unexpected errors, read the message directly in **Recent Runs**
+  (`ScrapeError.message`, e.g. `"HTTP 403 for https://..."`) before guessing — the actual cause is
+  usually right there.
 
 ### Verifying UI
 Use the preview tools (`preview_start`, `preview_eval`, `preview_screenshot`) with the admin

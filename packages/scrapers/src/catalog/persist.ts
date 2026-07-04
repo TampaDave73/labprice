@@ -109,6 +109,16 @@ const ADAPTER_DEFAULTS: Record<
 };
 
 /**
+ * True for adapters that are JS-challenge-gated and need `browserFetchHtml` instead of plain HTTP
+ * (currently just Request A Test). Callers that can import Playwright (the web app's Node API routes,
+ * worker scripts) use this to decide whether to pass `opts.fetchHtml: browserFetchHtml()` — this module
+ * itself stays Playwright-free so it's still safe to deep-import from anywhere.
+ */
+export function adapterNeedsBrowser(adapterName: string | null | undefined): boolean {
+  return !!ADAPTER_DEFAULTS[getAdapter(adapterName ?? undefined).name]?.needsBrowser;
+}
+
+/**
  * Build the catalog config from the vendor's DB config. `selectors.adapter` picks the site parser +
  * product-URL shape (see `ADAPTERS`); the catalog path and match options default per adapter above.
  */
