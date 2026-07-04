@@ -370,6 +370,16 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
                   <option value="ownyourlabs">Own Your Labs (ownyourlabs.com)</option>
                   <option value="dirtcheaplabs">Dirt Cheap Labs (dirtcheaplabs.com)</option>
                   <option value="mitohealth">Mito Health (mitohealth.com)</option>
+                  <option value="walkinlab">Walk-In Lab (walkinlab.com)</option>
+                  <option value="personalabs">Personalabs (personalabs.com)</option>
+                  <option value="healthlabs">HealthLabs.com (healthlabs.com)</option>
+                  <option value="privatemdlabs">Private MD Labs (privatemdlabs.com)</option>
+                  <option value="requestatest">Request A Test (requestatest.com)</option>
+                  <option value="directlabs">DirectLabs (directlabs.com)</option>
+                  <option value="discountedlabs">Discounted Labs (discountedlabs.com)</option>
+                  <option value="truehealthlabs">True Health Labs (truehealthlabs.com)</option>
+                  <option value="questhealth">Quest Health (questhealth.com)</option>
+                  <option value="labcorpondemand">LabCorp OnDemand (ondemand.labcorp.com)</option>
                 </select>
               </div>
               <div>

@@ -284,6 +284,26 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   0), 7/11 seed tests price successfully. A reminder that catalog-mode adapters have no compile-time
   guard against a vendor's markup drifting — periodic live re-verification (not just unit tests against
   frozen fixtures) is what actually catches this class of regression.
+- **Bug found + fixed (user-reported 2026-07-04): "Save Scraper Config" silently wiped the `adapter`
+  field for every catalog vendor added after the original 4.** Reported as "added the URL for CBC, hit
+  Save Scraper Config, then Scrape now — no prices came in," reproduced exactly via the admin UI (not
+  just the DB): after clicking Save Scraper Config, **all 11** Discounted Labs offerings went
+  unmatched, not just CBC — `POST /scrape` logged `catalog: 0 products` in ~2.6s (too fast for a real
+  ~100-product crawl). Root cause: `apps/web/app/api/v1/admin/vendors/[id]/scrape-config/route.ts` had
+  its own hand-kept `const ADAPTERS = ['goodlabs', 'ownyourlabs', 'dirtcheaplabs', 'mitohealth']`
+  whitelist (from when those were the only 4 vendors) and dropped `body.adapter` from the saved
+  `selectors` JSON if it wasn't in that list — silently true for all 10 vendors added this session.
+  With no `adapter` in `selectors`, `catalog-scraper.ts`'s `cfg.adapter ?? goodlabsAdapter` fallback
+  quietly parsed the vendor's HTML with the **GoodLabs** parser instead, which of course matches
+  nothing. The admin vendor-editor's "Catalog source (adapter)" `<select>` (`admin/vendors/[id]/page.tsx`)
+  had the same stale 4-option list, so there was no way to even see/reselect the real adapter once lost.
+  Fixed both: the route now validates against `ADAPTERS` imported from
+  `@labprice/scrapers/src/catalog/adapters.ts` (the actual registry `getAdapter()` uses) instead of a
+  hand-kept copy, so a future new adapter can't have this happen again; the dropdown lists all 14.
+  Checked every vendor's stored `selectors` — only Discounted Labs had actually been clicked-and-broken
+  live; restored its `adapter` field and re-verified end-to-end through the real UI (Save Scraper Config
+  → Scrape now): CBC now resolves to $35 via the pinned-URL fallback, matching the DirectLabs fix
+  earlier in this session.
 
 ### Twelfth scraper — True Health Labs (DONE — site recovered, retried successfully same session)
 - `truehealthlabs.com` is WooCommerce with a **dedicated product-only sitemap**

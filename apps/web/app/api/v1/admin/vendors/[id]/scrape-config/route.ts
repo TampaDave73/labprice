@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
+import { ADAPTERS } from '@labprice/scrapers/src/catalog/adapters';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -33,10 +34,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
   // (GoodLabs), rather than fetching a per-offering product URL. When on, the CSS selectors below are
   // ignored; catalogPath / preferredProvider steer the catalog scraper instead.
   const isCatalog = body.mode === 'catalog';
-  const ADAPTERS = ['goodlabs', 'ownyourlabs', 'dirtcheaplabs', 'mitohealth'];
+  // Validated against the scraper package's own adapter registry (not a hand-kept copy here) so a new
+  // adapter never silently gets its `adapter` field stripped on save — this exact staleness bug (found
+  // live 2026-07-04: Save Scraper Config silently wiped `adapter` for every catalog vendor added after
+  // the original 4, falling back to the GoodLabs parser and returning 0 matches) is what this guards.
   const selectors = {
     ...(isCatalog ? { mode: 'catalog' as const } : {}),
-    ...(isCatalog && ADAPTERS.includes(body.adapter) ? { adapter: body.adapter } : {}),
+    ...(isCatalog && Object.prototype.hasOwnProperty.call(ADAPTERS, body.adapter) ? { adapter: body.adapter } : {}),
     ...(isCatalog && typeof body.catalogPath === 'string' && body.catalogPath ? { catalogPath: body.catalogPath } : {}),
     ...(isCatalog && typeof body.preferredProvider === 'string' && body.preferredProvider ? { preferredProvider: body.preferredProvider } : {}),
     priceSelector: typeof body.priceSelector === 'string' ? body.priceSelector : '',

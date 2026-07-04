@@ -156,6 +156,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   `/choose-a-test`; product cards are now `<li class="choose-test-item">` → `<strong
   class="choose-item-name"><a>`. Rewrote the catalog regex to scope to that wrapper and refreshed the
   stale fixture from a live capture. Re-verified live: 100 products parsed (was 0).
+- **"Save Scraper Config" silently dropped the `adapter` field for every catalog vendor added after the
+  original 4** (user-reported: pinning a Discounted Labs CBC URL, saving, and scraping produced no
+  price — reproduced live: the save wiped `adapter` for *all* 11 of that vendor's offerings, not just
+  CBC, so every one silently parsed through the GoodLabs adapter instead). The scrape-config API route
+  validated `body.adapter` against its own hand-kept 4-item whitelist instead of the scraper package's
+  real adapter registry; the admin vendor editor's adapter dropdown had the same stale 4-option list.
+  Both now source from `@labprice/scrapers/src/catalog/adapters.ts`'s `ADAPTERS` registry. Restored the
+  one vendor (Discounted Labs) whose config had actually been broken by this and re-verified end-to-end
+  through the real admin UI.
 
 ### Added
 - **Member/non-member pricing + fourth scraper (MitoHealth).** MitoHealth (`mitohealth.com`) is a
