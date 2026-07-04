@@ -58,6 +58,9 @@ const ADAPTER_DEFAULTS: Record<
   // directly per product, so it uses strict per-lab tiers (no codeMatchAnyProvider).
   walkinlab: { baseUrl: 'https://www.walkinlab.com', catalogPath: '/categories/view/all-products', codeMatchAnyProvider: true },
   personalabs: { baseUrl: 'https://www.personalabs.com', catalogPath: '/products/all-test/' },
+  // No dedicated catalog page at all — sitemap.xml doubles as the full product index (single fetch,
+  // no pagination); codes are unlabelled per-lab like Walk-In Lab.
+  healthlabs: { baseUrl: 'https://www.healthlabs.com', catalogPath: '/sitemap.xml', codeMatchAnyProvider: true },
 };
 
 /**

@@ -2,13 +2,14 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `d79ce91` (Walk-In Lab commit)
-> + uncommitted Personalabs scraper work. User said they'll batch-check the queue later rather than
-> confirm each vendor — proceeding through #4 (HealthLabs.com) without waiting.
+> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld` @ `85173de` (Personalabs commit,
+> pushed) + uncommitted HealthLabs.com scraper work. User said they'll batch-check the whole new-vendor
+> queue later rather than confirm each one — proceeded through #3 and #4 without waiting.
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0) — Walk-In Lab + Personalabs (5th/6th scrapers) built +
-> verified live; HealthLabs.com (#4) in progress.
+> the **new-vendor scraper queue** (Next #0) — Walk-In Lab, Personalabs, HealthLabs.com (5th/6th/7th
+> scrapers) built + verified live. Next up would be #5 (Private MD Labs) — **check with the user first**
+> since they haven't said to keep going past #4.
 
 ---
 
@@ -142,10 +143,38 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   the candidate page was never fetched; confirmed via unit test the parser reads it correctly once
   fetched). Confirmed visible in the admin Vendors list.
 
+### Seventh scraper — HealthLabs.com (DONE)
+- `healthlabs.com` has **no dedicated catalog page at all** — tests live at flat root-level slugs
+  (`/almond-allergy-testing`) mixed in with blog/account/content pages, with no nav link to an "all
+  tests" listing. Used the site's own **`sitemap.xml`** as the catalog instead: one flat fetch (no
+  pagination needed — simpler than Walk-In Lab/Personalabs), ~730 URLs. Non-test URLs become harmless
+  catalog-entry noise; `parseProduct` returns `null` for anything without a valid JSON-LD `Product`
+  block, so they're silently skipped (verified live: the crawler hit one such noise page mid-narrowing
+  and logged "no product data" instead of erroring).
+- New `healthlabs` adapter (`catalog/healthlabs-parser.ts`). Each product page embeds a clean,
+  directly-`JSON.parse`-able JSON-LD `Product` block with `testCode` values (unlabelled per-lab, like
+  Walk-In Lab → `codeMatchAnyProvider`).
+- **Panel detection is a known-weak spot for this vendor** — no reliable signal exists. Checked and
+  ruled out live: `category` field (absent on genuine single tests too, e.g. Ferritin), name containing
+  "Panel" (CMP/Lipid Panel are legitimately single tests we price directly; unrelated vendors have
+  bundles that DON'T say "Panel"), testCode count as a clean threshold (a single test's code count
+  varies 3–6 depending on how many labs carry it — Almond=3, Ferritin=6 — while a real bundle reuses
+  each constituent test's OWN codes verbatim rather than getting a distinct bundle code, so a small
+  bundle could land in the same range). Settled on **`codes.length > 12`** — comfortable headroom over
+  the largest single test seen (6), verified catching the one real bundle tested (46 codes). A small
+  2–3-test bundle could theoretically slip through as `isPanel:false`; the matcher's ambiguity
+  detection (>1 distinct price on a code hit) is the actual backstop, not this count. Flagged here so a
+  future session doesn't assume this heuristic is as solid as the other 4 vendors' panel signals.
+- 10 new unit tests over real fixtures (98 total). Verified live end-to-end (real DB), and **fast**
+  (21s total — no pagination): 5/11 matched + published, 2 correctly flagged **ambiguous** (PSA, B12 —
+  multiple real product variants), 4 unmatched (same narrowing-tokenization tradeoff seen on every
+  vendor so far). Confirmed visible in the admin Vendors list.
+
 ### Current live DB state
-- **6 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **7 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
-  catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product). Each
+  catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
+  **HealthLabs.com** (healthlabs, sitemap-as-catalog, weak panel-detection heuristic — see above). Each
   independently scrapeable.
 
 ---
@@ -166,9 +195,10 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 2. **Walk-In Lab** (walkinlab.com) — Quest+LabCorp, ShareASale affiliate, 45-day cookie. **DONE** (see
    "Fifth scraper" above). Committed `d79ce91`, pushed.
 3. **Personalabs** (personalabs.com) — LabCorp-primary, Awin/Commission Junction affiliate 10–15%.
-   **DONE** (see "Sixth scraper" above).
-4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%. ←
-   in progress
+   **DONE** (see "Sixth scraper" above). Committed `85173de`, pushed.
+4. **HealthLabs.com** (healthlabs.com) — multi-lab (4,500+ draw sites), CJ/Conversant affiliate 30%.
+   **DONE** (see "Seventh scraper" above — weak panel-detection heuristic, flagged there). ← **user said
+   they'll batch-check the whole queue later; next is #5, Private MD Labs, unless told otherwise**
 5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
 6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).

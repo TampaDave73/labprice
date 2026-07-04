@@ -165,7 +165,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     the labProvider is read off the page, not guessed. **Panel detection**: a single test's order code
     lives in exactly one hidden `.hidden_test_code` div; a bundle carries one per constituent test, so
     `isPanel = codes.length > 1`.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs}.ts`.
+  - `healthlabs` — **no catalog page at all**; `sitemap.xml` is the catalog (single flat fetch, no
+    pagination — the fastest of the recent vendors, ~21s). Clean JSON-LD `Product` blocks
+    (`JSON.parse`-able directly), unlabelled per-lab codes (`codeMatchAnyProvider`). **Panel detection
+    has no reliable signal here** — `category`, "Panel" in the name, and a hard testCode-count cutoff
+    were all checked live and ruled out (see `STATE.md` "Seventh scraper"). Uses `codes.length > 12` as
+    a documented, imperfect heuristic; the matcher's ambiguity detection is the real backstop.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.

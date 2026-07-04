@@ -29,6 +29,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   `buildConfig` from a ternary chain into a per-adapter defaults map — cleaner at 6 vendors, no behavior
   change. 14 new unit tests over real fixtures (88 total). Verified live: 6/11 matched + auto-published,
   4 correctly flagged ambiguous, 1 unmatched (same narrowing-heuristic tradeoff as Walk-In Lab).
+- **Seventh catalog scraper — HealthLabs.com** (`healthlabs.com`, adapter `healthlabs`). No dedicated
+  catalog page at all, so `sitemap.xml` doubles as the product index (single flat fetch, no pagination —
+  the fastest of the paginated-catalog vendors so far, ~21s). Each product page has clean JSON-LD with
+  unlabelled per-lab test codes (`codeMatchAnyProvider`, like Walk-In Lab). Panel detection has no clean
+  signal for this vendor (checked and ruled out: `category` field, "Panel" in the name, code count as a
+  hard cutoff) — settled on `codes.length > 12` as a documented, imperfect heuristic backed by the
+  matcher's existing ambiguity-detection safety net (see `STATE.md` for the full reasoning). 10 new unit
+  tests over real fixtures (98 total). Verified live: 5/11 matched + auto-published, 2 correctly flagged
+  ambiguous, 4 unmatched (same narrowing-heuristic tradeoff as the other recent vendors).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for
