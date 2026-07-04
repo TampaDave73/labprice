@@ -8,6 +8,7 @@ import { parseWalkInLabCatalog, parseWalkInLabProduct, parseWalkInLabNextPage } 
 import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextPage } from './personalabs-parser';
 import { parseHealthLabsCatalog, parseHealthLabsProduct } from './healthlabs-parser';
 import { parsePrivateMDLabsCatalog, parsePrivateMDLabsProduct, parsePrivateMDLabsNextPage } from './privatemdlabs-parser';
+import { parseRequestATestCatalog, parseRequestATestProduct } from './requestatest-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -66,6 +67,15 @@ export const privateMDLabsAdapter: CatalogAdapter = {
   nextCatalogPage: (html, currentUrl) => parsePrivateMDLabsNextPage(html, currentUrl),
 };
 
+export const requestATestAdapter: CatalogAdapter = {
+  name: 'requestatest',
+  parseCatalog: (html) => parseRequestATestCatalog(html),
+  parseProduct: (html, baseUrl, slug) => parseRequestATestProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/${slug}`,
+  // Single-page catalog (~850 products, no pagination — nextCatalogPage omitted). Needs
+  // browser-fetch.ts's browserFetchHtml (Cloudflare JS challenge) — see ADAPTER_DEFAULTS.needsBrowser.
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -78,6 +88,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   personalabs: personalabsAdapter,
   healthlabs: healthLabsAdapter,
   privatemdlabs: privateMDLabsAdapter,
+  requestatest: requestATestAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

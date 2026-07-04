@@ -178,13 +178,29 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     `X-Requested-With: XMLHttpRequest` (see "Extra headers" below) — still plain HTTP. No lab codes
     anywhere on the site → name-only matching (`matchPriority: ['name']`, like MitoHealth). No isPanel
     heuristic (same reasoning as HealthLabs).
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs}.ts`.
+  - `requestatest` — Cloudflare JS-challenges every path except the homepage; needs
+    `catalog/browser-fetch.ts`'s `browserFetchHtml` (stealth headless Chromium) instead of plain HTTP —
+    see "Browser-rendered vendors" below. Otherwise GoodLabs-shaped once rendered: per-lab
+    (`panel LabLC`/`panel LabQD`) price + labelled `Test Code:`; a lab with no test gets a `noTest` class
+    and simply produces no offering. Codes aren't universal even for a carried lab (drug panels have a
+    price but no code) — offering keeps the price with an empty code list rather than being dropped.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.
 - **Extra headers**: `CatalogScrapeConfig.extraHeaders` (threaded through `httpFetchHtml`) lets a vendor
   need one non-default header (e.g. Private MD Labs' AJAX pagination) without reaching for a full
   browser engine. Set via `ADAPTER_DEFAULTS[name].extraHeaders`.
+- **Browser-rendered vendors**: when a vendor Cloudflare/WAF-JS-challenges plain HTTP (check with a
+  `curl -A "<browser UA>"` first — don't assume), `catalog/browser-fetch.ts`'s `browserFetchHtml()` is a
+  drop-in `fetchHtml` replacement using stealth-patched headless Chromium. It's a SEPARATE module from
+  `persist.ts` on purpose (see its top comment) — `persist.ts` must stay Playwright-free to be safe to
+  deep-import into Next.js, so only worker-side callers pass `browserFetchHtml()` explicitly via
+  `runVendorDiscovery({..., fetchHtml: browserFetchHtml()})`. **This means inline "Scrape now" in the web
+  admin doesn't work for these vendors yet** — that route always uses the plain-HTTP default. Mark such
+  a vendor `needsBrowser: true` in `ADAPTER_DEFAULTS` (documentation-only flag, not auto-consumed).
+  Not every WAF is passable this way — Ulta Lab Tests escalates to an actual image CAPTCHA even with
+  this, which is a different, unsolved problem (see `STATE.md`).
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds

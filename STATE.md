@@ -207,13 +207,35 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   granular catalog produces genuinely ambiguous name variants far more often than any other vendor so
   far — e.g. 13 distinct "Lipid Panel"-ish products at different prices).
 
+### Ninth scraper — Request A Test (DONE)
+- `requestatest.com` Cloudflare-JS-challenges **every path except the homepage** ("Just a moment..."
+  interstitial). A stealth-patched headless Chromium clears it fine (unlike Ulta's AWS WAF, which
+  escalates to an actual CAPTCHA) — so this vendor needed a real browser fetch, the first one to.
+- Added `packages/scrapers/src/catalog/browser-fetch.ts` (`browserFetchHtml`) — deliberately its OWN
+  module, never imported by `persist.ts` (which must stay Playwright-free to be safe to deep-import into
+  Next.js). Callers opt in per-vendor by passing it as `runVendorDiscovery({..., fetchHtml:
+  browserFetchHtml()})` — the standalone worker script does this explicitly.
+  **Known gap**: inline "Scrape now" in the web admin defaults to plain HTTP and will fail for this
+  vendor until that route is taught to pick the engine per vendor — not done this session, flagged as a
+  follow-up (see Next).
+- Otherwise a GoodLabs-shaped vendor once rendered: each product page has up to two lab panels
+  (`panel LabLC` / `panel LabQD`), each with its own price + labelled `Test Code:`; a lab with no test
+  gets a `noTest` class and no price (e.g. drug panels are LabCorp-only) — simply produces no offering
+  for that lab, no special-casing needed. Codes aren't universal even within LabCorp/Quest (drug panels
+  have a price but no code at all) — offerings degrade to no-codes rather than being dropped.
+- 8 new unit tests over real fixtures (120 total). Verified live end-to-end (real DB): single-page
+  catalog (~829 products, no pagination), ~100s per run (dominated by browser rendering, not narrowing).
+  10/11 seed tests price successfully across two runs (9 matched, 1 ambiguous → resolved via the
+  pinned-URL fix, 1 unmatched — CBC, the same narrowing-tokenization tradeoff seen on every vendor).
+
 ### Current live DB state
-- **8 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **9 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
   **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
-  (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic).
-  Each independently scrapeable.
+  (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic),
+  **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated, worker/script-only for
+  now, not yet wired into inline "Scrape now"). Each independently scrapeable.
 
 ---
 
@@ -240,7 +262,9 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 5. **Private MD Labs** (privatemdlabs.com) — Quest+LabCorp, in-house "ambassador" affiliate 10%.
    **DONE** (see "Eighth scraper" above). ← **user said to fix the shared bug then run straight through
    #5–#11, terse final report only — no per-vendor confirmation from here on**
-6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal.
+6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal. **DONE** (see
+   "Ninth scraper" above — Cloudflare JS challenge, needed `browserFetchHtml`; worker/script-only, not
+   wired into inline "Scrape now" yet — see Next).
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).
 8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.
 9. **True Health Labs** (truehealthlabs.com) — Quest+LabCorp+specialty labs, in-house + "LabShop" white-label affiliate.
@@ -248,10 +272,13 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact affiliate, 12%.
 
 Gotcha: the *original research pass* only WebFetch'd Ulta, Request A Test, DirectLabs, and True Health
-Labs and got 403s on all four (Ulta's is confirmed AWS WAF CAPTCHA — see above; the other three weren't
-re-checked). Walk-In Lab was never WebFetch'd in that pass but turned out to load fine with a plain
-`curl` + browser UA (no bot wall at all) — so don't assume the other three are CAPTCHA-gated like Ulta;
-each needs its own quick `curl -A "<browser UA>"` probe before investing adapter-building effort.
+Labs and got 403s on all four (Ulta's is confirmed AWS WAF CAPTCHA; Request A Test confirmed as a
+Cloudflare JS challenge, passable with `browserFetchHtml` — see above; DirectLabs/True Health Labs
+weren't re-checked yet). Walk-In Lab was never WebFetch'd in that pass but turned out to load fine with
+a plain `curl` + browser UA (no bot wall at all) — so don't assume every remaining vendor needs a
+browser; each needs its own quick `curl -A "<browser UA>"` probe first (plain HTTP is cheaper/faster/
+more reliable than a browser — only reach for `browserFetchHtml` when a real Cloudflare/WAF challenge is
+confirmed, not preemptively).
 
 ### 1. Save / Price Alert (public test page) — **ON HOLD**
 - These require a **full customer auth flow (sign up / sign in)** — none exists today (only DB-backed
@@ -263,6 +290,10 @@ each needs its own quick `curl -A "<browser UA>"` probe before investing adapter
 
 ### 3. Smaller follow-ups
 - Clean up benign `@prisma/client` "can't be external" Turbopack warnings before a prod build.
+- Wire per-vendor engine selection into the inline "Scrape now" / add-test routes so Request A Test
+  (and any future Cloudflare-gated vendor) can use `browserFetchHtml` from the web admin too, not just
+  the standalone worker script. Needs care: don't want to import Playwright into every request path,
+  only branch to it for vendors flagged `needsBrowser` in `ADAPTER_DEFAULTS`.
 
 ---
 

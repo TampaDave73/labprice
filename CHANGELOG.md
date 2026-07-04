@@ -49,6 +49,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   crawl ~70 pages/~2min; 11/11 seed tests price successfully (4 clean matches, 7 resolved via the
   pinned-URL fix above — this vendor's granular catalog produces genuine name ambiguity far more than
   any other vendor so far).
+- **Ninth catalog scraper — Request A Test** (`requestatest.com`, adapter `requestatest`). Cloudflare
+  JS-challenges every path except the homepage — the first vendor needing an actual headless browser to
+  clear (stealth Playwright works fine, unlike Ulta's AWS WAF CAPTCHA). Added
+  `packages/scrapers/src/catalog/browser-fetch.ts` (`browserFetchHtml`) as an opt-in fetcher, kept out of
+  `persist.ts` so the web app stays Playwright-free; the standalone worker script passes it explicitly.
+  **Inline "Scrape now" doesn't work for this vendor yet** (defaults to plain HTTP) — tracked as a
+  follow-up in `STATE.md`. Otherwise GoodLabs-shaped: per-lab price + labelled Test Code, codes not
+  universal (drug panels have a price but no code). 8 new unit tests over real fixtures (120 total).
+  Verified live: 10/11 seed tests price successfully (9 matched, 1 resolved via the pinned-URL fix, 1
+  unmatched — the usual narrowing tradeoff).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

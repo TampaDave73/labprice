@@ -56,6 +56,13 @@ const ADAPTER_DEFAULTS: Record<
     codeMatchAnyProvider?: boolean;
     mergeCodeTiers?: boolean;
     extraHeaders?: Record<string, string>;
+    /**
+     * Documentation-only flag (not consumed here): this vendor is gated behind a JS challenge a plain
+     * `fetch()` can't clear, so `runVendorDiscovery` callers must pass `opts.fetchHtml:
+     * browserFetchHtml()` (`catalog/browser-fetch.ts`) explicitly — inline "Scrape now" in the web app
+     * defaults to plain HTTP and will fail for this vendor until that's wired up.
+     */
+    needsBrowser?: boolean;
   }
 > = {
   goodlabs: { baseUrl: 'https://goodlabs.com', catalogPath: '/book-tests?step=PANEL_SELECTION' },
@@ -78,6 +85,9 @@ const ADAPTER_DEFAULTS: Record<
     matchPriority: ['name'],
     extraHeaders: { 'X-Requested-With': 'XMLHttpRequest' },
   },
+  // Cloudflare JS-challenges every path except the homepage — see `needsBrowser` above. Otherwise a
+  // standard GoodLabs-shaped vendor: each product page has per-lab price + labelled Test Code.
+  requestatest: { baseUrl: 'https://requestatest.com', catalogPath: '/tests', needsBrowser: true },
 };
 
 /**
