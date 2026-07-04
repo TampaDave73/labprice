@@ -2,10 +2,17 @@
 // they're unit-testable against saved fixtures.
 //
 // Magento under the hood (native `price-box price-final_price` markup, `catalogsearch` URLs). The
-// `/choose-a-test` page's product cards are pre-rendered "search result" links (Alpine.js `dlSearch`
-// component) — no pagination found live (~100 links, single page). "$1 today, pay balance after
-// results" business model, same as Private MD Labs — we compare on the full balance price shown in
-// `price-final_price`, not the $1 teaser.
+// `/choose-a-test` page's product cards are `<li class="choose-test-item">` list items, each with a
+// `<strong class="choose-item-name"><a>` title link — no pagination found live (~100 links, single
+// page). "$1 today, pay balance after results" business model, same as Private MD Labs — we compare on
+// the full balance price shown in `price-final_price`, not the $1 teaser.
+//
+// Site re-theme (found live 2026-07-04): the cards used to be Alpine.js `dlSearch` search-result links
+// carrying a `dl_search_result_title_clicked` tracking attribute the old regex keyed off of — that
+// attribute is gone (0 products parsed after the redesign), replaced by the plain `choose-item-name`
+// wrapper above. Scoping to that wrapper (rather than matching any `<a href="…discountedlabs.com/…">`)
+// also avoids the ~50 non-product collection links (e.g. "Diabetes Tests", "Cancer Tests") now sharing
+// the page with the real per-test cards.
 //
 // Lab order codes are NOT a structured field — they only show up when a product page happens to link
 // out to `labcorp.com/tests/<code>/...` as editorial "verify this test" content (checked live: present
@@ -13,7 +20,7 @@
 // matching falls back to name when absent, like Request A Test's missing-code drug panels.
 import type { CatalogEntry, CatalogProduct, ProviderOffering } from './types';
 
-const CARD_RE = /<a href="https:\/\/www\.discountedlabs\.com\/([a-z0-9-]+)"[^>]*dl_search_result_title_clicked[^>]*>\s*([^<]+?)\s*<\/a>/g;
+const CARD_RE = /<strong class="choose-item-name">\s*<a href="https:\/\/www\.discountedlabs\.com\/([a-z0-9-]+)">\s*([^<]+?)\s*<\/a>/g;
 const LABCORP_LINK_RE = /labcorp\.com\/tests\/(\d+)\//;
 
 /** Parse the `/choose-a-test` listing page into its product cards (name + link). Single page, no pagination. */

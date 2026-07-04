@@ -64,7 +64,10 @@ export async function fetchDirectLabsCatalog(
       deps.onLog?.(`  ! bad response for categoryID=${categoryID}`);
     }
   }
-  const products = mergeDirectLabsCatalog(responses, cfg.baseUrl);
+  // Product pages live on the store subdomain (apiBase), never on cfg.baseUrl — that's the WordPress
+  // marketing site (directlabs.com) and /testinfo/<id> 404s there. Bug found live 2026-07: stored
+  // externalUrls all pointed at the marketing domain.
+  const products = mergeDirectLabsCatalog(responses, apiBase);
   deps.onLog?.(`catalog(api): ${products.length} products across ${responses.length}/${DIRECTLABS_CATEGORY_IDS.length} categories`);
   return products;
 }

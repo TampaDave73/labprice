@@ -246,6 +246,18 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   matches, 6 resolved via the pinned-URL fix — this vendor's catalog is as granular as Private MD Labs',
   producing genuine ambiguity — 3 unmatched: CBC/Estradiol/HbA1c, real wording mismatches with no code
   fallback to rescue them, same accepted tradeoff class as every other vendor).
+- **Bug found + fixed (user-reported 2026-07-04)**: every stored DirectLabs `externalUrl` 404'd. Cause:
+  `fetchDirectLabsCatalog` built product URLs with `cfg.baseUrl` (the vendor's `websiteUrl`,
+  `directlabs.com` — the WordPress marketing site) instead of `apiBase`/`store.directlabs.com` (the
+  Angular SPA store where `/testinfo/<id>` actually resolves). Fixed to always build product URLs on
+  the store subdomain regardless of what `baseUrl` is configured to; added a regression test
+  (`fetchDirectLabsCatalog` end-to-end, not just `mergeDirectLabsCatalog` directly, since the old test
+  never exercised the buggy wiring). Re-ran discovery: all URLs corrected, and CBC — previously
+  unmatched by name (vendor calls it "CBC (includes Differential And Platelets)", PK_TestID 5015, $32)
+  — is now pinned to `https://store.directlabs.com/testinfo/5015` and prices correctly via the
+  pinned-URL fallback. Estradiol and HbA1c remain genuinely unmatched (same wording-mismatch class, no
+  code fallback for this vendor) — an admin can pin those the same way if the real product page is
+  found manually.
 
 ### Eleventh scraper — Discounted Labs (DONE)
 - `discountedlabs.com` is Magento (native `price-box price-final_price` markup, `catalogsearch` URLs).
@@ -262,6 +274,16 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   opportunistic LabCorp code, two by name — 3 resolved via the pinned-URL fix, 5 unmatched — real
   wording/token mismatches on this vendor's more compact ~100-item catalog, lower auto-match rate than
   most other vendors but the same underlying tradeoff, not a new bug).
+- **Bug found + fixed (proactive, during a full admin-panel visual sweep 2026-07-04)**: live discovery
+  suddenly returned "catalog: 0 products" — the site re-themed since this adapter was built. The old
+  `dl_search_result_title_clicked` tracking attribute the catalog regex keyed off of is gone from
+  `/choose-a-test`; cards are now plain `<li class="choose-test-item">` → `<strong
+  class="choose-item-name"><a>` list items. Rewrote `CARD_RE` to scope to that wrapper (also filters out
+  ~50 non-product collection links like "Diabetes Tests" now sharing the page), refreshed the stale
+  `discountedlabs-catalog.html` fixture from a live capture, re-verified live: 100 products parsed (was
+  0), 7/11 seed tests price successfully. A reminder that catalog-mode adapters have no compile-time
+  guard against a vendor's markup drifting — periodic live re-verification (not just unit tests against
+  frozen fixtures) is what actually catches this class of regression.
 
 ### Twelfth scraper — True Health Labs (DONE — site recovered, retried successfully same session)
 - `truehealthlabs.com` is WooCommerce with a **dedicated product-only sitemap**

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { mergeDirectLabsCatalog } from '../catalog/directlabs-parser';
+import { mergeDirectLabsCatalog, fetchDirectLabsCatalog } from '../catalog/directlabs-parser';
 import { matchTestToProducts } from '../catalog/matcher';
 import type { TestKey } from '../catalog/types';
 
@@ -33,6 +33,23 @@ describe('mergeDirectLabsCatalog', () => {
   it('de-dupes a test that would appear in more than one fetched category', () => {
     const ids = products.map((p) => p.slug);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe('fetchDirectLabsCatalog', () => {
+  it('regression: builds product URLs on the store subdomain, never on cfg.baseUrl (the marketing site)', async () => {
+    // Live bug (2026-07-04): cfg.baseUrl is the vendor's websiteUrl (directlabs.com, WordPress marketing
+    // site) — /testinfo/<id> only resolves on store.directlabs.com. Passing baseUrl straight through to
+    // mergeDirectLabsCatalog produced 404s for every stored offering URL until fixed.
+    const anemia = fx('directlabs-category-78-anemia.json');
+    const result = await fetchDirectLabsCatalog(
+      { fetchHtml: async () => JSON.stringify(anemia) },
+      { baseUrl: 'https://directlabs.com', apiBase: 'https://store.directlabs.com' },
+    );
+    for (const p of result) {
+      expect(p.url.startsWith('https://store.directlabs.com/')).toBe(true);
+      expect(p.url).not.toContain('https://directlabs.com/testinfo');
+    }
   });
 });
 

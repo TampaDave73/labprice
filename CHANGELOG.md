@@ -142,6 +142,20 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   reconstructing `${baseUrl}/product/${slug}.html` produced `.../496M.html.html`, corrupting the stored
   `externalUrl` on every pinned-URL resolution. Fixed by trusting the product page's own
   `<link rel="canonical">` instead of reconstructing the URL from `slug`.
+- **DirectLabs product URLs all 404'd** (user-reported live). `fetchDirectLabsCatalog` built every
+  product URL from `cfg.baseUrl` (the vendor's `websiteUrl`, `directlabs.com` — the WordPress marketing
+  site) instead of the store subdomain (`store.directlabs.com`) where `/testinfo/<id>` actually
+  resolves. Fixed to always build product URLs on the store subdomain; added a regression test that
+  exercises `fetchDirectLabsCatalog` end-to-end (the old tests only called `mergeDirectLabsCatalog`
+  directly, which never hit the buggy wiring). Re-ran discovery to correct all stored `externalUrl`
+  values, and pinned CBC (previously unmatched by name; vendor's own wording is "CBC (includes
+  Differential And Platelets)", PK_TestID 5015, $32) to `https://store.directlabs.com/testinfo/5015`.
+- **Discounted Labs catalog scraper returned 0 products** (found proactively during a full admin-panel
+  visual re-check of all 14 vendors, not user-reported). The site re-themed: the old
+  `dl_search_result_title_clicked` tracking attribute the catalog regex matched on is gone from
+  `/choose-a-test`; product cards are now `<li class="choose-test-item">` → `<strong
+  class="choose-item-name"><a>`. Rewrote the catalog regex to scope to that wrapper and refreshed the
+  stale fixture from a live capture. Re-verified live: 100 products parsed (was 0).
 
 ### Added
 - **Member/non-member pricing + fourth scraper (MitoHealth).** MitoHealth (`mitohealth.com`) is a
