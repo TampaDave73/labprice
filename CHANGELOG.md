@@ -67,6 +67,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   (127 total). Verified live: fast (~11s, pure API), 8/11 seed tests price successfully (2 clean
   matches, 6 resolved via the pinned-URL fix, 3 unmatched — real wording mismatches with no code
   fallback).
+- **Eleventh catalog scraper — Discounted Labs** (`discountedlabs.com`, adapter `discountedlabs`).
+  Magento store, single-page catalog (`/choose-a-test`, ~100 products, no pagination). Same "$1 today,
+  pay balance after results" model as Private MD Labs. Lab codes are opportunistic — only present when a
+  product page happens to link to `labcorp.com/tests/<code>/...`, no Quest equivalent found; the
+  provider label is honestly `'unknown'` rather than assumed when no code is found. 8 new unit tests
+  over real fixtures (135 total). Verified live: 6/11 seed tests price successfully (3 clean matches, 3
+  resolved via the pinned-URL fix, 5 unmatched — lower auto-match rate than most vendors on this more
+  compact catalog, same underlying tradeoff).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

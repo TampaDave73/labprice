@@ -245,15 +245,33 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   producing genuine ambiguity — 3 unmatched: CBC/Estradiol/HbA1c, real wording mismatches with no code
   fallback to rescue them, same accepted tradeoff class as every other vendor).
 
+### Eleventh scraper — Discounted Labs (DONE)
+- `discountedlabs.com` is Magento (native `price-box price-final_price` markup, `catalogsearch` URLs).
+  `/choose-a-test` is a single-page catalog (~100 product cards rendered server-side as Alpine.js
+  "search result" cards — no pagination found live). Same "$1 today, pay balance after results" model as
+  Private MD Labs — compares on the full balance price, not the $1 teaser.
+- **Lab codes are opportunistic, not a structured field**: some product pages happen to link out to
+  `labcorp.com/tests/<code>/...` as "verify this test" editorial content (a real, trustworthy code when
+  present), most don't — no Quest equivalent found at all. `labProvider` is only claimed as `'labcorp'`
+  when that link is actually found; otherwise it's honestly `'unknown'` rather than assuming a lab we
+  don't know (a Change Queue reviewer would otherwise see a wrong lab attribution on a codeless match).
+- 8 new unit tests over real fixtures (135 total). Verified live end-to-end (real DB), fast (~7-11s, no
+  pagination): 6/11 seed tests price successfully across two runs (3 clean matches — one via the
+  opportunistic LabCorp code, two by name — 3 resolved via the pinned-URL fix, 5 unmatched — real
+  wording/token mismatches on this vendor's more compact ~100-item catalog, lower auto-match rate than
+  most other vendors but the same underlying tradeoff, not a new bug).
+
 ### Current live DB state
-- **10 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **11 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
   **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
   (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic),
   **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated, worker/script-only for
   now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API vendor across 46
-  hardcoded categories, name-only matching, no isPanel heuristic). Each independently scrapeable.
+  hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs** (discountedlabs,
+  Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent). Each independently
+  scrapeable.
 
 ---
 
@@ -286,6 +304,7 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC
    reseller). **DONE** (see "Tenth scraper" above — API vendor, 46 categories, name-only matching).
 8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.
+   **DONE** (see "Eleventh scraper" above — opportunistic LabCorp codes only, name-only fallback).
 9. **True Health Labs** (truehealthlabs.com) — Quest+LabCorp+specialty labs, in-house + "LabShop" white-label affiliate.
 10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate network.
 11. **LabCorp OnDemand** (ondemand.labcorp.com) — LabCorp only, official first-party store, Impact affiliate, 12%.

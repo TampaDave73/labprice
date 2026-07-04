@@ -92,6 +92,9 @@ const ADAPTER_DEFAULTS: Record<
   // scoped, no "list all" endpoint — see directlabs-parser.ts) is plain, ungated HTTP. No lab codes
   // anywhere → name-only, like MitoHealth/Private MD Labs.
   directlabs: { baseUrl: 'https://directlabs.com', catalogPath: '', apiBase: 'https://store.directlabs.com', matchPriority: ['name'] },
+  // Magento store, plain HTTP. Lab codes are opportunistic (only some product pages link out to
+  // labcorp.com/tests/<code>/...), so name is still in the priority list as a fallback.
+  discountedlabs: { baseUrl: 'https://www.discountedlabs.com', catalogPath: '/choose-a-test' },
 };
 
 /**

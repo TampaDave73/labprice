@@ -189,7 +189,12 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     (`store.directlabs.com/api/LabTests/GetTestsByCategoryID`) is plain ungated HTTP. No "list
     everything" mode — fetches all 46 active categories (hardcoded, from `GetCategoriesActiveByLocale`)
     and merges by test ID. No lab codes in the API → name-only, no isPanel heuristic.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs}.ts`.
+  - `discountedlabs` — Magento, plain HTTP, single-page catalog (`/choose-a-test`, ~100 products, no
+    pagination). Same "$1 today, pay balance after results" model as Private MD Labs. Lab codes are
+    **opportunistic** — only present when a product page happens to link to
+    `labcorp.com/tests/<code>/...`; `labProvider` is `'unknown'` (not assumed `'labcorp'`) when that
+    link is absent, so the Change Queue never shows a lab attribution we don't actually have.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.
