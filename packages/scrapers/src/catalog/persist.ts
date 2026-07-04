@@ -88,6 +88,10 @@ const ADAPTER_DEFAULTS: Record<
   // Cloudflare JS-challenges every path except the homepage — see `needsBrowser` above. Otherwise a
   // standard GoodLabs-shaped vendor: each product page has per-lab price + labelled Test Code.
   requestatest: { baseUrl: 'https://requestatest.com', catalogPath: '/tests', needsBrowser: true },
+  // API vendor: the Angular SPA store needs JS to render, but its underlying JSON API (categoryID-
+  // scoped, no "list all" endpoint — see directlabs-parser.ts) is plain, ungated HTTP. No lab codes
+  // anywhere → name-only, like MitoHealth/Private MD Labs.
+  directlabs: { baseUrl: 'https://directlabs.com', catalogPath: '', apiBase: 'https://store.directlabs.com', matchPriority: ['name'] },
 };
 
 /**

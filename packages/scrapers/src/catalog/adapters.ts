@@ -9,6 +9,7 @@ import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextP
 import { parseHealthLabsCatalog, parseHealthLabsProduct } from './healthlabs-parser';
 import { parsePrivateMDLabsCatalog, parsePrivateMDLabsProduct, parsePrivateMDLabsNextPage } from './privatemdlabs-parser';
 import { parseRequestATestCatalog, parseRequestATestProduct } from './requestatest-parser';
+import { fetchDirectLabsCatalog } from './directlabs-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -76,6 +77,11 @@ export const requestATestAdapter: CatalogAdapter = {
   // browser-fetch.ts's browserFetchHtml (Cloudflare JS challenge) — see ADAPTER_DEFAULTS.needsBrowser.
 };
 
+export const directLabsAdapter: CatalogAdapter = {
+  name: 'directlabs',
+  fetchAll: (deps, cfg) => fetchDirectLabsCatalog(deps, cfg),
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -89,6 +95,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   healthlabs: healthLabsAdapter,
   privatemdlabs: privateMDLabsAdapter,
   requestatest: requestATestAdapter,
+  directlabs: directLabsAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

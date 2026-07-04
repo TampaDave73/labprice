@@ -59,6 +59,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   universal (drug panels have a price but no code). 8 new unit tests over real fixtures (120 total).
   Verified live: 10/11 seed tests price successfully (9 matched, 1 resolved via the pinned-URL fix, 1
   unmatched — the usual narrowing tradeoff).
+- **Tenth catalog scraper — DirectLabs** (`directlabs.com`, adapter `directlabs`). The marketing site is
+  irrelevant; the real store is an Angular SPA (`store.directlabs.com`) that needs JS to render, but its
+  JSON API is plain ungated HTTP. No "list everything" endpoint, so it fetches all 46 active categories
+  and merges by test ID (API-vendor `fetchAll` adapter, like Dirt Cheap Labs/MitoHealth). No lab codes
+  anywhere in the API → name-only matching; no isPanel heuristic. 7 new unit tests over real fixtures
+  (127 total). Verified live: fast (~11s, pure API), 8/11 seed tests price successfully (2 clean
+  matches, 6 resolved via the pinned-URL fix, 3 unmatched — real wording mismatches with no code
+  fallback).
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for

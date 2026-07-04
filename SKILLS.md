@@ -184,7 +184,12 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     (`panel LabLC`/`panel LabQD`) price + labelled `Test Code:`; a lab with no test gets a `noTest` class
     and simply produces no offering. Codes aren't universal even for a carried lab (drug panels have a
     price but no code) — offering keeps the price with an empty code list rather than being dropped.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest}.ts`.
+  - `directlabs` — **API vendor** (`fetchAll`, like DCL/MitoHealth): the marketing site is irrelevant;
+    the real store is an Angular SPA needing JS, but its JSON API
+    (`store.directlabs.com/api/LabTests/GetTestsByCategoryID`) is plain ungated HTTP. No "list
+    everything" mode — fetches all 46 active categories (hardcoded, from `GetCategoriesActiveByLocale`)
+    and merges by test ID. No lab codes in the API → name-only, no isPanel heuristic.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.

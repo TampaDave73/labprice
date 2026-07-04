@@ -228,14 +228,32 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   10/11 seed tests price successfully across two runs (9 matched, 1 ambiguous → resolved via the
   pinned-URL fix, 1 unmatched — CBC, the same narrowing-tokenization tradeoff seen on every vendor).
 
+### Tenth scraper — DirectLabs (DONE)
+- `directlabs.com` marketing site is WordPress and irrelevant; the real store is an Angular SPA on
+  `store.directlabs.com` (`<app-root>`) — needs JS to render, BUT its underlying JSON API is plain,
+  ungated HTTP (checked live: `GET store.directlabs.com/api/LabTests/GetTestsByCategoryID?categoryID=…`
+  works with a bare `curl`, no browser needed despite the SPA shell).
+- **No "list everything" endpoint** — `categoryID=0` alone returns only ~6 "test of the month" specials,
+  not the full catalog. Fetches all 46 active categories (from `GetCategoriesActiveByLocale`, hardcoded
+  in `directlabs-parser.ts` since they change rarely) and merges by `PK_TestID` — an API-vendor
+  (`fetchAll`) adapter like Dirt Cheap Labs/MitoHealth, not page-based.
+- **No lab order code anywhere in the API** (checked live across 5 categories) — name-only matching,
+  like MitoHealth/Private MD Labs. No isPanel heuristic either (same reasoning).
+- 7 new unit tests over real fixtures (127 total). Verified live end-to-end (real DB), **fast** (~11s,
+  pure API calls, no pagination/browser): 8/11 seed tests price successfully across two runs (2 clean
+  matches, 6 resolved via the pinned-URL fix — this vendor's catalog is as granular as Private MD Labs',
+  producing genuine ambiguity — 3 unmatched: CBC/Estradiol/HbA1c, real wording mismatches with no code
+  fallback to rescue them, same accepted tradeoff class as every other vendor).
+
 ### Current live DB state
-- **9 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
+- **10 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
   (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
   catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
   **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
   (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic),
   **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated, worker/script-only for
-  now, not yet wired into inline "Scrape now"). Each independently scrapeable.
+  now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API vendor across 46
+  hardcoded categories, name-only matching, no isPanel heuristic). Each independently scrapeable.
 
 ---
 
@@ -265,7 +283,8 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 6. **Request A Test** (requestatest.com) — Quest+LabCorp, in-house affiliate portal. **DONE** (see
    "Ninth scraper" above — Cloudflare JS challenge, needed `browserFetchHtml`; worker/script-only, not
    wired into inline "Scrape now" yet — see Next).
-7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC reseller).
+7. **DirectLabs** (directlabs.com) — Quest+LabCorp+others, in-house affiliate (est. ~2003, oldest DTC
+   reseller). **DONE** (see "Tenth scraper" above — API vendor, 46 categories, name-only matching).
 8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.
 9. **True Health Labs** (truehealthlabs.com) — Quest+LabCorp+specialty labs, in-house + "LabShop" white-label affiliate.
 10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate network.
