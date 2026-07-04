@@ -11,6 +11,7 @@ import { parsePrivateMDLabsCatalog, parsePrivateMDLabsProduct, parsePrivateMDLab
 import { parseRequestATestCatalog, parseRequestATestProduct } from './requestatest-parser';
 import { fetchDirectLabsCatalog } from './directlabs-parser';
 import { parseDiscountedLabsCatalog, parseDiscountedLabsProduct } from './discountedlabs-parser';
+import { parseTrueHealthLabsCatalog, parseTrueHealthLabsProduct } from './truehealthlabs-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -91,6 +92,14 @@ export const discountedLabsAdapter: CatalogAdapter = {
   // Single-page catalog (~100 products, no pagination found live — nextCatalogPage omitted).
 };
 
+export const trueHealthLabsAdapter: CatalogAdapter = {
+  name: 'truehealthlabs',
+  parseCatalog: (xml) => parseTrueHealthLabsCatalog(xml),
+  parseProduct: (html, baseUrl, slug) => parseTrueHealthLabsProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/product/${slug}/`,
+  // Single flat product-sitemap.xml fetch — no pagination (nextCatalogPage omitted).
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -106,6 +115,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   requestatest: requestATestAdapter,
   directlabs: directLabsAdapter,
   discountedlabs: discountedLabsAdapter,
+  truehealthlabs: trueHealthLabsAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

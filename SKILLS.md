@@ -194,7 +194,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     **opportunistic** — only present when a product page happens to link to
     `labcorp.com/tests/<code>/...`; `labProvider` is `'unknown'` (not assumed `'labcorp'`) when that
     link is absent, so the Change Queue never shows a lab attribution we don't actually have.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs}.ts`.
+  - `truehealthlabs` — WooCommerce, plain HTTP, dedicated product-only sitemap (`product-sitemap.xml`,
+    ~1,736 products, single fetch, no pagination). **Best code exposure of any vendor**: the WooCommerce
+    SKU literally encodes `<Lab>_<code>` (e.g. `Quest_457`), sometimes with a trailing internal variant
+    segment to ignore (`Quest_17306_303`). Strict per-lab tiers. Built + unit-tested against real
+    fixtures but not yet live-verified — the site had a real outage mid-build session; re-run its E2E
+    script once it recovers before treating it as fully done.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.

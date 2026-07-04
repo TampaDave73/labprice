@@ -95,6 +95,10 @@ const ADAPTER_DEFAULTS: Record<
   // Magento store, plain HTTP. Lab codes are opportunistic (only some product pages link out to
   // labcorp.com/tests/<code>/...), so name is still in the priority list as a fallback.
   discountedlabs: { baseUrl: 'https://www.discountedlabs.com', catalogPath: '/choose-a-test' },
+  // Dedicated product-only sitemap (single flat fetch, no pagination). The WooCommerce SKU literally
+  // encodes "<Lab>_<code>", explicitly labelled per product — strict per-lab tiers, no
+  // codeMatchAnyProvider needed.
+  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml' },
 };
 
 /**
@@ -168,7 +172,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   let matches: OfferingMatch[];
   let catalogProducts: CatalogProduct[] = [];
   try {
-    const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(20_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
+    const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
     matches = result.matches;
     catalogProducts = result.products;
   } catch (e) {
@@ -180,7 +184,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   }
 
   const summary: DiscoverySummary = { runId: run.id, matched: 0, ambiguous: 0, unmatched: 0, staged: 0, autoApprovedStagedIds: [] };
-  const fetchHtml = opts.fetchHtml ?? httpFetchHtml(20_000, cfg.extraHeaders);
+  const fetchHtml = opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders);
   const productsBySlug = new Map(catalogProducts.map((p) => [p.slug, p]));
 
   for (const { test, result: rawResult } of matches) {

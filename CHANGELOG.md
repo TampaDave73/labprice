@@ -75,6 +75,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   over real fixtures (135 total). Verified live: 6/11 seed tests price successfully (3 clean matches, 3
   resolved via the pinned-URL fix, 5 unmatched — lower auto-match rate than most vendors on this more
   compact catalog, same underlying tradeoff).
+- **Twelfth catalog scraper (built, not yet live-verified) — True Health Labs**
+  (`truehealthlabs.com`, adapter `truehealthlabs`). WooCommerce store with a dedicated product-only
+  sitemap (~1,736 products, single fetch). Best code exposure of any vendor so far: the WooCommerce SKU
+  literally encodes `<Lab>_<code>` (e.g. `Quest_457`), verified against known-good codes. 9 new unit
+  tests over real fixtures (144 total), all passing. **Live E2E discovery not yet run** — the vendor's
+  site went unresponsive mid-session (Cloudflare 524 on the sitemap, then the homepage itself started
+  timing out) — a real, current outage, not a scraper defect. Bumped the shared `httpFetchHtml` default
+  timeout 20s→45s as a general safety margin while investigating. Follow-up: re-run
+  `discover-truehealthlabs.ts` once the site recovers.
 - **Add/Edit Test auto-fill + inline vendor multiselect.** On the test editor you can now do it all
   from one page:
   - **✨ Auto-fill** button next to the test name. `POST /api/v1/admin/tests/lookup` populates, for
