@@ -2,15 +2,16 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-03. Branch: `claude/github-write-access-3v9dld`. **The 11-vendor new-scraper
-> research queue is complete** (#1 Ulta deferred on an AWS WAF CAPTCHA; #2–#11 all built, unit-tested,
-> and live-verified except True Health Labs, which is built+tested but blocked on a live-verification
-> retry by a site outage — see "Twelfth scraper"). Along the way, found + fixed two shared-code bugs
-> affecting every vendor at once (pinned-URL retry not covering `ambiguous` results; a double-`.html`
-> URL bug from slug reconstruction) — both documented below with the vendor whose testing surfaced them.
+> Last updated: 2026-07-04. Branch: `claude/github-write-access-3v9dld`. **The 11-vendor new-scraper
+> research queue is fully complete** (#1 Ulta deferred on an AWS WAF CAPTCHA; #2–#11 all built,
+> unit-tested, and live-verified — including True Health Labs, whose site had a mid-session outage but
+> recovered before the session ended, allowing a full retry). Along the way, found + fixed three
+> shared/adapter bugs (pinned-URL retry not covering `ambiguous` results; a double-`.html` URL bug from
+> slug reconstruction on Quest Health; a $0-priced bundle on True Health Labs that would've shown as a
+> false match) — all documented below with the vendor whose testing surfaced them.
 >
 > **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0) — now complete pending the True Health Labs retry.
+> the **new-vendor scraper queue** (Next #0) — 14 vendors now live, all price-verified.
 
 ---
 
@@ -262,7 +263,7 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   wording/token mismatches on this vendor's more compact ~100-item catalog, lower auto-match rate than
   most other vendors but the same underlying tradeoff, not a new bug).
 
-### Twelfth scraper — True Health Labs (built + unit-tested; live E2E blocked by a vendor outage)
+### Twelfth scraper — True Health Labs (DONE — site recovered, retried successfully same session)
 - `truehealthlabs.com` is WooCommerce with a **dedicated product-only sitemap**
   (`product-sitemap.xml`, ~1,736 products, single flat fetch, no pagination — cleaner than HealthLabs'
   mixed sitemap since this one has zero non-product noise).
@@ -271,32 +272,37 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   codes), sometimes with a trailing internal variant segment we ignore (`Quest_17306_303`). Name + price
   come from the page's GTM/analytics `dataLayer` JSON (more reliable than scraping the WooCommerce
   sale/regular price markup). Strict per-lab tiers, no isPanel heuristic (same reasoning as others).
-- 9 new unit tests over real fixtures (144 total) — **all passing against real captured HTML/XML**, and
-  `tsc --noEmit` clean. **Not yet verified live end-to-end**: the site went unresponsive partway through
-  this session (`product-sitemap.xml` → Cloudflare 524 after 125s, then the plain homepage itself
-  started timing out too — a real, current vendor-side outage, not a scraper bug). Bumped the shared
-  `httpFetchHtml` default timeout 20s→45s while investigating (harmless for every other vendor, doesn't
-  fix a 125s+ origin stall but is a reasonable general safety margin). **Follow-up**: re-run
-  `discover-truehealthlabs.ts` once the site recovers to get the live E2E numbers before considering this
-  vendor fully done — the parser logic is verified against real fixtures, but no live discovery run
-  has completed yet.
+- The site went unresponsive partway through this session (`product-sitemap.xml` → Cloudflare 524 after
+  125s, then the homepage itself started timing out — a real, current vendor-side outage, not a scraper
+  bug). Bumped the shared `httpFetchHtml` default timeout 20s→45s while investigating (harmless
+  elsewhere, doesn't fix a 125s+ origin stall but is a reasonable general safety margin). **The site
+  recovered later in the same session** — re-ran discovery successfully.
+- **Bug found + fixed on that live re-run**: an out-of-stock "Kelly Brogan's Super Panel" bundle product
+  reported a literal `price: 0` in its GTM dataLayer, which then legitimately NAME-matched our "Vitamin
+  B12" test (the bundle's giant concatenated name lists "Vitamin B12" among ~10 other tests) and would
+  have shown as a $0 "match" — `persist.ts`'s matched-branch isn't built to expect a null/zero price on
+  a 'matched' result. Fixed at the adapter level: `parseTrueHealthLabsProduct` now returns `null`
+  (excludes the product entirely) when the dataLayer price isn't `> 0`, since a real self-pay lab test
+  is never actually free. Added a regression test.
+- 10 new unit tests over real fixtures (164 total). Verified live end-to-end (real DB) after the site
+  recovered: **9/11 seed tests price successfully, 9 auto-published**, 1 correctly flagged ambiguous
+  (Lipid Panel, 5 real candidates), 1 unmatched (Vitamin B12 — the bogus bundle is now correctly
+  excluded and nothing else name-matches, a safe "nothing to show" rather than a wrong price).
 
 ### Current live DB state
-- **13 vendors**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs), **Dirt Cheap Labs**
-  (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab** (walkinlab, paginated
-  catalog), **Personalabs** (personalabs, paginated catalog, provider labelled per-product),
-  **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD Labs**
-  (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel heuristic),
-  **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated, worker/script-only for
-  now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API vendor across 46
-  hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs** (discountedlabs,
-  Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent), **Quest Health**
-  (questhealth, Quest's own first-party store, code embedded in the URL), **LabCorp OnDemand**
-  (labcorpondemand, LabCorp's own first-party store, explicit `data-isbundleproduct` flag — best isPanel
-  signal of any vendor). Each independently scrapeable. **True Health Labs is built + tested but NOT yet
-  added to the live DB** — no vendor row was created since the E2E script never got to run (see
-  "Twelfth scraper" above); run `discover-truehealthlabs.ts` to add it once the site is back up
-  (would make 14 once added — the full queue, minus Ulta which is deferred on the CAPTCHA).
+- **14 vendors, all price-verified live**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs),
+  **Dirt Cheap Labs** (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab**
+  (walkinlab, paginated catalog), **Personalabs** (personalabs, paginated catalog, provider labelled
+  per-product), **HealthLabs.com** (healthlabs, sitemap-as-catalog, no isPanel heuristic), **Private MD
+  Labs** (privatemdlabs, huge paginated catalog via AJAX header, name-only matching, no isPanel
+  heuristic), **Request A Test** (requestatest, needs browserFetchHtml — Cloudflare-gated,
+  worker/script-only for now, not yet wired into inline "Scrape now"), **DirectLabs** (directlabs, API
+  vendor across 46 hardcoded categories, name-only matching, no isPanel heuristic), **Discounted Labs**
+  (discountedlabs, Magento, opportunistic LabCorp codes, honest 'unknown' provider label when absent),
+  **True Health Labs** (truehealthlabs, sitemap-as-catalog, best code exposure of any vendor, $0-price
+  bundle guard), **Quest Health** (questhealth, Quest's own first-party store, code embedded in the
+  URL), **LabCorp OnDemand** (labcorpondemand, LabCorp's own first-party store, explicit
+  `data-isbundleproduct` flag — best isPanel signal of any vendor). Each independently scrapeable.
 
 ### Thirteenth scraper — Quest Health (DONE)
 - `questhealth.com` is Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware —
@@ -331,7 +337,7 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   9/11 seed tests price successfully across two runs (8 clean matches, 1 resolved via the pinned-URL
   fix, 2 unmatched — HbA1c/PSA, the usual narrowing tradeoff).
 - **This completes the 11-vendor research queue** (#1 Ulta deferred/CAPTCHA-gated, #2–#11 all built and
-  live-verified except True Health Labs pending a site-outage retry — see "Twelfth scraper").
+  live-verified — including True Health Labs, whose outage recovered before session end).
 
 ---
 
@@ -366,9 +372,8 @@ TaskCreate/TaskList this session (task IDs #1–#11, same order as below).
 8. **Discounted Labs** (discountedlabs.com) — Quest-primary, in-house (Amasty/Magento-family) affiliate.
    **DONE** (see "Eleventh scraper" above — opportunistic LabCorp codes only, name-only fallback).
 9. **True Health Labs** (truehealthlabs.com) — Quest+LabCorp+specialty labs, in-house + "LabShop"
-   white-label affiliate. **Built + unit-tested (see "Twelfth scraper" above) but NOT live-verified** —
-   the site went unresponsive mid-session (real vendor outage). Re-run
-   `discover-truehealthlabs.ts` once it's back up.
+   white-label affiliate. **DONE** (see "Twelfth scraper" above — site outage recovered mid-session,
+   retried successfully; also found + fixed a $0-priced bundle bug).
 10. **Quest Health** (questhealth.com) — Quest only, official first-party store, Impact affiliate
     network. **DONE** (see "Thirteenth scraper" above — found + fixed a shared pinned-URL bug along
     the way, double-`.html` URLs).
@@ -398,9 +403,6 @@ confirmed, not preemptively).
   (and any future Cloudflare-gated vendor) can use `browserFetchHtml` from the web admin too, not just
   the standalone worker script. Needs care: don't want to import Playwright into every request path,
   only branch to it for vendors flagged `needsBrowser` in `ADAPTER_DEFAULTS`.
-- **Run `discover-truehealthlabs.ts` once truehealthlabs.com recovers** from the outage hit mid-session
-  (see "Twelfth scraper") to get a live E2E verification and add it as an actual DB vendor row — the
-  adapter/parser/tests are done and passing against real fixtures, this is purely "the site was down."
 
 ---
 

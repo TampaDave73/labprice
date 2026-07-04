@@ -75,15 +75,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   over real fixtures (135 total). Verified live: 6/11 seed tests price successfully (3 clean matches, 3
   resolved via the pinned-URL fix, 5 unmatched — lower auto-match rate than most vendors on this more
   compact catalog, same underlying tradeoff).
-- **Twelfth catalog scraper (built, not yet live-verified) — True Health Labs**
-  (`truehealthlabs.com`, adapter `truehealthlabs`). WooCommerce store with a dedicated product-only
-  sitemap (~1,736 products, single fetch). Best code exposure of any vendor so far: the WooCommerce SKU
-  literally encodes `<Lab>_<code>` (e.g. `Quest_457`), verified against known-good codes. 9 new unit
-  tests over real fixtures (144 total), all passing. **Live E2E discovery not yet run** — the vendor's
-  site went unresponsive mid-session (Cloudflare 524 on the sitemap, then the homepage itself started
-  timing out) — a real, current outage, not a scraper defect. Bumped the shared `httpFetchHtml` default
-  timeout 20s→45s as a general safety margin while investigating. Follow-up: re-run
-  `discover-truehealthlabs.ts` once the site recovers.
+- **Twelfth catalog scraper — True Health Labs** (`truehealthlabs.com`, adapter `truehealthlabs`).
+  WooCommerce store with a dedicated product-only sitemap (~1,736 products, single fetch). Best code
+  exposure of any vendor so far: the WooCommerce SKU literally encodes `<Lab>_<code>` (e.g. `Quest_457`),
+  verified against known-good codes. The site went unresponsive mid-session (Cloudflare 524 on the
+  sitemap, then the homepage itself started timing out — a real, current outage, not a scraper defect;
+  bumped the shared `httpFetchHtml` default timeout 20s→45s as a general safety margin) but recovered
+  later in the same session, allowing a full live retry. That retry surfaced a real bug: an out-of-stock
+  "Kelly Brogan's Super Panel" bundle reported a literal `price: 0`, which would have legitimately
+  name-matched "Vitamin B12" (the bundle's name lists it among ~10 other tests) and shown as a bogus $0
+  match. Fixed by having the adapter drop any product whose price isn't `> 0` — a real self-pay lab test
+  is never actually free. 10 new unit tests over real fixtures (164 total). Verified live: 9/11 seed
+  tests price successfully, 9 auto-published, 1 correctly flagged ambiguous, 1 unmatched (the bogus
+  bundle now safely excluded).
 - **Thirteenth catalog scraper — Quest Health** (`questhealth.com`, adapter `questhealth`). Quest
   Diagnostics' own first-party store. `sitemap_0.xml` lists the ~160-product catalog in one fetch, with
   the Quest order code embedded directly in the URL (`/product/hemoglobin-a1c-test/496M.html` → 496).

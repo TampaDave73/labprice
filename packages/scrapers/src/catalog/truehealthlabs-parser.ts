@@ -38,6 +38,11 @@ export function parseTrueHealthLabsProduct(html: string, baseUrl = 'https://true
   if (!gtm) return null;
   const name = gtm[1]!;
   const price = Number(gtm[2]);
+  // A real self-pay lab test is never actually free — a $0 dataLayer price showed up live on an
+  // out-of-stock/discontinued "Super Panel" bundle product and would otherwise look like a legitimate
+  // match. Drop the product entirely rather than pass a bogus price downstream (the matcher/persist
+  // layer isn't built to expect `price: null` on a 'matched' result).
+  if (!(price > 0)) return null;
 
   const id = slug ?? '';
   const url = `${baseUrl}/product/${id}/`;

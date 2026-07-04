@@ -49,6 +49,13 @@ describe('parseTrueHealthLabsProduct', () => {
     expect(p.providers[0]!.price).toBe(99);
   });
 
+  it('regression: drops a product with a $0 dataLayer price rather than treat it as a real price', () => {
+    // Live bug (2026-07-04): an out-of-stock "Super Panel" bundle reported price:0 in its dataLayer,
+    // which then name-matched "Vitamin B12" and would have shown as a $0 "match" in the Change Queue.
+    const html = '<script>const gtmkit_dataLayer_content = {"ecommerce":{"items":[{"item_name":"Discontinued Super Panel","currency":"USD","price":0}]}};</script>';
+    expect(parseTrueHealthLabsProduct(html)).toBeNull();
+  });
+
   it('returns null for HTML with no GTM item data', () => {
     expect(parseTrueHealthLabsProduct('<html><body>nope</body></html>')).toBeNull();
   });

@@ -197,9 +197,10 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   - `truehealthlabs` — WooCommerce, plain HTTP, dedicated product-only sitemap (`product-sitemap.xml`,
     ~1,736 products, single fetch, no pagination). **Best code exposure of any vendor**: the WooCommerce
     SKU literally encodes `<Lab>_<code>` (e.g. `Quest_457`), sometimes with a trailing internal variant
-    segment to ignore (`Quest_17306_303`). Strict per-lab tiers. Built + unit-tested against real
-    fixtures but not yet live-verified — the site had a real outage mid-build session; re-run its E2E
-    script once it recovers before treating it as fully done.
+    segment to ignore (`Quest_17306_303`). Strict per-lab tiers. **No price-sanity gap**: an
+    out-of-stock bundle reported a literal GTM `price: 0` that would have legitimately name-matched
+    "Vitamin B12" — the adapter now drops any product whose price isn't `> 0` (a real self-pay lab test
+    is never actually free) rather than passing a bogus price downstream.
   - `questhealth` — Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware).
     `sitemap_0.xml` (single fetch, ~160 products) embeds the Quest order code directly in the URL
     (`/product/hemoglobin-a1c-test/496M.html` → 496), also confirmed via `data-pid` on the page. Every
