@@ -1,5 +1,13 @@
 import SuggestionForms from './SuggestionForms';
 
+const LINKS = [
+  { href: '/order-services', label: 'Order Services' },
+  { href: '/about', label: 'About' },
+  { href: '/terms', label: 'Terms of Service' },
+  { href: '/privacy', label: 'Privacy Policy' },
+  { href: '/disclaimer', label: 'Medical Disclaimer' },
+];
+
 export default function Footer() {
   return (
     <footer style={{ background: 'oklch(0.23 0.068 230)', padding: '40px 0 0', marginTop: 'auto' }}>
@@ -17,6 +25,27 @@ export default function Footer() {
             <br />
             &copy; 2025 LabTestCompare. Not medical advice.
           </p>
+        </div>
+        <div
+          style={{
+            maxWidth: 1240,
+            margin: '18px auto 0',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px 20px',
+            borderTop: '1px solid oklch(0.28 0.06 230)',
+            paddingTop: 16,
+          }}
+        >
+          {LINKS.map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              style={{ fontSize: 12, color: 'oklch(0.62 0.05 230)', textDecoration: 'none' }}
+            >
+              {l.label}
+            </a>
+          ))}
         </div>
       </div>
     </footer>

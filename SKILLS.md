@@ -22,9 +22,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Category pages** (`category/[slug]`) — lists tests via the many-to-many, so a test appears under
   every category it belongs to.
 - **Search API** (`/api/v1/search`) — Postgres full-text with trigram fallback.
-- **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" lead-capture
-  forms (`components/SuggestionForms.tsx` → `/api/v1/suggestions/vendor|test`); reviewed by admins at
-  `/admin/suggestions`.
+- **Order Services** (`/order-services`) — every active vendor as an expandable card (`VendorAccordionList.tsx`)
+  showing test count, from-price, and a full test→price table on expand, ordered via `/api/v1/go/[offeringId]`.
+- **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — static
+  content pages sharing `components/StaticPageLayout.tsx`.
+- **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" collapsed
+  links that expand into an inline form (`components/SuggestionForms.tsx` →
+  `/api/v1/suggestions/vendor|test`); submitting emails all admins (`lib/services/notify-service.ts`)
+  and the row is reviewed at `/admin/suggestions`. Also links to the pages above.
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
 - **Dashboard** — KPI counts + recent audit activity.

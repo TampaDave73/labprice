@@ -10,6 +10,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Order Services directory** (`/order-services`, linked from navbar + footer) — every active vendor
+  with an expandable table of the tests it carries and current self-pay prices, sourced from the same
+  `Vendor`/`Offering` data as the per-test comparison table.
+- **About / Terms of Service / Privacy Policy / Medical Disclaimer pages** (`/about`, `/terms`,
+  `/privacy`, `/disclaimer`), linked from the footer, sharing a new `StaticPageLayout` component.
+- **Admin email alerts on suggestion submission** (`lib/services/notify-service.ts`, via `resend`) —
+  every ADMIN/SUPER_ADMIN active user gets emailed when someone submits "Suggest a Vendor"/"Suggest a
+  Test". Fire-and-forget like the analytics logging; a missing `RESEND_API_KEY` or send failure never
+  blocks the submitter's request.
 - **Lighter, less-purple color scheme sitewide** (user-reported: the old dark blue/purple was hard to
   read). Brand hue moved from 280 (blue-violet) to 230 (clean blue) with softened chroma on all
   saturated (button/link/badge) shades — e.g. the main brand color went from `oklch(0.58 0.22 280)` to
@@ -84,6 +93,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   (e.g. `"HTTP 403 for https://requestatest.com/tests"`) for failed ones.
 
 ### Fixed
+- **Admin Analytics "Most-viewed tests" double-counted every visit** (user-reported) — React Strict
+  Mode double-invokes effects in dev (mount → cleanup → mount again on the same component instance),
+  which was firing `PageViewTracker`'s POST twice per real page load. Fixed with a `useRef` guard keyed
+  by pathname; the ref survives the double-invoke since it's the same fiber, so the second call is a
+  no-op.
+- **Leftover dark-purple hero on the homepage** (user-reported: background still didn't read well after
+  the site-wide color pass) — the earlier hue-280→230 sweep only matched literal hue-280 strings and
+  missed a few variants: the hero gradient's middle/end stops (hue 295/265), a hardcoded purple/magenta
+  hex gradient on the "instantly" headline text, and the dark navbar variant (`rgba(15,12,36,0.9)`).
+  Converted the homepage hero, stats bar, and navbar to the same light theme as the rest of the site;
+  removed the now-unused navbar dark/light variant prop entirely.
 - **Test detail page repeated its own description** — the description/purpose text appeared once as a
   standalone paragraph under the test name, then again inside the "About This Test" accordion. Removed
   the standalone paragraph; the accordion is the only copy now.

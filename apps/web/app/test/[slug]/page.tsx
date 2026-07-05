@@ -96,13 +96,13 @@ export default async function TestDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 230)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PageViewTracker testId={test.id} />
-      <Navbar variant="light" />
+      <Navbar />
       {session?.user && (
         <div className="max-w-[1240px] mx-auto px-6 pt-4 flex items-center gap-2 justify-end">
           <SaveTestButton testId={test.id} initialSavedId={savedTestId} />

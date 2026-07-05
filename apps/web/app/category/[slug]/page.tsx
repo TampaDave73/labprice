@@ -62,8 +62,8 @@ export default async function CategoryPage({ params }: Props) {
     });
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 230)' }}>
-      <Navbar variant="light" />
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+      <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 py-10">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_230)] mb-6">

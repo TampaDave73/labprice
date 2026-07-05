@@ -15,7 +15,7 @@ export default function ErrorPage({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '0 24px',
-        background: 'oklch(0.97 0.01 230)',
+        background: 'oklch(0.985 0.005 230)',
       }}
     >
       <div style={{ textAlign: 'center', maxWidth: 400 }}>

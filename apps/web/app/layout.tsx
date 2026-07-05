@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body
         className={`${dmSans.className} min-h-screen antialiased`}
-        style={{ background: 'oklch(0.97 0.01 230)' }}
+        style={{ background: 'oklch(0.985 0.005 230)' }}
       >
         {children}
       </body>

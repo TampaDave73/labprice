@@ -2,7 +2,7 @@ export default function Loading() {
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{ background: 'oklch(0.97 0.01 230)' }}
+      style={{ background: 'oklch(0.985 0.005 230)' }}
     >
       <div
         className="animate-spin"

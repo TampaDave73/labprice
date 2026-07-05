@@ -57,7 +57,10 @@ pnpm dev:all             # web + worker (turbo dev)
 
 **Env:** the admin **Add Test → ✨ Auto-fill** feature calls Claude for content generation, so it needs
 `ANTHROPIC_API_KEY` in `.env`. It's optional — without the key, auto-fill still returns order codes
-from the vendor catalogs (Dirt Cheap Labs) and just skips the generated copy.
+from the vendor catalogs (Dirt Cheap Labs) and just skips the generated copy. Similarly, `RESEND_API_KEY`
+is optional — without it, admin email alerts on suggestion-form submissions
+(`lib/services/notify-service.ts`) just no-op; the DB row (reviewable at `/admin/suggestions`) is
+unaffected either way.
 
 ## ⚠️ Gotchas that have bitten us (do not relearn the hard way)
 

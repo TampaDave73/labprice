@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 
-export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light' }) {
-  const isDark = variant === 'dark';
+export default function Navbar() {
   return (
     <nav
       style={{
@@ -12,8 +11,8 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
         zIndex: 200,
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        background: isDark ? 'rgba(15,12,36,0.9)' : 'rgba(255,255,255,0.96)',
-        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'}`,
+        background: 'rgba(255,255,255,0.96)',
+        borderBottom: '1px solid rgba(0,0,0,0.07)',
       }}
     >
       <div
@@ -43,13 +42,20 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
               fontSize: 18,
               fontWeight: 700,
               letterSpacing: '-0.3px',
-              color: isDark ? '#fff' : 'oklch(0.18 0.04 230)',
+              color: 'oklch(0.18 0.04 230)',
             }}
           >
             LabTestCompare
           </span>
         </Link>
         <div className="flex-1" />
+        <Link
+          href="/order-services"
+          className="no-underline"
+          style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.35 0.05 230)', marginRight: 24 }}
+        >
+          Order Services
+        </Link>
         <div
           style={{
             padding: '8px 20px',

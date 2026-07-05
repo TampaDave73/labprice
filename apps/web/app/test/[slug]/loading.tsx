@@ -1,6 +1,6 @@
 export default function TestDetailLoading() {
   return (
-    <div style={{ minHeight: '100vh', background: 'oklch(0.97 0.01 230)' }}>
+    <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 230)' }}>
       {/* Navbar skeleton */}
       <div style={{ height: 64, background: '#fff', borderBottom: '1px solid oklch(0.92 0.02 230)' }} />
 

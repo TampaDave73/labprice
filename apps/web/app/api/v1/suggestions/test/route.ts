@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
+import { notifyTestSuggestion } from '@/lib/services/notify-service';
 
 const schema = z.object({
   testName: z.string().trim().min(2).max(200),
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
         userId: session?.user?.id ?? null,
       },
     });
+    notifyTestSuggestion({ testName, note, email });
 
     return NextResponse.json({ data: { ok: true } });
   } catch (err) {

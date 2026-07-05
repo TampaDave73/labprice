@@ -32,7 +32,7 @@ export default function TestCard({ name, slug, category, minPrice }: TestCardPro
         border: `1.5px solid ${hovered ? 'oklch(0.75 0.074 230)' : 'oklch(0.92 0.02 230)'}`,
         transition: 'all 180ms',
         transform: hovered ? 'translateY(-2px)' : 'none',
-        boxShadow: hovered ? '0 8px 28px oklch(0.55 0.15 280 / 0.11)' : 'none',
+        boxShadow: hovered ? '0 8px 28px oklch(0.55 0.093 230 / 0.11)' : 'none',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

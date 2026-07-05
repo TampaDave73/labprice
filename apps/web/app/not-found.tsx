@@ -4,8 +4,8 @@ import Footer from './components/Footer';
 
 export default function NotFound() {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'oklch(0.97 0.01 230)' }}>
-      <Navbar variant="light" />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'oklch(0.985 0.005 230)' }}>
+      <Navbar />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', maxWidth: 400 }}>
           <h1

@@ -76,8 +76,8 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 230)' }}>
-      <Navbar variant="light" />
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+      <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 pt-8 pb-20">
         <h1 className="text-3xl font-bold tracking-[-0.6px] text-[oklch(0.15_0.04_230)] mb-8">
           Dashboard

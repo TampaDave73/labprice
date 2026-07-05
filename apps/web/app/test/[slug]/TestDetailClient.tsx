@@ -293,7 +293,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
           </div>
 
           {/* Disclaimer */}
-          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, border: '1px solid oklch(0.92 0.01 230)', display: 'flex', alignItems: 'flex-start', gap: 9, background: 'oklch(0.97 0.01 230)' }}>
+          <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, border: '1px solid oklch(0.92 0.01 230)', display: 'flex', alignItems: 'flex-start', gap: 9, background: 'oklch(0.985 0.005 230)' }}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, marginTop: 2 }}>
               <circle cx="7" cy="7" r="6" stroke="oklch(0.62 0.04 230)" strokeWidth="1.4" />
               <path d="M7 6v4M7 4.5h0" stroke="oklch(0.62 0.04 230)" strokeWidth="1.4" strokeLinecap="round" />
