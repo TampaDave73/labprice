@@ -10,6 +10,23 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Three new catalog scrapers, matching the rest of "The Lab Test Transparency Project" spreadsheet's
+  vendor list** (Function Health, Marek Health, DrSays, Jason Health were the 4 sheet vendors we didn't
+  already have): **Marek Diagnostics** (marekdiagnostics.com — Shopify; a product's own JSON-LD `mpn`
+  field IS the Quest code directly; `@type: "ProductGroup"` distinguishes a bundle from a single test),
+  **Jason Health** (jasonhealth.com — Algolia search API with a public referer-restricted key embedded
+  in the page; best match rate of any vendor, 33/35 seed tests), **DrSays** (drsays.com — WordPress;
+  no reliable live catalog discovery exists on this site, so `parseCatalog` deliberately returns a
+  hardcoded list of 5 hand-verified product URLs instead of crawling anything that would mostly 404;
+  matches on LabCorp code only, no name fallback, after finding this vendor's own codes for "Cortisol"
+  and "Vitamin B12" don't match our stored codes for those tests). **Function Health** was evaluated and
+  intentionally NOT built — its site exposes zero per-test pricing anywhere unauthenticated (membership
+  required just to see any price), unlike MitoHealth's public storefront; there's no data source to
+  scrape, so we skipped it rather than hand-enter static, unrefreshable numbers.
+- Fixed a real data bug found via the Marek Diagnostics build: a test added from the Transparency
+  Project sheet the prior session was named "Progesterone" but its Quest code (17180) is actually
+  **17-Hydroxyprogesterone** — confirmed independently via both Marek Diagnostics' and Jason Health's
+  own catalogs before renaming the test to its correct identity.
 - **21 new tests from "The Lab Test Transparency Project" community spreadsheet** (a Reddit-maintained
   cross-vendor price sheet, v1.0 June 2026): Testosterone Free (calc)+Total, Testosterone Free Direct,
   MTHFR Genetic Test, hs-CRP, Mercury, Lead, Magnesium, Zinc, Lipase, Amylase, PSA Total+Free+%Free,

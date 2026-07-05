@@ -15,6 +15,7 @@
 import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel } from '@labprice/database';
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
 import { getAdapter } from './adapters';
+import { JASONHEALTH_ALGOLIA_HEADERS } from './jasonhealth-parser';
 import { matchTestToProducts } from './matcher';
 import type { CatalogProduct, MatchTier, TestKey } from './types';
 
@@ -106,6 +107,29 @@ const ADAPTER_DEFAULTS: Record<
   // page; each page's own `data-isbundleproduct` flag tells us panels explicitly (a real vendor-
   // supplied signal, unlike most other name-only-matching vendors this session).
   labcorpondemand: { baseUrl: 'https://www.ondemand.labcorp.com', catalogPath: '/sitemap.xml' },
+  // Shopify store. sitemap.xml is an INDEX, not flat — catalogPath points straight at the products
+  // sub-sitemap (its from/to id range only shifts as the catalog grows). Best code exposure of any
+  // vendor: the product page's own JSON-LD `mpn` field IS the Quest code directly.
+  marekdiagnostics: {
+    baseUrl: 'https://marekdiagnostics.com',
+    catalogPath: '/sitemap_products_1.xml?from=8117663924498&to=10338644590866',
+    matchPriority: ['quest', 'name'],
+  },
+  // API vendor (Algolia search, public referer-restricted key embedded in the page — see
+  // jasonhealth-parser.ts). Every url_code IS the Quest order code; no LabCorp codes exposed.
+  jasonhealth: {
+    baseUrl: 'https://www.jasonhealth.com',
+    catalogPath: '',
+    apiBase: 'https://76U86Z1DD2-dsn.algolia.net/1/indexes/production_store_panels',
+    matchPriority: ['quest', 'name'],
+    extraHeaders: JASONHEALTH_ALGOLIA_HEADERS, // the search-only key 403s without the referer header.
+  },
+  // WordPress, sitemap.xml is small/inconsistent (see drsays-parser.ts) — real coverage here is
+  // deliberately partial. matchPriority is LabCorp-code-ONLY, no name fallback: found live that this
+  // vendor's own LabCorp code for "Cortisol" and "Vitamin B12" don't match our stored codes for those
+  // same-named tests (a real variant discrepancy) — a name fallback would have silently matched the
+  // wrong price. An exact code miss becomes an honest unmatched instead.
+  drsays: { baseUrl: 'https://www.drsays.com', catalogPath: '/sitemap.xml', matchPriority: ['labcorp'] },
 };
 
 /**

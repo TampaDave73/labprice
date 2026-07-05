@@ -7,6 +7,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@labprice/web", "dev"],
       "port": 3100
+    },
+    {
+      "name": "worker",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@labprice/worker", "dev"],
+      "port": 3001
     }
   ]
 }

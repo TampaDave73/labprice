@@ -346,13 +346,15 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   **Quest Health** (questhealth, Quest's own first-party store, code embedded in the URL), **LabCorp
   OnDemand** (labcorpondemand, LabCorp's own first-party store, explicit `data-isbundleproduct` flag —
   best isPanel signal of any vendor). Each independently scrapeable.
-- **35 tests, 490 possible offerings (35×14), 324 priced** after the 2026-07-04 "Lab Test Transparency
-  Project" expansion (see `CHANGELOG.md`) — 21 new tests added from that community spreadsheet, all 35
-  linked to all 14 vendors and discovery re-run for each. The gap between 324 and 490 is mostly the
-  same accepted name-only-matching tradeoff documented throughout this file (an unmatched/ambiguous
-  result isn't automatically a bug — see the per-vendor entries above and the pinned-URL override), plus
-  68 pending Change Queue entries from the new, more granular tests (ApoB, Lp(a), Iron Panel, etc.) that
-  need a human pick between real candidates.
+- **17 vendors, 35 tests, 595 possible offerings (35×17), 449 priced** after the 2026-07-04/05 "Lab Test
+  Transparency Project" expansion (see `CHANGELOG.md`): 21 new tests added from that community
+  spreadsheet, all 35 linked to all vendors and discovery re-run for each; then 3 new vendors added from
+  the same sheet's vendor list (Marek Diagnostics, Jason Health, DrSays — see the Fifteenth/Sixteenth/
+  Seventeenth scraper entries above; Function Health evaluated and skipped, no public pricing data). The
+  gap between 449 and 595 is mostly the same accepted name-only-matching tradeoff documented throughout
+  this file (an unmatched/ambiguous result isn't automatically a bug — see the per-vendor entries above
+  and the pinned-URL override), plus a small number of pending Change Queue entries from the new, more
+  granular tests (ApoB, Lp(a), Iron Panel, etc.) that need a human pick between real candidates.
 
 ### Thirteenth scraper — Quest Health (DONE)
 - `questhealth.com` is Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware —
@@ -388,6 +390,82 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   fix, 2 unmatched — HbA1c/PSA, the usual narrowing tradeoff).
 - **This completes the 11-vendor research queue** (#1 Ulta deferred/CAPTCHA-gated, #2–#11 all built and
   live-verified — including True Health Labs, whose outage recovered before session end).
+
+### Fifteenth scraper — Marek Diagnostics (DONE)
+- `marekdiagnostics.com` (the direct-to-consumer lab-ordering arm of Marek Health — `marekhealth.com`
+  itself is the telehealth/guided-optimization brand, not the shop) is a plain Shopify store. Its
+  `sitemap.xml` is a sitemap-INDEX, not flat — `catalogPath` points straight at the products
+  sub-sitemap (`sitemap_products_1.xml?from=<id>&to=<id>`, hardcoded since the id range only shifts as
+  the catalog grows). Compact catalog (~126 products) — smaller than most vendors this project.
+- **Best code exposure of any vendor**: a real single test's own JSON-LD `Product.mpn` field IS the
+  Quest order code directly (verified live: Cystatin C with eGFR's mpn "94588" matches our stored code
+  exactly, no parsing needed). **Panel detection**: Shopify represents a product WITH VARIANTS (e.g. a
+  Male/Female bundle) as `@type: "ProductGroup"` instead of `"Product"` — a real structural signal, not
+  a heuristic; its own `mpn`, when present, is pipe-delimited (one code per constituent test) as a
+  second confirming signal.
+- **Data bug found and fixed via this vendor, unrelated to the scraper itself**: Marek's own product
+  page for Quest code 17180 is clearly "17-OH Progesterone (17-OHP) [LC/MS]" — but our own test record
+  for that code (added from the Transparency Project sheet the prior session) was named plain
+  "Progesterone", a different clinical test. Cross-confirmed independently via Jason Health's catalog
+  (same code → same name) before fixing: renamed our test to "17-Hydroxyprogesterone (17-OHP)"
+  (slug `17-hydroxyprogesterone`) rather than leaving a wrong name attached to a real code.
+- 9 new unit tests over real fixtures (174 total). Verified live end-to-end (real DB, all 35 tests
+  linked): 27/35 matched, 2 ambiguous (Testosterone Total, Iron Panel — genuine multi-candidate
+  ambiguity), 6 unmatched.
+
+### Sixteenth scraper — Jason Health (DONE)
+- `jasonhealth.com` (Phoenix/Elixir — `?vsn=d` asset fingerprints match Own Your Labs' stack) is an API
+  vendor: its search is powered by Algolia, and the public search-only API key + application id are
+  embedded directly in the homepage (`window.algolia_settings`) — safe to use client-side by Algolia's
+  own design (a rate-limited, referer-restricted "search" key, not an admin key). Queried via the GET
+  variant of Algolia's REST API (`extraHeaders` carries the required `Referer: jasonhealth.com` header
+  the key 403s without) so it fits the shared `httpFetchHtml`, which only does GET.
+- The regular `query` endpoint caps out at 1,000 total results (an Algolia platform limit; `/browse`
+  needs a browse-capable key we don't have) even though the full index is ~3,842 items — accepted as a
+  coverage gap, not a bug: an empty-query browse in relevance order surfaces the common individual
+  tests first (verified live: CBC/CMP/Lipid/TSH/Vitamin D/Estradiol all on page 1). Deep pages return
+  `panel_name: null` for a meaningful fraction of hits — skipped, nothing to match on.
+- **Best match rate of any vendor this project**: every hit's `url_code` (or
+  `ntc_codes_of_single_test_panel`) IS the Quest order code directly. **Panel detection**:
+  `ntc_codes_of_single_test_panel` is empty for a bundle (codes live in `ntc_codes_of_multi_test_panel`
+  instead) — real, vendor-supplied.
+- 7 new unit tests over real fixtures (181 total). Verified live end-to-end (real DB, all 35 tests
+  linked): **33/35 matched, 0 ambiguous, 2 unmatched** — every matched code confirmed exact against our
+  own stored codes.
+
+### Seventeenth scraper — DrSays (DONE — deliberately small, honest coverage)
+- `drsays.com` looked like a Laravel/Vue SPA on the homepage, but individual `/home/test-<slug>/` test
+  pages are plain server-rendered WordPress (Yoast SEO + Kadence blocks) — plain HTTP works fine. **No
+  reliable way to discover the catalog live**: `sitemap.xml` lists `/home/<slug>` pages WITHOUT the
+  `test-` prefix, and live-checking those found most 404 or redirect to a generic search page instead
+  of a real product — the site's real, working URL scheme is never listed anywhere in bulk. Unlike
+  every other vendor this project, `parseCatalog` returns a **hardcoded list of individually
+  hand-verified `test-<slug>` URLs** rather than crawling anything — 5 tests today (TSH, HbA1c,
+  Ferritin, Vitamin D, Magnesium), a deliberate, small, real set instead of a crawl that would mostly
+  404. Confirmed with the user before building this way.
+- Each real product page's own meta description states both the price and the fulfilling lab code in
+  plain text: `"Order the TSH online (Labcorp Test No. 004259) for only $8.99."`
+- **Deliberately LabCorp-code-ONLY matching, no name fallback**: found live that this vendor's own
+  LabCorp code for "Cortisol" (004051) and "Vitamin B12" (001503) do NOT match our stored codes for
+  those same-named tests (004341 / 000429 — likely a different specific test variant, e.g. AM Cortisol
+  vs. a panel). A name-only fallback would have silently matched the wrong price for a same-name
+  coincidence — both tests are excluded from the hardcoded slug list, and `matchPriority: ['labcorp']`
+  (no `'name'` tier at all) guards against this class of mistake for any future addition to the list,
+  not just these two.
+- 11 new unit tests over real fixtures (192 total). Verified live end-to-end (real DB, all 35 tests
+  linked): 5/5 of the hardcoded slugs matched (Magnesium needed its LabCorp code added — 001537,
+  confirmed live from this vendor's own page, no prior conflicting value).
+
+### Function Health — evaluated, not built (no public pricing data)
+Researched as part of the same batch (Marek/Jason/DrSays + Function Health were the 4 vendors matched
+from the Transparency Project sheet that we didn't already have). Function Health is **membership-only**
+($365/year) — unlike MitoHealth's public storefront (which shows real prices with no login), Function
+Health's site exposes **zero** per-test add-on pricing anywhere unauthenticated, confirmed live on
+`/pricing` and every other public page (only the $365/year membership fee appears; the FAQ explicitly
+says itemized fees are "available upon request"). There is no data source to scrape at all — not a
+parsing difficulty like DrSays, a hard absence of public data. Discussed with the user: skip rather than
+hand-enter static, unverifiable, immediately-stale numbers from the community spreadsheet — every other
+vendor in this system is built on real, refreshable scraped data, and this would break that pattern.
 
 ---
 

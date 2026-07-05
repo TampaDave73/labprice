@@ -14,6 +14,9 @@ import { parseDiscountedLabsCatalog, parseDiscountedLabsProduct } from './discou
 import { parseTrueHealthLabsCatalog, parseTrueHealthLabsProduct } from './truehealthlabs-parser';
 import { parseQuestHealthCatalog, parseQuestHealthProduct } from './questhealth-parser';
 import { parseLabCorpOnDemandCatalog, parseLabCorpOnDemandProduct } from './labcorpondemand-parser';
+import { parseMarekDiagnosticsCatalog, parseMarekDiagnosticsProduct } from './marekdiagnostics-parser';
+import { fetchJasonHealthCatalog } from './jasonhealth-parser';
+import { parseDrSaysCatalog, parseDrSaysProduct } from './drsays-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -118,6 +121,27 @@ export const labCorpOnDemandAdapter: CatalogAdapter = {
   // Single flat sitemap.xml fetch — no pagination (nextCatalogPage omitted).
 };
 
+export const marekDiagnosticsAdapter: CatalogAdapter = {
+  name: 'marekdiagnostics',
+  parseCatalog: (xml) => parseMarekDiagnosticsCatalog(xml),
+  parseProduct: (html, baseUrl, slug) => parseMarekDiagnosticsProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/products/${slug}`,
+  // catalogPath is the products sub-sitemap (sitemap.xml is an index, not flat) — no pagination.
+};
+
+export const jasonHealthAdapter: CatalogAdapter = {
+  name: 'jasonhealth',
+  fetchAll: (deps, cfg) => fetchJasonHealthCatalog(deps, cfg),
+};
+
+export const drSaysAdapter: CatalogAdapter = {
+  name: 'drsays',
+  parseCatalog: (xml) => parseDrSaysCatalog(xml),
+  parseProduct: (html, baseUrl, slug) => parseDrSaysProduct(html, baseUrl, slug),
+  productUrl: (baseUrl, slug) => `${baseUrl}/home/${slug}/`,
+  // Single flat sitemap.xml fetch — no pagination (nextCatalogPage omitted).
+};
+
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
 export const ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
@@ -136,6 +160,9 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   truehealthlabs: trueHealthLabsAdapter,
   questhealth: questHealthAdapter,
   labcorpondemand: labCorpOnDemandAdapter,
+  marekdiagnostics: marekDiagnosticsAdapter,
+  jasonhealth: jasonHealthAdapter,
+  drsays: drSaysAdapter,
 };
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {

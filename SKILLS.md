@@ -220,8 +220,28 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     `data-isbundleproduct` true/false flag on every product page, vendor-supplied (verified live: CMP
     stays `false` despite being a clinical panel — consistent with precedent — an actual build-your-own
     bundle is `true`). Bundle SKUs are also non-numeric, unlike a real 6-digit LabCorp code. Last vendor
-    in the 11-vendor research queue — see `STATE.md` for the full list and status.
-  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs,questhealth,labcorpondemand}.ts`.
+    in the original 11-vendor research queue — see `STATE.md` for the full list and status.
+  - `marekdiagnostics` — Marek Health's direct-to-consumer shop (Shopify). `sitemap.xml` is an INDEX,
+    not flat — `catalogPath` points straight at the products sub-sitemap. **Best code exposure of any
+    vendor**: a real single test's JSON-LD `Product.mpn` IS the Quest code directly; a bundle is
+    `@type: "ProductGroup"` instead of `"Product"` (a structural signal, not a heuristic).
+  - `jasonhealth` — API vendor (Algolia search, public referer-restricted key embedded in the page,
+    threaded via `extraHeaders`). Every hit's `url_code` IS the Quest code. Best match rate of any
+    vendor (33/35 seed tests). Capped at 1,000 results (Algolia's `query`-endpoint limit) out of a
+    ~3,842-item index — accepted, not a bug (common tests rank first in an empty-query browse).
+  - `drsays` — WordPress, but with **no reliable live catalog discovery**: the sitemap lists a
+    different, stale URL scheme than the site's real `/home/test-<slug>/` pages (most sitemap URLs
+    404 or redirect to a generic search page). `parseCatalog` deliberately returns a **hardcoded list**
+    of hand-verified working slugs instead of crawling — small, honest coverage (5 tests) rather than a
+    crawl that would mostly fail. Matches on LabCorp code ONLY, no name fallback — this vendor's own
+    codes for "Cortisol" and "Vitamin B12" don't match our stored codes for those same-named tests (a
+    real variant discrepancy, found live), so name-only matching is disabled entirely for this vendor
+    rather than special-casing those two.
+  - **Function Health** was evaluated (it was the 4th vendor from the same research batch) and
+    deliberately NOT built: its site exposes zero per-test pricing anywhere unauthenticated ($365/year
+    membership required just to see any price) — no data source exists to scrape, unlike MitoHealth's
+    public storefront.
+  - E2E runners: `apps/worker/scripts/discover-{ownyourlabs,dirtcheaplabs,mitohealth,walkinlab,personalabs,healthlabs,privatemdlabs,requestatest,directlabs,discountedlabs,truehealthlabs,questhealth,labcorpondemand,marekdiagnostics,jasonhealth,drsays}.ts`.
 - **Adapter defaults** (`persist.ts` `ADAPTER_DEFAULTS`): baseUrl/catalogPath/matchOptions per adapter
   name, all overridable per-vendor via `selectors`. A lookup map, not an if/else chain — add a vendor by
   adding one entry.
