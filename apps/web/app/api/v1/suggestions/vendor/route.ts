@@ -8,14 +8,23 @@ import { notifyVendorSuggestion } from '@/lib/services/notify-service';
 
 const schema = z.object({
   vendorName: z.string().trim().min(2).max(200),
-  vendorUrl: z.string().trim().url().max(500).optional().or(z.literal('')),
+  // People type "walkinlab.com", not "https://walkinlab.com" — prepend a protocol before the URL
+  // check instead of bouncing the whole submission.
+  vendorUrl: z
+    .string()
+    .trim()
+    .max(500)
+    .transform((v) => (v && !/^https?:\/\//i.test(v) ? `https://${v}` : v))
+    .pipe(z.string().url().or(z.literal('')))
+    .optional(),
   note: z.string().trim().max(1000).optional().or(z.literal('')),
   email: z.string().trim().email().max(200).optional().or(z.literal('')),
 });
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // Malformed JSON is a client error (400 via safeParse), not a 500.
+    const body: unknown = await req.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

@@ -9,6 +9,31 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed
+- **Hardening pass over the 2026-07-05 feature round** (senior-review sweep, all verified live against
+  the running app):
+  - **Admin user routes**: a plain ADMIN could change another ADMIN/SUPER_ADMIN's role via PATCH (only
+    DELETE had the guard) — PATCH now mirrors it. Unknown roles (`role: "BANANA"`) and malformed JSON
+    bodies now return 400 instead of a Prisma 500; PATCH/DELETE on a missing/deleted user returns 404
+    instead of 500. The last-SUPER_ADMIN check-then-act now runs inside a `Serializable` transaction so
+    two concurrent demotes can't both slip past it (a genuine race conflict returns a retryable 409).
+  - **`/order-services` accordion**: the "Visit site" link was rendered *inside* the expand/collapse
+    `<button>` — invalid HTML (nested interactive controls) that breaks keyboard/screen-reader use.
+    Restructured as siblings; toggle buttons also gained `aria-expanded`.
+  - **Analytics API**: `?days=abc` produced NaN → Invalid Date → Prisma 500; now falls back to 30. The
+    six independent DB queries were awaited sequentially (7-deep chain incl. the dependent lookups);
+    now two parallel batches, so response latency ≈ the slowest query instead of the sum of all.
+  - **Suggestion forms**: protocol-less websites ("walkinlab.com") were rejected by strict `.url()`
+    validation — now normalized with `https://` server-side (footer input switched from `type=url` to
+    text to match). Malformed JSON on the public endpoints returns 400 instead of 500.
+  - **Admin suggestion routes**: `?status=BOGUS` no longer 500s (400), and a real DB failure on PATCH
+    is no longer misreported as 404 (only Prisma P2025 maps to 404 now).
+  - **Admin UI resilience**: analytics page shows an error state instead of "Loading…" forever on a
+    failed fetch and drops stale responses when switching the 7/30/90d window quickly; users page no
+    longer hangs on a failed load; suggestions page surfaces PATCH failures instead of silently
+    ignoring them.
+  - `notify-service.ts` deduplicated (shared `sendAdminAlert` path for both suggestion emails).
+
 ### Added
 - **Order Services directory** (`/order-services`, linked from navbar + footer) — every active vendor
   with an expandable table of the tests it carries and current self-pay prices, sourced from the same

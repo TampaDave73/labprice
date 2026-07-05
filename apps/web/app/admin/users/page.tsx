@@ -18,10 +18,15 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const res = await fetch('/api/v1/admin/users');
-    const json = await res.json();
-    setUsers(json.data ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/v1/admin/users');
+      const json = await res.json();
+      setUsers(json.data ?? []);
+    } catch {
+      setMsg('Could not load users — reload to retry.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchUsers(); }, []);

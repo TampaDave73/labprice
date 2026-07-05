@@ -23,13 +23,31 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
+    // `stale` guards against a slow older request (e.g. 90d) landing after a newer one (7d) and
+    // overwriting it — responses for a superseded `days` value are dropped.
+    let stale = false;
     setLoading(true);
+    setError(false);
     fetch(`/api/v1/admin/analytics?days=${days}`)
-      .then((r) => r.json())
-      .then((j) => setData(j.data ?? null))
-      .finally(() => setLoading(false));
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((j) => {
+        if (!stale) setData(j.data ?? null);
+      })
+      .catch(() => {
+        if (!stale) setError(true);
+      })
+      .finally(() => {
+        if (!stale) setLoading(false);
+      });
+    return () => {
+      stale = true;
+    };
   }, [days]);
 
   return (
@@ -49,7 +67,9 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {loading || !data ? (
+      {error ? (
+        <p className="text-red-600">Couldn&apos;t load analytics — check the server logs and reload.</p>
+      ) : loading || !data ? (
         <p className="text-brand-400">Loading…</p>
       ) : (
         <>

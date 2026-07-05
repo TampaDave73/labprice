@@ -42,15 +42,25 @@ export default function SuggestionsPage() {
 
   useEffect(load, []);
 
+  const [error, setError] = useState<string | null>(null);
+
   async function setStatus(kind: 'vendor' | 'test', id: string, status: Status) {
     setBusyId(id);
+    setError(null);
     try {
-      await fetch(`/api/v1/admin/suggestions/${id}`, {
+      const res = await fetch(`/api/v1/admin/suggestions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind, status }),
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setError(j.error?.message ?? 'Could not update the suggestion.');
+        return;
+      }
       load();
+    } catch {
+      setError('Could not update the suggestion — try again.');
     } finally {
       setBusyId(null);
     }
@@ -59,6 +69,8 @@ export default function SuggestionsPage() {
   return (
     <div>
       <h1 className="admin-h1 mb-6">Suggestions</h1>
+
+      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
       {loading ? (
         <p className="text-brand-400">Loading…</p>

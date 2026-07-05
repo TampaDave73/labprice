@@ -519,6 +519,15 @@ All five items from the user's multi-part request, plus a follow-up feedback rou
   an "Order Services" link.
 - **Bug fix**: test detail page no longer repeats description/purpose above the "About This Test"
   accordion (`TestDetailClient.tsx`).
+- **Hardening pass (same day, follow-up review)**: closed an ADMIN-can-demote-an-ADMIN gap in the users
+  PATCH route (DELETE had the guard, PATCH didn't) and made the last-SUPER_ADMIN check transactional
+  (Serializable, races → 409); bad input across the new API routes now 400s/404s instead of 500ing
+  (unknown roles, malformed JSON, `?days=abc`, `?status=BOGUS`, missing ids); analytics route queries
+  parallelized (7-deep sequential chain → 2 batches); `/order-services` no longer nests the "Visit
+  site" `<a>` inside the accordion `<button>` (invalid HTML, a11y); suggestion forms accept
+  protocol-less URLs (server prepends `https://`); admin analytics/users/suggestions pages got error
+  states instead of hanging on failed fetches. All verified live via `preview_eval` fetch with an
+  admin session (see CHANGELOG for the full list).
 
 ---
 

@@ -59,49 +59,56 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
               overflow: 'hidden',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setOpenId(open ? null : v.id)}
-              className="flex items-center"
-              style={{
-                width: '100%',
-                padding: '18px 22px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                gap: 16,
-              }}
-            >
-              {v.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={v.logoUrl} alt={v.name} style={{ height: 28, maxWidth: 120, objectFit: 'contain', flexShrink: 0 }} />
-              ) : (
-                <div style={{ fontSize: 17, fontWeight: 700, color: 'oklch(0.2 0.04 230)' }}>{v.name}</div>
-              )}
-              <div className="flex-1" />
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>
-                  {v.testCount} {v.testCount === 1 ? 'test' : 'tests'}
-                  {v.minPrice != null && <> · from ${v.minPrice.toFixed(2)}</>}
-                </div>
-                {v.membershipNote && (
-                  <div style={{ fontSize: 12, color: 'oklch(0.5 0.13 165)', marginTop: 2 }}>{v.membershipNote}</div>
+            {/* The "Visit site" link must be a SIBLING of the toggle button, not a child — an <a>
+                inside a <button> is invalid HTML (nested interactive controls) and breaks keyboard
+                and screen-reader navigation. The button stretches to fill the row; the link sits
+                beside it. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 22px' }}>
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : v.id)}
+                aria-expanded={open}
+                className="flex items-center"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  gap: 16,
+                }}
+              >
+                {v.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.logoUrl} alt={v.name} style={{ height: 28, maxWidth: 120, objectFit: 'contain', flexShrink: 0 }} />
+                ) : (
+                  <div style={{ fontSize: 17, fontWeight: 700, color: 'oklch(0.2 0.04 230)' }}>{v.name}</div>
                 )}
-              </div>
+                <div className="flex-1" />
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>
+                    {v.testCount} {v.testCount === 1 ? 'test' : 'tests'}
+                    {v.minPrice != null && <> · from ${v.minPrice.toFixed(2)}</>}
+                  </div>
+                  {v.membershipNote && (
+                    <div style={{ fontSize: 12, color: 'oklch(0.5 0.13 165)', marginTop: 2 }}>{v.membershipNote}</div>
+                  )}
+                </div>
+                <Chevron open={open} />
+              </button>
               {v.websiteUrl && (
                 <a
                   href={v.websiteUrl}
                   target="_blank"
                   rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
                   style={{ fontSize: 13, color: 'oklch(0.5 0.14 230)', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
                 >
                   Visit site ↗
                 </a>
               )}
-              <Chevron open={open} />
-            </button>
+            </div>
 
             {open && (
               <div style={{ borderTop: '1px solid oklch(0.94 0.01 230)' }}>

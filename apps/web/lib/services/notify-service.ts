@@ -14,12 +14,10 @@ async function adminEmails(): Promise<string[]> {
   return admins.map((a) => a.email);
 }
 
-export async function notifyVendorSuggestion(params: {
-  vendorName: string;
-  vendorUrl?: string | null;
-  note?: string | null;
-  email?: string | null;
-}) {
+// Shared send path: no-ops without a RESEND_API_KEY or any active admin; swallows (but logs) send
+// failures. `lines` may contain nulls for optional fields — they're filtered here so callers can
+// build the body declaratively.
+async function sendAdminAlert(subject: string, lines: (string | null)[]): Promise<void> {
   if (!resend) return;
   try {
     const to = await adminEmails();
@@ -27,21 +25,26 @@ export async function notifyVendorSuggestion(params: {
     await resend.emails.send({
       from: FROM,
       to,
-      subject: `New vendor suggestion: ${params.vendorName}`,
-      text: [
-        `Vendor: ${params.vendorName}`,
-        params.vendorUrl ? `Website: ${params.vendorUrl}` : null,
-        params.note ? `Note: ${params.note}` : null,
-        params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
-        '',
-        'Review at /admin/suggestions',
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      subject,
+      text: [...lines, '', 'Review at /admin/suggestions'].filter((l): l is string => l !== null).join('\n'),
     });
   } catch (err) {
-    console.error('[notify] vendor suggestion email failed:', err);
+    console.error(`[notify] "${subject}" email failed:`, err);
   }
+}
+
+export async function notifyVendorSuggestion(params: {
+  vendorName: string;
+  vendorUrl?: string | null;
+  note?: string | null;
+  email?: string | null;
+}) {
+  await sendAdminAlert(`New vendor suggestion: ${params.vendorName}`, [
+    `Vendor: ${params.vendorName}`,
+    params.vendorUrl ? `Website: ${params.vendorUrl}` : null,
+    params.note ? `Note: ${params.note}` : null,
+    params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
+  ]);
 }
 
 export async function notifyTestSuggestion(params: {
@@ -49,25 +52,9 @@ export async function notifyTestSuggestion(params: {
   note?: string | null;
   email?: string | null;
 }) {
-  if (!resend) return;
-  try {
-    const to = await adminEmails();
-    if (to.length === 0) return;
-    await resend.emails.send({
-      from: FROM,
-      to,
-      subject: `New test suggestion: ${params.testName}`,
-      text: [
-        `Test: ${params.testName}`,
-        params.note ? `Note: ${params.note}` : null,
-        params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
-        '',
-        'Review at /admin/suggestions',
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    });
-  } catch (err) {
-    console.error('[notify] test suggestion email failed:', err);
-  }
+  await sendAdminAlert(`New test suggestion: ${params.testName}`, [
+    `Test: ${params.testName}`,
+    params.note ? `Note: ${params.note}` : null,
+    params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
+  ]);
 }

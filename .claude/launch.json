@@ -6,7 +6,8 @@
       "name": "web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@labprice/web", "dev"],
-      "port": 3100
+      "port": 3100,
+      "autoPort": true
     },
     {
       "name": "worker",

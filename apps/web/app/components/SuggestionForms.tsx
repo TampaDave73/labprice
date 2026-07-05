@@ -152,7 +152,9 @@ export default function SuggestionForms() {
         endpoint="/api/v1/suggestions/vendor"
         fields={[
           { name: 'vendorName', placeholder: 'Vendor name', required: true },
-          { name: 'vendorUrl', placeholder: 'Website (optional)', type: 'url' },
+          // Deliberately type=text, not type=url: the browser's native url validation rejects
+          // "walkinlab.com" (no protocol); the API normalizes that form instead.
+          { name: 'vendorUrl', placeholder: 'Website (optional)' },
           { name: 'email', placeholder: 'Your email (optional)', type: 'email' },
           { name: 'note', placeholder: 'Anything else? (optional)' },
         ]}

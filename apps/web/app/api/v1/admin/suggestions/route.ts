@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 
+const STATUSES = ['PENDING', 'REVIEWED', 'DISMISSED'] as const;
+type Status = (typeof STATUSES)[number];
+
 async function requireAdmin() {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return null;
@@ -15,7 +18,13 @@ export async function GET(req: NextRequest) {
   }
 
   const status = req.nextUrl.searchParams.get('status');
-  const where = status ? { status: status as 'PENDING' | 'REVIEWED' | 'DISMISSED' } : {};
+  if (status && !(STATUSES as readonly string[]).includes(status)) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: `Unknown status — expected one of ${STATUSES.join(', ')}` } },
+      { status: 400 },
+    );
+  }
+  const where = status ? { status: status as Status } : {};
 
   const [vendors, tests] = await Promise.all([
     prisma.vendorSuggestion.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 }),

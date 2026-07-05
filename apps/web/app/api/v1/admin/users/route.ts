@@ -1,20 +1,27 @@
+// Admin user management: list active users (cursor-paginated) and invite new ones by email.
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 
-const ROLES = ['USER', 'EDITOR', 'ADMIN', 'SUPER_ADMIN'];
+const ROLES = ['USER', 'EDITOR', 'ADMIN', 'SUPER_ADMIN'] as const;
+type Role = (typeof ROLES)[number];
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function forbidden(message: string) {
+  return NextResponse.json({ error: { code: 'forbidden', message } }, { status: 403 });
+}
+
+// List active (non-deleted) users, newest first.
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-    return NextResponse.json(
-      { error: { code: 'forbidden', message: 'Admin access required' } },
-      { status: 403 },
-    );
+    return forbidden('Admin access required');
   }
 
   const params = req.nextUrl.searchParams;
-  const limit = Math.min(Number(params.get('limit') ?? 25), 100);
+  const rawLimit = Number(params.get('limit') ?? 25);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 25;
   const cursor = params.get('cursor');
 
   const users = await prisma.user.findMany({
@@ -38,51 +45,70 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {
-    return NextResponse.json(
-      { error: { code: 'forbidden', message: 'Admin access required' } },
-      { status: 403 },
-    );
+    return forbidden('Admin access required');
   }
 
-  const body = await req.json();
-  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null;
-  const role = ROLES.includes(body.role) ? body.role : 'USER';
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json(
-      { error: { code: 'validation_error', message: 'A valid email is required' } },
-      { status: 400 },
-    );
-  }
-  if (['ADMIN', 'SUPER_ADMIN'].includes(role) && session.user.role !== 'SUPER_ADMIN') {
-    return NextResponse.json(
-      { error: { code: 'forbidden', message: 'Only SUPER_ADMIN can grant admin roles' } },
-      { status: 403 },
-    );
-  }
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    if (!existing.deletedAt) {
+  try {
+    // Malformed JSON (or a non-object body) is a client error, not a server crash.
+    const body: unknown = await req.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
       return NextResponse.json(
-        { error: { code: 'conflict', message: 'A user with this email already exists' } },
-        { status: 409 },
+        { error: { code: 'validation_error', message: 'A JSON body is required' } },
+        { status: 400 },
       );
     }
-    // Re-inviting a previously-removed user: restore them instead of creating a duplicate row.
-    const restored = await prisma.user.update({
-      where: { id: existing.id },
-      data: { deletedAt: null, role, name: name ?? existing.name },
+    const b = body as Record<string, unknown>;
+
+    const email = typeof b.email === 'string' ? b.email.trim().toLowerCase() : '';
+    const name = typeof b.name === 'string' && b.name.trim() ? b.name.trim() : null;
+    if (!email || !EMAIL_RE.test(email)) {
+      return NextResponse.json(
+        { error: { code: 'validation_error', message: 'A valid email is required' } },
+        { status: 400 },
+      );
+    }
+    // An unknown role is rejected outright rather than silently downgraded to USER — a typo'd
+    // "SUPERADMIN" invite should fail loudly, not create a regular user.
+    const roleInput = b.role ?? 'USER';
+    if (typeof roleInput !== 'string' || !(ROLES as readonly string[]).includes(roleInput)) {
+      return NextResponse.json(
+        { error: { code: 'validation_error', message: `Unknown role — expected one of ${ROLES.join(', ')}` } },
+        { status: 400 },
+      );
+    }
+    const role = roleInput as Role;
+    if (['ADMIN', 'SUPER_ADMIN'].includes(role) && session.user.role !== 'SUPER_ADMIN') {
+      return forbidden('Only SUPER_ADMIN can grant admin roles');
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      if (!existing.deletedAt) {
+        return NextResponse.json(
+          { error: { code: 'conflict', message: 'A user with this email already exists' } },
+          { status: 409 },
+        );
+      }
+      // Re-inviting a previously-removed user: restore them instead of creating a duplicate row.
+      const restored = await prisma.user.update({
+        where: { id: existing.id },
+        data: { deletedAt: null, role, name: name ?? existing.name },
+        select: { id: true, email: true, name: true, role: true, createdAt: true, image: true },
+      });
+      return NextResponse.json({ data: restored });
+    }
+
+    const user = await prisma.user.create({
+      data: { email, name, role },
       select: { id: true, email: true, name: true, role: true, createdAt: true, image: true },
     });
-    return NextResponse.json({ data: restored });
+
+    return NextResponse.json({ data: user }, { status: 201 });
+  } catch (err) {
+    console.error('[POST /api/v1/admin/users]', err);
+    return NextResponse.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
+      { status: 500 },
+    );
   }
-
-  const user = await prisma.user.create({
-    data: { email, name, role },
-    select: { id: true, email: true, name: true, role: true, createdAt: true, image: true },
-  });
-
-  return NextResponse.json({ data: user }, { status: 201 });
 }

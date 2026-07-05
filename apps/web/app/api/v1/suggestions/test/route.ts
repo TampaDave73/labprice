@@ -14,7 +14,8 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // Malformed JSON is a client error (400 via safeParse), not a 500.
+    const body: unknown = await req.json().catch(() => null);
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
