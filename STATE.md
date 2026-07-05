@@ -2,16 +2,20 @@
 
 > Point-in-time snapshot for resuming work. Living source-of-truth docs remain
 > `.claude/CLAUDE.md` (conventions/gotchas), `SKILLS.md` (features/workflows), `CHANGELOG.md` (history).
-> Last updated: 2026-07-04. Branch: `claude/github-write-access-3v9dld`. **The 11-vendor new-scraper
-> research queue is fully complete** (#1 Ulta deferred on an AWS WAF CAPTCHA; #2–#11 all built,
-> unit-tested, and live-verified — including True Health Labs, whose site had a mid-session outage but
-> recovered before the session ended, allowing a full retry). Along the way, found + fixed three
-> shared/adapter bugs (pinned-URL retry not covering `ambiguous` results; a double-`.html` URL bug from
-> slug reconstruction on Quest Health; a $0-priced bundle on True Health Labs that would've shown as a
-> false match) — all documented below with the vendor whose testing surfaced them.
+> Last updated: 2026-07-05. Branch: `claude/github-write-access-3v9dld` — clean, all work committed
+> AND pushed (latest `0b65f35`, before it `a802687`).
 >
-> **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work is
-> the **new-vendor scraper queue** (Next #0) — 14 vendors now live, all price-verified.
+> **New chat? Start here:** read this file, then `.claude/CLAUDE.md` + `SKILLS.md`. Most recent work
+> (2026-07-05, two commits) is a **site/admin feature round**: admin user management, an admin
+> Analytics dashboard, footer suggestion forms with admin email alerts, the full color-scheme
+> lightening (dark blue/purple → light blue), an `/order-services` vendor directory, and
+> About/Terms/Privacy/Disclaimer compliance pages. See the "Feature round" section at the end of
+> ✅ Done, and especially **"✅ Verified / ⏳ not yet"** at the bottom — a few UI interactions still
+> need a human click-through because the preview browser tab stayed backgrounded all session.
+>
+> Prior milestone (2026-07-03/04): the 11-vendor new-scraper research queue completed (#1 Ulta
+> deferred on an AWS WAF CAPTCHA; #2–#11 built, unit-tested, live-verified), then Marek
+> Diagnostics/Jason Health/DrSays added and Function Health intentionally skipped — 17 vendors live.
 
 ---
 
@@ -467,6 +471,55 @@ parsing difficulty like DrSays, a hard absence of public data. Discussed with th
 hand-enter static, unverifiable, immediately-stale numbers from the community spreadsheet — every other
 vendor in this system is built on real, refreshable scraped data, and this would break that pattern.
 
+### Feature round — 2026-07-05 (commits `a802687` + `0b65f35`, both pushed)
+
+All five items from the user's multi-part request, plus a follow-up feedback round the same day:
+
+- **Admin user management** (`/admin/users`, `POST`/`DELETE /api/v1/admin/users[/id]`): invite by
+  email (re-inviting a soft-deleted user *restores* them instead of duplicating), remove with guards —
+  no self-delete, no removing the last SUPER_ADMIN (also guards the PATCH role-downgrade path), and
+  removal deletes all Session rows in the same transaction (Auth.js's PrismaAdapter doesn't know our
+  `deletedAt` convention, so a lingering session would otherwise keep working). Only SUPER_ADMIN can
+  grant ADMIN/SUPER_ADMIN. All verified via direct API calls.
+- **Analytics dashboard** (`/admin/analytics` + `GET /api/v1/admin/analytics?days=7|30|90`): top
+  searches, **zero-result searches** (the "what test should we add" signal), vendor click-through,
+  most-viewed tests, top test→vendor pairs. Two real bugs found + fixed while building it:
+  1. The live search bar calls `/api/v1/search/autocomplete`, which had NO `logSearch` call — the
+     parallel `/api/v1/search` endpoint had logging but nothing uses it. Searches were never tracked
+     until this fix.
+  2. **Page views double-counted**: React Strict Mode double-invokes effects in dev, firing
+     `PageViewTracker`'s POST twice per view. Fixed with a `useRef` guard keyed by pathname
+     (`apps/web/app/components/PageViewTracker.tsx`) — the ref survives the double-invoke.
+  `PageViewTracker` is mounted **only on the test detail page** (deliberate — the dashboard's view
+  panel is "most-viewed tests"); drop it on other pages with `testId` omitted if broader tracking is
+  wanted later.
+- **Suggestion forms + email alerts**: new `VendorSuggestion`/`TestSuggestion` models +
+  `SuggestionStatus` enum (PENDING/REVIEWED/DISMISSED) — schema already pushed to the local DB.
+  Public `POST /api/v1/suggestions/vendor|test` (zod-validated, attaches `userId` if signed in);
+  footer UI is **collapsed links that expand into an inline form** (user asked for accordion, not
+  always-visible forms); admin review at `/admin/suggestions` (`PATCH .../suggestions/[id]` with a
+  `kind` discriminator since the two tables are separate). Submitting also **emails every active
+  ADMIN/SUPER_ADMIN** via `lib/services/notify-service.ts` (new `resend` dependency in apps/web) —
+  fire-and-forget, no-ops cleanly when `RESEND_API_KEY` is empty (it currently IS empty in `.env`,
+  so no email has actually been sent yet). Fixed stale `EMAIL_FROM` in `.env`
+  (labprice.com → labtestcompare.com).
+- **Color scheme, two passes**: (1) sitewide hue 280 (blue-violet) → 230 (blue) with softened chroma
+  — `@theme` tokens in `globals.css` for the admin, plus a scripted rewrite of every public page's
+  inline `oklch()` (incl. Tailwind arbitrary `oklch(x_y_280)` underscore forms), new teal `accent-*`
+  scale (hue 165), `themeColor` meta `#3b1f8e` → `#0081b6`. (2) After user said it *still* didn't
+  read well: the homepage hero was still a dark gradient with purple stops (hue 295/265) the regex
+  missed, plus a hardcoded `#a855f7/#d946ef` gradient on "instantly" and the navbar's dark variant.
+  Hero/stats-bar/navbar all converted to light theme; **Navbar's `variant` prop is deleted** (all 5
+  call sites updated); page canvas lightened to `oklch(0.985 0.005 230)`. Zero hue-280/295/305
+  remnants (grep-verified).
+- **New public pages**: `/order-services` (every active vendor as an expandable card → full
+  test/price table, "Order" via the click-tracked `/api/v1/go/[offeringId]`; server component
+  `page.tsx` + client `VendorAccordionList.tsx`), and `/about`, `/terms`, `/privacy`, `/disclaimer`
+  sharing new `components/StaticPageLayout.tsx`. Footer got a links row to all of these; navbar got
+  an "Order Services" link.
+- **Bug fix**: test detail page no longer repeats description/purpose above the "About This Test"
+  accordion (`TestDetailClient.tsx`).
+
 ---
 
 ## ⏭️ Next
@@ -526,6 +579,15 @@ confirmed, not preemptively).
   scraper first.
 
 ### 3. Smaller follow-ups
+- **Set `RESEND_API_KEY` in `.env`** to activate the new suggestion-form admin email alerts (they
+  silently no-op without it). Also needed for the email magic-link sign-in provider.
+- **Seed admin is `admin@labprice.com`** (`packages/database/prisma/seed.ts:208`) — user pointed out
+  labprice.com isn't the real domain. Now that user management exists, invite a real admin address
+  and retire/replace the seed one (careful: last-SUPER_ADMIN guard requires promoting the new one
+  first).
+- Footer copyright still says **© 2025** (`components/Footer.tsx`) — bump to 2026 or make dynamic.
+- The navbar **"Free Account" button is a non-functional `<div>`** (pre-existing) — wire it to
+  `/auth/signin` or hide until the public-auth milestone.
 - Clean up benign `@prisma/client` "can't be external" Turbopack warnings before a prod build.
 - Wire per-vendor engine selection into the inline "Scrape now" / add-test routes so Request A Test
   (and any future Cloudflare-gated vendor) can use `browserFetchHtml` from the web admin too, not just
@@ -546,13 +608,22 @@ confirmed, not preemptively).
 - **Worker has pre-existing type errors** (ioredis dual-version in `queues.ts`; `publisher.ts` uses
   stale snake_case models). Runs fine via `tsx`; not regressions — don't "fix" unless touching them.
 - **Prisma client regen locks on Windows** — stop dev servers before `prisma generate` (EPERM).
+  This session it took MORE than stopping the preview servers: several **orphaned `tsx watch` /
+  script node processes from prior sessions** still held the query-engine DLL. If EPERM persists,
+  `Get-CimInstance Win32_Process -Filter "Name='node.exe'"` and kill the labprice-owned ones
+  (user pre-approved that once; ask again).
+- **The preview browser tab runs backgrounded (`document.hidden === true`)** in this environment,
+  which stalls React effects and click-driven state updates — `preview_screenshot` times out and
+  accordion/controlled-form interactions can't be exercised there. Verify APIs with `fetch` via
+  `preview_eval` (works fine) and do visual/interaction checks in a real foregrounded browser.
 - Save/Price Alert are blocked on the missing customer-auth flow (see Next #2).
 
 ## ▶️ How to run / verify
 ```bash
 pnpm docker:dev                                  # Postgres + Redis
 pnpm --filter @labprice/database db:push         # sync schema if needed
-pnpm dev                                          # web on :3000 (currently running in background)
+pnpm dev                                          # web on :3000 (preview tools use .claude/launch.json
+                                                  #   instead: "web" → :3100, "worker" → :3001)
 # Auto-fill: Admin → Tests → Add Test → type a name → "✨ Auto-fill" (needs ANTHROPIC_API_KEY + restart)
 # Vendors on a test: Admin → Tests → open an existing test → Vendors checklist (attach = inline scrape)
 # Scrape a catalog vendor: Admin → Vendors → Good Labs → "Scrape now" (inline, no worker needed)
@@ -564,15 +635,28 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-walkinl
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/dev-admin-session.ts
 ```
 
-## ✅ Verified this session / ⏳ not yet
-- **Verified live** (real key, live catalog): catalog code-lookup accuracy across 17 names, AI content +
-  short name + category picks + relaxed codes for Folate/Testosterone/CBC. Endpoints compile + enforce
-  admin auth (403 unauth'd). Web `tsc --noEmit` clean.
-- **Not yet exercised end-to-end**: the browser Auto-fill round-trip through the admin UI (needs a logged-in
-  admin session), and the vendor attach/auto-scrape from the test page (needs DB up + admin login). Logic
-  mirrors the proven vendor-side offerings route; worth a manual click-through to confirm.
-- **Walk-In Lab (this session)**: 86 unit tests pass, web `tsc --noEmit` clean, live end-to-end discovery
-  against real Postgres (9 matched + published, 1 ambiguous, 1 unmatched — see "Fifth scraper" above),
-  and confirmed showing up in the admin Vendors list via a real browser session (screenshot taken).
-  **Not yet committed/pushed** — holding for user confirmation per their "confirm it works, then move to
-  #2" instruction.
+## ✅ Verified / ⏳ not yet (feature round, 2026-07-05)
+
+**Verified** (direct API calls via `preview_eval` fetch + DB queries via temp worker scripts, since
+the preview tab was backgrounded — see gotchas):
+- User management: create, duplicate-409, invalid-email-400, self-delete-403, delete + session
+  revocation, re-invite-restores, last-SUPER_ADMIN guard on both DELETE and PATCH.
+- Suggestion endpoints: vendor + test create (200, row lands with `userId` attached), short-name
+  validation rejection (400), admin list, admin PATCH → REVIEWED. Test rows were cleaned up after.
+- Analytics: pageview POST → `page_views` row with correct `testId` FK; the earlier FK-violation
+  failure mode (`P2003` when a bad testId is sent) surfaces only in server logs by design
+  (fire-and-forget `.catch`).
+- All 4 static pages return 200 with correct `<h1>`; `/order-services` renders 17 vendor cards with
+  real counts/prices; footer links + navbar link present in served HTML.
+- Web `tsc --noEmit` clean after every change. No server errors in dev logs.
+
+**⏳ Not yet exercised — needs a human click-through in a real (foregrounded) browser:**
+- The **footer suggestion accordions** and the **/order-services vendor accordion** expanding on
+  click (the click handlers are trivial `useState` toggles, but the backgrounded preview tab
+  couldn't run them; the SSR'd HTML is confirmed correct).
+- The **double-count fix** observed end-to-end in a real browser (the guard logic is
+  straightforward, and the root cause — Strict Mode double-invoke — is well understood; one visit
+  to a test page then checking `/admin/analytics` view counts = confirmation). Note: pre-fix
+  `page_views` rows (a handful) may still be inflated; harmless at this data volume.
+- The **admin email alert** actually sending — blocked on `RESEND_API_KEY` being empty in `.env`
+  (code path no-ops cleanly; the DB row + `/admin/suggestions` review flow works regardless).
