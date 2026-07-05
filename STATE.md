@@ -335,6 +335,33 @@ Everything is done from the test editor (`apps/web/app/admin/tests/[id]/page.tsx
   (Lipid Panel, 5 real candidates), 1 unmatched (Vitamin B12 — the bogus bundle is now correctly
   excluded and nothing else name-matches, a safe "nothing to show" rather than a wrong price).
 
+### Test content + code completeness audit (2026-07-05)
+- Audited all **35 active tests** for Quest/LabCorp codes + the five content fields (description,
+  purpose, procedure, preparation, normalRange). Before: 20 tests had zero content, 19 lacked a
+  LabCorp code. After:
+  - **Content: 35/35 complete.** Generated the 20 missing sets via the existing Claude auto-fill
+    pipeline (`generateTestContent`), blank-fields-only, codes passed in as context. Spot-checked
+    for accuracy (Homocysteine, 17-OHP) and confirmed rendering on the live test page.
+  - **Quest codes: 35/35 present** (all pre-existing, cross-checked below).
+  - **LabCorp codes: 32/35.** Filled 16 blanks, each verified to resolve to the correct test on
+    **labcorp.com's own directory** (authoritative) — e.g. MTHFR 511238, hs-CRP 120766, Mercury
+    085324, Lead 007625, Zinc 001800, Lipase 001404, Amylase 001396, ApoB 167015, Homocysteine
+    706994, Lp(a) 120188, GGT 001958, Insulin 004333, IGF-1 010363, B12+Folate 000810 (canonical
+    combo, not the plain-B12 code some vendors mislabel), PSA T+F+%Free 480772, Cystatin C 121251.
+  - **3 intentionally left without a LabCorp code** (no reliable source): 17-OHP (its attached
+    LabCorp offerings resolve to plain *Progesterone* 004317, a different test — the offerings look
+    like stale name-matches from before the Progesterone→17-OHP rename; needs a manual pin),
+    Testosterone Free (calculated) + Total (4-way vendor code conflict, no clean labcorp.com match),
+    Testosterone Free Direct (no labelled vendor carries it; ambiguous assay variant).
+- **Method**: cross-checked every stored code against the codes published on the vendor product pages
+  we already link to, using each vendor's own catalog parser (8 lab-labelled vendors), then confirmed
+  fills/disputes against labcorp.com and questhealth.com directly. **No existing curated code was
+  overwritten.** Disputes surfaced for human review (stored code differs from vendor/directory):
+  Vitamin B12 LC 000429 (404s; LabCorp/vendors use 001503), Cortisol LC 004341 (404s; 004051
+  resolves), PSA LC 070234 (404s; 010322 resolves), Homocysteine Q 91733 (3 sources incl. Quest's own
+  store say 31789), Cortisol Q 395 vs Quest-store 4212, TSH Q 867 vs 899 (867 is standard, fine). All
+  are plausible variant/legacy codes rather than clear errors — flagged, not changed.
+
 ### Current live DB state
 - **14 vendors, all price-verified live**: **Good Labs** (goodlabs), **Own Your Labs** (ownyourlabs),
   **Dirt Cheap Labs** (dirtcheaplabs), **Mito Health** (mitohealth, member pricing), **Walk-In Lab**
