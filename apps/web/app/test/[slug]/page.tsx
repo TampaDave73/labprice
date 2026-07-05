@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { auth } from '@/lib/auth';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import PageViewTracker from '../../components/PageViewTracker';
 import TestDetailClient from './TestDetailClient';
 import SaveTestButton from './SaveTestButton';
 import PriceAlertButton from './PriceAlertButton';
@@ -95,11 +96,12 @@ export default async function TestDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 230)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <PageViewTracker testId={test.id} />
       <Navbar variant="light" />
       {session?.user && (
         <div className="max-w-[1240px] mx-auto px-6 pt-4 flex items-center gap-2 justify-end">

@@ -29,7 +29,7 @@ export default function TestCard({ name, slug, category, minPrice }: TestCardPro
         background: '#fff',
         borderRadius: 14,
         padding: 20,
-        border: `1.5px solid ${hovered ? 'oklch(0.75 0.12 280)' : 'oklch(0.92 0.02 280)'}`,
+        border: `1.5px solid ${hovered ? 'oklch(0.75 0.074 230)' : 'oklch(0.92 0.02 230)'}`,
         transition: 'all 180ms',
         transform: hovered ? 'translateY(-2px)' : 'none',
         boxShadow: hovered ? '0 8px 28px oklch(0.55 0.15 280 / 0.11)' : 'none',
@@ -57,7 +57,7 @@ export default function TestCard({ name, slug, category, minPrice }: TestCardPro
         style={{
           fontSize: 15,
           fontWeight: 600,
-          color: 'oklch(0.18 0.04 280)',
+          color: 'oklch(0.18 0.04 230)',
           marginBottom: 5,
           lineHeight: 1.35,
           margin: '0 0 5px',
@@ -66,7 +66,7 @@ export default function TestCard({ name, slug, category, minPrice }: TestCardPro
         {name}
       </h3>
       <div className="flex items-baseline" style={{ gap: 5 }}>
-        <span style={{ fontSize: 11, color: 'oklch(0.6 0.04 280)' }}>from</span>
+        <span style={{ fontSize: 11, color: 'oklch(0.6 0.04 230)' }}>from</span>
         <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.38 0.17 145)' }}>
           {minPrice != null ? `$${Math.round(minPrice)}` : '--'}
         </span>

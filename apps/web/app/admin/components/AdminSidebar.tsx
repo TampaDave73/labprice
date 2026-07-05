@@ -71,6 +71,27 @@ const navItems = [
     ),
   },
   {
+    label: 'Analytics',
+    href: '/admin/analytics',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 17V3" />
+        <path d="M3 17h14" />
+        <path d="M6 14V9M10 14V6M14 14v-4" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Suggestions',
+    href: '/admin/suggestions',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M10 2a6 6 0 00-3.5 10.9c.4.3.6.8.6 1.3v.3a1 1 0 001 1h3.8a1 1 0 001-1v-.3c0-.5.2-1 .6-1.3A6 6 0 0010 2z" />
+        <line x1="8" y1="18" x2="12" y2="18" />
+      </svg>
+    ),
+  },
+  {
     label: 'Users',
     href: '/admin/users',
     icon: (

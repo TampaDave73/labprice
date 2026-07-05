@@ -10,6 +10,28 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Lighter, less-purple color scheme sitewide** (user-reported: the old dark blue/purple was hard to
+  read). Brand hue moved from 280 (blue-violet) to 230 (clean blue) with softened chroma on all
+  saturated (button/link/badge) shades — e.g. the main brand color went from `oklch(0.58 0.22 280)` to
+  `oklch(0.56 0.14 230)`. Added a new `accent-*` scale (teal, hue 165) to `globals.css`'s `@theme` block
+  for highlights/CTAs distinct from brand blue. Admin `bg-brand-900` sidebar and the `layout.tsx`
+  `themeColor` meta (mobile browser chrome tint) updated to match. Applies to both the admin design
+  system (`globals.css` tokens) and every public page's inline `oklch()` styles.
+- **"Suggest a Vendor" / "Suggest a Test" forms in the site footer** (shown on every page) — capture
+  leads into new `VendorSuggestion`/`TestSuggestion` tables (`SuggestionStatus`: PENDING/REVIEWED/
+  DISMISSED), reviewed at `/admin/suggestions` (mark reviewed/dismissed). Never auto-creates a Vendor
+  or Test row — purely a triage queue for admins.
+- **Admin Analytics dashboard** (`/admin/analytics`) — what people search for (including **zero-result
+  queries**, the gap-finding signal for "should we add this test?"), vendor click-through (which
+  "Order" links get clicked most), and most-viewed test pages. Backed by the pre-existing
+  `SearchLog`/`AffiliateClick`/`PageView` tables, which were mostly unlogged in practice — the live
+  search bar calls `/api/v1/search/autocomplete`, a different endpoint than the one that already had
+  `logSearch` wired up, so autocomplete searches weren't being tracked at all until now.
+- **Add/remove users from the admin Users page** (`/admin/users`) — invite by email (restores a
+  soft-deleted user instead of duplicating if they were previously removed), remove with guards: can't
+  remove yourself, can't remove the last SUPER_ADMIN, and removal revokes all active sessions
+  immediately (soft-delete alone wouldn't do this since Auth.js's PrismaAdapter doesn't know about our
+  `deletedAt` convention).
 - **Three new catalog scrapers, matching the rest of "The Lab Test Transparency Project" spreadsheet's
   vendor list** (Function Health, Marek Health, DrSays, Jason Health were the 4 sheet vendors we didn't
   already have): **Marek Diagnostics** (marekdiagnostics.com — Shopify; a product's own JSON-LD `mpn`
@@ -62,6 +84,9 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   (e.g. `"HTTP 403 for https://requestatest.com/tests"`) for failed ones.
 
 ### Fixed
+- **Test detail page repeated its own description** — the description/purpose text appeared once as a
+  standalone paragraph under the test name, then again inside the "About This Test" accordion. Removed
+  the standalone paragraph; the accordion is the only copy now.
 - **Request A Test's "Scrape now" always failed** (user-reported, alongside "Last success" never
   updating and the Catalog-source dropdown showing "goodlabs" instead of "Request A Test"). Root causes,
   all found live:

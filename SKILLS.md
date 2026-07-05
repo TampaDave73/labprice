@@ -22,6 +22,9 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Category pages** (`category/[slug]`) — lists tests via the many-to-many, so a test appears under
   every category it belongs to.
 - **Search API** (`/api/v1/search`) — Postgres full-text with trigram fallback.
+- **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" lead-capture
+  forms (`components/SuggestionForms.tsx` → `/api/v1/suggestions/vendor|test`); reviewed by admins at
+  `/admin/suggestions`.
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
 - **Dashboard** — KPI counts + recent audit activity.
@@ -51,7 +54,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Change Queue** — review staged price changes (Approve/Reject); has an in-UI workflow explainer.
 - **Settings** — grouped controls: scraping schedule/timeout, **auto-approval thresholds**, feature
   flags. The worker reads thresholds from here.
-- **Users** — list + role management.
+- **Users** — list + role management + **add/remove** (`POST`/`DELETE /api/v1/admin/users`): invite by
+  email (restores a soft-deleted user instead of duplicating), remove revokes sessions immediately;
+  guarded against self-delete and removing the last SUPER_ADMIN.
+- **Analytics** (`/admin/analytics`) — top searches, **zero-result searches** (what to add next),
+  vendor click-through, most-viewed tests. `GET /api/v1/admin/analytics?days=7|30|90`.
+- **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions,
+  mark reviewed/dismissed (`PATCH /api/v1/admin/suggestions/[id]`).
 
 ### Scrape pipeline (`apps/worker`, `@labprice/scrapers`)
 - Queues (BullMQ, hyphenated names): `scrape-schedule` → `scrape-execute` → `scrape-publish`, plus
@@ -117,6 +126,11 @@ a ready token to paste into `document.cookie` in the preview browser.
 - **Public pages → inline `style={{}}`** (Tailwind arbitrary oklch/px values are unreliable here).
 - **Admin → `.admin-*` classes** in `apps/web/app/globals.css` (`admin-btn`, `-card`, `-input`,
   `-h1/2`, badges). Don't hand-roll arbitrary-value utilities.
+- **Brand color = hue 230 (blue), accent = hue 165 (teal)** — `@theme` tokens `--color-brand-*` /
+  `--color-accent-*` in `globals.css` drive admin `bg-brand-500` etc.; public pages hardcode the same
+  hue inline (`oklch(L C 230)`). Was hue 280 (dark blue/purple) until a 2026-07 pass lightened/
+  desaturated it sitewide for readability — if you're adding new inline colors, match hue 230 (or 165
+  for an accent), not 280.
 
 ### Category model (many-to-many, no "primary")
 - Membership lives in `TestCategory`. `Test.categoryId` is a **derived display pointer** (lowest

@@ -26,7 +26,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
             style={{
               width: 34,
               height: 34,
-              background: 'linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))',
+              background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
               borderRadius: 9,
             }}
           >
@@ -43,7 +43,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
               fontSize: 18,
               fontWeight: 700,
               letterSpacing: '-0.3px',
-              color: isDark ? '#fff' : 'oklch(0.18 0.04 280)',
+              color: isDark ? '#fff' : 'oklch(0.18 0.04 230)',
             }}
           >
             LabTestCompare
@@ -53,7 +53,7 @@ export default function Navbar({ variant = 'dark' }: { variant?: 'dark' | 'light
         <div
           style={{
             padding: '8px 20px',
-            background: 'linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))',
+            background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
             color: '#fff',
             borderRadius: 20,
             fontSize: 14,

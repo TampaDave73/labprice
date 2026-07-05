@@ -107,6 +107,12 @@ enum ProxyType {
   RESIDENTIAL
 }
 
+enum SuggestionStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
 // ───────────────────────── Identity / Auth.js ─────────────────────────
 
 model User {
@@ -131,6 +137,8 @@ model User {
   notifications   Notification[]
   reviewedChanges StagedPriceChange[] @relation("ChangeReviewer")
   systemSettings  SystemSetting[]     @relation("SettingUpdater")
+  vendorSuggestions VendorSuggestion[]
+  testSuggestions   TestSuggestion[]
 
   @@index([role])
   @@map("users")
@@ -727,4 +735,39 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+// ───────────────────────── User-submitted suggestions ─────────────────────────
+// Public "Suggest a Vendor" / "Suggest a Test" forms (site footer). Reviewed by admins in
+// /admin/suggestions; not auto-applied to the catalog.
+
+model VendorSuggestion {
+  id         String           @id @default(cuid())
+  vendorName String           @map("vendor_name")
+  vendorUrl  String?          @map("vendor_url")
+  note       String?
+  email      String?
+  status     SuggestionStatus @default(PENDING)
+  userId     String?          @map("user_id")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("vendor_suggestions")
+}
+
+model TestSuggestion {
+  id        String           @id @default(cuid())
+  testName  String           @map("test_name")
+  note      String?
+  email     String?
+  status    SuggestionStatus @default(PENDING)
+  userId    String?          @map("user_id")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("test_suggestions")
 }

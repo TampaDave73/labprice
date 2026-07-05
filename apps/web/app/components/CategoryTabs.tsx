@@ -25,10 +25,10 @@ export default function CategoryTabs({ categories, active, onChange }: CategoryT
               transition: 'all 150ms',
               border: '1.5px solid',
               background: isActive
-                ? 'linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305))'
+                ? 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))'
                 : '#fff',
-              color: isActive ? '#fff' : 'oklch(0.45 0.12 280)',
-              borderColor: isActive ? 'oklch(0.58 0.22 280)' : 'oklch(0.88 0.03 280)',
+              color: isActive ? '#fff' : 'oklch(0.45 0.074 230)',
+              borderColor: isActive ? 'oklch(0.58 0.136 230)' : 'oklch(0.88 0.03 230)',
             }}
           >
             {cat.name}

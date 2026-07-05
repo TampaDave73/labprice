@@ -11,7 +11,7 @@ const dmSans = DM_Sans({
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#3b1f8e',
+  themeColor: '#0081b6',
 };
 
 export const metadata: Metadata = {
@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body
         className={`${dmSans.className} min-h-screen antialiased`}
-        style={{ background: 'oklch(0.97 0.01 280)' }}
+        style={{ background: 'oklch(0.97 0.01 230)' }}
       >
         {children}
       </body>

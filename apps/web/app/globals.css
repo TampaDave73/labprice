@@ -2,16 +2,28 @@
 
 @theme {
   --font-sans: "DM Sans", system-ui, sans-serif;
-  --color-brand-50: oklch(0.97 0.01 280);
-  --color-brand-100: oklch(0.95 0.03 280);
-  --color-brand-200: oklch(0.9 0.05 280);
-  --color-brand-300: oklch(0.8 0.1 280);
-  --color-brand-400: oklch(0.65 0.15 280);
-  --color-brand-500: oklch(0.58 0.22 280);
-  --color-brand-600: oklch(0.52 0.22 305);
-  --color-brand-700: oklch(0.4 0.14 280);
-  --color-brand-800: oklch(0.21 0.12 295);
-  --color-brand-900: oklch(0.17 0.1 280);
+  /* Brand: a clean, lighter blue (hue 230) — replaces the old dark blue/purple (hue 280) that
+     read as heavy and hard to read at high chroma. Lower chroma throughout keeps it legible. */
+  --color-brand-50: oklch(0.98 0.01 230);
+  --color-brand-100: oklch(0.95 0.02 230);
+  --color-brand-200: oklch(0.9 0.04 230);
+  --color-brand-300: oklch(0.82 0.06 230);
+  --color-brand-400: oklch(0.68 0.1 230);
+  --color-brand-500: oklch(0.56 0.14 230);
+  --color-brand-600: oklch(0.49 0.14 232);
+  --color-brand-700: oklch(0.4 0.11 232);
+  --color-brand-800: oklch(0.3 0.08 230);
+  --color-brand-900: oklch(0.24 0.06 228);
+  /* Accent: teal/emerald — used for highlights, "best price" badges, and CTAs that need to stand
+     out from brand blue (e.g. savings callouts). */
+  --color-accent-50: oklch(0.96 0.03 165);
+  --color-accent-100: oklch(0.92 0.06 165);
+  --color-accent-200: oklch(0.85 0.09 165);
+  --color-accent-300: oklch(0.75 0.11 165);
+  --color-accent-400: oklch(0.63 0.13 165);
+  --color-accent-500: oklch(0.55 0.14 165);
+  --color-accent-600: oklch(0.47 0.13 165);
+  --color-accent-700: oklch(0.38 0.11 165);
   --color-success-50: oklch(0.97 0.05 145);
   --color-success-500: oklch(0.72 0.18 145);
   --color-success-700: oklch(0.38 0.17 145);
@@ -29,7 +41,7 @@
 }
 
 ::placeholder {
-  color: oklch(0.6 0.04 280 / 0.5);
+  color: oklch(0.6 0.03 230 / 0.5);
 }
 
 ::-webkit-scrollbar {
@@ -37,29 +49,29 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.55 0.2 280 / 0.25);
+  background: oklch(0.55 0.12 230 / 0.25);
   border-radius: 3px;
 }
 
 /* ── Admin: mirror the main site's design language ──
-   Plain CSS (not Tailwind arbitrary values) so the indigo gradient, card
+   Plain CSS (not Tailwind arbitrary values) so the brand gradient, card
    radii, and typography render identically to the public pages. */
 .admin-h1 {
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.4px;
-  color: oklch(0.18 0.04 280);
+  color: oklch(0.22 0.03 230);
 }
 .admin-h2 {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.2px;
-  color: oklch(0.18 0.04 280);
+  color: oklch(0.22 0.03 230);
 }
 .admin-card {
   background: #fff;
   border-radius: 14px;
-  border: 1.5px solid oklch(0.92 0.02 280);
+  border: 1.5px solid oklch(0.92 0.02 230);
 }
 .admin-btn {
   display: inline-flex;
@@ -75,7 +87,7 @@
   cursor: pointer;
   text-decoration: none;
   transition: filter 0.15s, background 0.15s, box-shadow 0.15s;
-  background: linear-gradient(135deg, oklch(0.58 0.22 280), oklch(0.52 0.22 305));
+  background: linear-gradient(135deg, oklch(0.56 0.14 230), oklch(0.49 0.14 232));
   color: #fff;
 }
 .admin-btn:hover { filter: brightness(1.07); }
@@ -85,24 +97,24 @@
 .admin-btn-danger { background: oklch(0.55 0.2 25); }
 .admin-btn-ghost {
   background: #fff;
-  color: oklch(0.45 0.14 280);
-  border: 1.5px solid oklch(0.84 0.04 280);
+  color: oklch(0.42 0.1 230);
+  border: 1.5px solid oklch(0.84 0.03 230);
 }
-.admin-btn-ghost:hover { filter: none; background: oklch(0.97 0.02 280); }
+.admin-btn-ghost:hover { filter: none; background: oklch(0.97 0.02 230); }
 .admin-input {
   width: 100%;
   border-radius: 10px;
-  border: 1.5px solid oklch(0.9 0.02 280);
+  border: 1.5px solid oklch(0.9 0.02 230);
   padding: 9px 14px;
   font-size: 14px;
-  color: oklch(0.18 0.04 280);
+  color: oklch(0.22 0.03 230);
   background: #fff;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .admin-input:focus {
-  border-color: oklch(0.58 0.22 280);
-  box-shadow: 0 0 0 3px oklch(0.58 0.22 280 / 0.18);
+  border-color: oklch(0.56 0.14 230);
+  box-shadow: 0 0 0 3px oklch(0.56 0.14 230 / 0.18);
 }
 .admin-input-inline { width: auto; padding: 6px 10px; font-size: 13px; }
 

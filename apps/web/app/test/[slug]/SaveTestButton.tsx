@@ -42,8 +42,8 @@ export default function SaveTestButton({ testId, initialSavedId }: Props) {
       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[9px] border-[1.5px] text-sm font-medium cursor-pointer transition-all disabled:opacity-50"
       style={{
         background: isSaved ? 'oklch(0.95 0.06 15)' : '#fff',
-        borderColor: isSaved ? 'oklch(0.82 0.12 15)' : 'oklch(0.88 0.03 280)',
-        color: isSaved ? 'oklch(0.4 0.16 15)' : 'oklch(0.45 0.05 280)',
+        borderColor: isSaved ? 'oklch(0.82 0.12 15)' : 'oklch(0.88 0.03 230)',
+        color: isSaved ? 'oklch(0.4 0.16 15)' : 'oklch(0.45 0.05 230)',
       }}
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill={isSaved ? 'currentColor' : 'none'}>

@@ -76,18 +76,18 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 280)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.97 0.01 230)' }}>
       <Navbar variant="light" />
       <div className="max-w-[1240px] mx-auto px-6 pt-8 pb-20">
-        <h1 className="text-3xl font-bold tracking-[-0.6px] text-[oklch(0.15_0.04_280)] mb-8">
+        <h1 className="text-3xl font-bold tracking-[-0.6px] text-[oklch(0.15_0.04_230)] mb-8">
           Dashboard
         </h1>
 
         {/* Saved Tests */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_280)] mb-4">Saved Tests</h2>
+          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_230)] mb-4">Saved Tests</h2>
           {savedTestData.length === 0 ? (
-            <p className="text-sm text-[oklch(0.55_0.04_280)]">
+            <p className="text-sm text-[oklch(0.55_0.04_230)]">
               No saved tests yet. Browse tests and click the bookmark icon to save them here.
             </p>
           ) : (
@@ -101,13 +101,13 @@ export default async function DashboardPage() {
 
         {/* Price Alerts */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_280)] mb-4">Price Alerts</h2>
+          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_230)] mb-4">Price Alerts</h2>
           <AlertList alerts={alertData} />
         </section>
 
         {/* Recent Notifications */}
         <section>
-          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_280)] mb-4">Recent Notifications</h2>
+          <h2 className="text-lg font-semibold text-[oklch(0.2_0.04_230)] mb-4">Recent Notifications</h2>
           <NotificationList notifications={notificationData} />
         </section>
       </div>

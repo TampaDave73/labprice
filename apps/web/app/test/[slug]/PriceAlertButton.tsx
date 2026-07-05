@@ -49,8 +49,8 @@ export default function PriceAlertButton({ testId }: Props) {
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[9px] border-[1.5px] text-sm font-medium cursor-pointer transition-all"
         style={{
           background: done ? 'oklch(0.95 0.06 145)' : '#fff',
-          borderColor: done ? 'oklch(0.8 0.12 145)' : 'oklch(0.88 0.03 280)',
-          color: done ? 'oklch(0.38 0.14 145)' : 'oklch(0.45 0.05 280)',
+          borderColor: done ? 'oklch(0.8 0.12 145)' : 'oklch(0.88 0.03 230)',
+          color: done ? 'oklch(0.38 0.14 145)' : 'oklch(0.45 0.05 230)',
         }}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -68,9 +68,9 @@ export default function PriceAlertButton({ testId }: Props) {
       {open && (
         <form
           onSubmit={handleSubmit}
-          className="absolute right-0 top-full mt-2 w-[260px] bg-white rounded-[13px] border-[1.5px] border-[oklch(0.9_0.02_280)] shadow-lg p-4 z-50"
+          className="absolute right-0 top-full mt-2 w-[260px] bg-white rounded-[13px] border-[1.5px] border-[oklch(0.9_0.02_230)] shadow-lg p-4 z-50"
         >
-          <div className="text-sm font-semibold text-[oklch(0.2_0.04_280)] mb-3">Set Price Alert</div>
+          <div className="text-sm font-semibold text-[oklch(0.2_0.04_230)] mb-3">Set Price Alert</div>
 
           <div className="flex gap-1.5 mb-3">
             <button
@@ -78,8 +78,8 @@ export default function PriceAlertButton({ testId }: Props) {
               onClick={() => setMode('target')}
               className="flex-1 px-3 py-1.5 rounded-[7px] text-xs font-medium cursor-pointer border-none transition-all"
               style={{
-                background: mode === 'target' ? 'oklch(0.58 0.22 280)' : 'oklch(0.96 0.01 280)',
-                color: mode === 'target' ? '#fff' : 'oklch(0.5 0.05 280)',
+                background: mode === 'target' ? 'oklch(0.58 0.136 230)' : 'oklch(0.96 0.01 230)',
+                color: mode === 'target' ? '#fff' : 'oklch(0.5 0.05 230)',
               }}
             >
               Target price
@@ -89,8 +89,8 @@ export default function PriceAlertButton({ testId }: Props) {
               onClick={() => setMode('drop')}
               className="flex-1 px-3 py-1.5 rounded-[7px] text-xs font-medium cursor-pointer border-none transition-all"
               style={{
-                background: mode === 'drop' ? 'oklch(0.58 0.22 280)' : 'oklch(0.96 0.01 280)',
-                color: mode === 'drop' ? '#fff' : 'oklch(0.5 0.05 280)',
+                background: mode === 'drop' ? 'oklch(0.58 0.136 230)' : 'oklch(0.96 0.01 230)',
+                color: mode === 'drop' ? '#fff' : 'oklch(0.5 0.05 230)',
               }}
             >
               % drop
@@ -99,11 +99,11 @@ export default function PriceAlertButton({ testId }: Props) {
 
           {mode === 'target' ? (
             <div className="mb-3">
-              <label className="text-xs text-[oklch(0.55_0.04_280)] block mb-1">
+              <label className="text-xs text-[oklch(0.55_0.04_230)] block mb-1">
                 Notify when price drops to:
               </label>
               <div className="flex items-center gap-1">
-                <span className="text-sm text-[oklch(0.4_0.04_280)]">$</span>
+                <span className="text-sm text-[oklch(0.4_0.04_230)]">$</span>
                 <input
                   type="number"
                   step="0.01"
@@ -111,14 +111,14 @@ export default function PriceAlertButton({ testId }: Props) {
                   required
                   value={targetPrice}
                   onChange={(e) => setTargetPrice(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[oklch(0.88_0.03_280)] rounded-[7px] text-sm outline-none focus:border-[oklch(0.6_0.15_280)]"
+                  className="w-full px-3 py-1.5 border border-[oklch(0.88_0.03_230)] rounded-[7px] text-sm outline-none focus:border-[oklch(0.6_0.093_230)]"
                   placeholder="29.99"
                 />
               </div>
             </div>
           ) : (
             <div className="mb-3">
-              <label className="text-xs text-[oklch(0.55_0.04_280)] block mb-1">
+              <label className="text-xs text-[oklch(0.55_0.04_230)] block mb-1">
                 Notify on price drop of:
               </label>
               <div className="flex items-center gap-1">
@@ -129,9 +129,9 @@ export default function PriceAlertButton({ testId }: Props) {
                   required
                   value={thresholdPercent}
                   onChange={(e) => setThresholdPercent(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-[oklch(0.88_0.03_280)] rounded-[7px] text-sm outline-none focus:border-[oklch(0.6_0.15_280)]"
+                  className="w-full px-3 py-1.5 border border-[oklch(0.88_0.03_230)] rounded-[7px] text-sm outline-none focus:border-[oklch(0.6_0.093_230)]"
                 />
-                <span className="text-sm text-[oklch(0.4_0.04_280)]">%</span>
+                <span className="text-sm text-[oklch(0.4_0.04_230)]">%</span>
               </div>
             </div>
           )}
@@ -147,7 +147,7 @@ export default function PriceAlertButton({ testId }: Props) {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="px-4 py-2 bg-transparent border border-[oklch(0.88_0.03_280)] rounded-[7px] text-xs font-medium cursor-pointer text-[oklch(0.5_0.05_280)]"
+              className="px-4 py-2 bg-transparent border border-[oklch(0.88_0.03_230)] rounded-[7px] text-xs font-medium cursor-pointer text-[oklch(0.5_0.05_230)]"
             >
               Cancel
             </button>
