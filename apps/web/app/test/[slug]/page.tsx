@@ -1,25 +1,23 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@labprice/database';
 import type { Metadata } from 'next';
-import { auth } from '@/lib/auth';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import PageViewTracker from '../../components/PageViewTracker';
 import TestDetailClient from './TestDetailClient';
-import SaveTestButton from './SaveTestButton';
-import PriceAlertButton from './PriceAlertButton';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
+// No `auth()` here on purpose: the test page is fully public (no per-user UI), so it stays
+// statically renderable / ISR-cacheable instead of being forced dynamic by a session lookup.
 async function getTest(slug: string) {
   const test = await prisma.test.findUnique({
     where: { slug },
     include: {
       category: true,
       codes: true,
-      biomarkers: { include: { biomarker: true } },
       offerings: {
         where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
         include: { vendor: true },
@@ -47,16 +45,6 @@ export default async function TestDetailPage({ params }: Props) {
   const test = await getTest(slug);
   if (!test) notFound();
 
-  const session = await auth();
-  let savedTestId: string | null = null;
-  if (session?.user) {
-    const saved = await prisma.savedTest.findUnique({
-      where: { userId_testId: { userId: session.user.id, testId: test.id } },
-      select: { id: true },
-    });
-    savedTestId = saved?.id ?? null;
-  }
-
   const offerings = test.offerings.map((o) => ({
     id: o.id,
     vendorName: o.vendor.name,
@@ -65,16 +53,11 @@ export default async function TestDetailPage({ params }: Props) {
     memberPrice: o.memberPrice != null ? Number(o.memberPrice) : null,
     membershipNote: o.vendor.membershipNote ?? null,
     externalUrl: o.externalUrl,
+    priceUpdatedAt: o.priceUpdatedAt ? o.priceUpdatedAt.toISOString() : null,
   }));
 
   const questCode = test.questCode ?? test.codes.find((c) => c.codeType === 'QUEST')?.codeValue ?? null;
   const labcorpCode = test.labcorpCode ?? test.codes.find((c) => c.codeType === 'LABCORP')?.codeValue ?? null;
-
-  const biomarkers = test.biomarkers.map((tb) => ({
-    name: tb.biomarker.name,
-    unit: tb.biomarker.unit,
-    description: tb.biomarker.description,
-  }));
 
   const prices = offerings.map((o) => o.price);
   const jsonLd = {
@@ -103,12 +86,6 @@ export default async function TestDetailPage({ params }: Props) {
       />
       <PageViewTracker testId={test.id} />
       <Navbar />
-      {session?.user && (
-        <div className="max-w-[1240px] mx-auto px-6 pt-4 flex items-center gap-2 justify-end">
-          <SaveTestButton testId={test.id} initialSavedId={savedTestId} />
-          <PriceAlertButton testId={test.id} />
-        </div>
-      )}
       <TestDetailClient
         test={{
           id: test.id,
@@ -125,7 +102,6 @@ export default async function TestDetailPage({ params }: Props) {
           labcorpCode,
         }}
         offerings={offerings}
-        biomarkers={biomarkers}
       />
       <Footer />
     </div>

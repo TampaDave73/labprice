@@ -12,12 +12,7 @@ interface Offering {
   memberPrice: number | null;
   membershipNote: string | null;
   externalUrl: string | null;
-}
-
-interface Biomarker {
-  name: string;
-  unit: string | null;
-  description: string | null;
+  priceUpdatedAt: string | null;
 }
 
 interface TestInfo {
@@ -38,7 +33,22 @@ interface TestInfo {
 interface Props {
   test: TestInfo;
   offerings: Offering[];
-  biomarkers: Biomarker[];
+}
+
+// "Prices last checked N ago" trust signal (F5). Uses the freshest offering timestamp; we surface
+// recency, not staleness, so the newest check is the right one to show.
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const diffMs = Date.now() - then;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? '' : 's'} ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months === 1 ? '' : 's'} ago`;
 }
 
 const ACC_ICONS = {
@@ -69,6 +79,13 @@ export default function TestDetailClient({ test, offerings }: Props) {
   const [sortBy, setSortBy] = useState<'price' | 'alpha'>('price');
   const [openSection, setOpenSection] = useState<string | null>('about');
   const [reportOpen, setReportOpen] = useState(false);
+
+  // Freshest price-check timestamp across all listings, for the "last checked" trust line.
+  const lastChecked = offerings
+    .map((o) => o.priceUpdatedAt)
+    .filter((t): t is string => t != null)
+    .sort()
+    .at(-1);
 
   const sorted = [...offerings].sort((a, b) =>
     sortBy === 'alpha' ? a.vendorName.localeCompare(b.vendorName) : a.price - b.price,
@@ -154,6 +171,15 @@ export default function TestDetailClient({ test, offerings }: Props) {
             </div>
           )}
           <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 230)' }}>{offerings.length} ordering services compared</span>
+          {lastChecked && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'oklch(0.55 0.04 230)' }}>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="6" stroke="oklch(0.6 0.06 145)" strokeWidth="1.4" />
+                <path d="M7 4v3l2 1.2" stroke="oklch(0.6 0.06 145)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Prices last checked {relativeTime(lastChecked)}
+            </span>
+          )}
         </div>
       </div>
 
@@ -168,6 +194,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
               <div key={sec.id} style={{ background: '#fff', borderRadius: 13, marginBottom: 10, border: '1.5px solid oklch(0.92 0.02 230)', overflow: 'hidden' }}>
                 <button
                   onClick={() => setOpenSection(isOpen ? null : sec.id)}
+                  aria-expanded={isOpen}
                   className="td-acc-header"
                   style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 18px', cursor: 'pointer', background: 'transparent', border: 'none', transition: 'background 0.15s' }}
                 >

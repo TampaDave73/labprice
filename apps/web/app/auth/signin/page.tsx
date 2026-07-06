@@ -13,7 +13,7 @@ export default function SignIn() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-brand-900 tracking-tight">Sign in to LabTestCompare</h1>
-          <p className="text-sm text-brand-400 mt-2">Get price alerts and save your favorite tests</p>
+          <p className="text-sm text-brand-400 mt-2">Access your account and admin tools</p>
         </div>
         <form action="/api/auth/signin/resend" method="POST" className="space-y-4">
           <div>

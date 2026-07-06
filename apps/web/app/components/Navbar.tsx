@@ -1,8 +1,34 @@
-'use client';
-
+// Top navigation. Server component so it can read the session directly (`auth()`) and render the
+// real signed-in / signed-out state — the old hardcoded "Free Account" pill was a dead <div>.
+// Signed out → "Sign in" link. Signed in → Admin link (admins only) + "Sign out" (server action).
 import Link from 'next/link';
+import { auth, signOut } from '@/lib/auth';
 
-export default function Navbar() {
+const linkStyle: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'oklch(0.35 0.05 230)',
+  marginRight: 24,
+  textDecoration: 'none',
+};
+
+const pillStyle: React.CSSProperties = {
+  padding: '8px 20px',
+  background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
+  color: '#fff',
+  borderRadius: 20,
+  fontSize: 14,
+  fontWeight: 600,
+  textDecoration: 'none',
+  border: 'none',
+  cursor: 'pointer',
+};
+
+export default async function Navbar() {
+  const session = await auth();
+  const user = session?.user ?? null;
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+
   return (
     <nav
       style={{
@@ -49,26 +75,41 @@ export default function Navbar() {
           </span>
         </Link>
         <div className="flex-1" />
-        <Link
-          href="/order-services"
-          className="no-underline"
-          style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.35 0.05 230)', marginRight: 24 }}
-        >
+        <Link href="/order-services" className="no-underline" style={linkStyle}>
           Order Services
         </Link>
-        <div
-          style={{
-            padding: '8px 20px',
-            background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
-            color: '#fff',
-            borderRadius: 20,
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          Free Account
-        </div>
+
+        {isAdmin && (
+          <Link href="/admin" className="no-underline" style={linkStyle}>
+            Admin
+          </Link>
+        )}
+
+        {user ? (
+          // Signed in: show identity + a real sign-out (server action → clears the DB session cookie).
+          <div className="flex items-center" style={{ gap: 14 }}>
+            <span
+              style={{ fontSize: 13, fontWeight: 500, color: 'oklch(0.45 0.04 230)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={user.email ?? undefined}
+            >
+              {user.name || user.email}
+            </span>
+            <form
+              action={async () => {
+                'use server';
+                await signOut({ redirectTo: '/' });
+              }}
+            >
+              <button type="submit" style={pillStyle}>
+                Sign out
+              </button>
+            </form>
+          </div>
+        ) : (
+          <Link href="/auth/signin" className="no-underline" style={pillStyle}>
+            Sign in
+          </Link>
+        )}
       </div>
     </nav>
   );
