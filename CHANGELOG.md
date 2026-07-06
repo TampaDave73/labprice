@@ -10,6 +10,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Editable static pages** — About, Terms of Service, Privacy Policy, and Medical Disclaimer are now
+  edited from a new **`/admin/pages`** screen instead of being hardcoded. Content is stored in
+  `system_settings` under `page_<slug>` (`lib/static-pages.ts`), falls back to the original copy when
+  unset, and renders through `StaticPageBody` (a tiny safe convention: blank line = paragraph, `## ` =
+  heading, `- ` = bullet — no raw HTML). Saving revalidates the live page immediately. API:
+  `GET`/`PATCH /api/v1/admin/pages`.
+- **Dev-only sign-in** — a local shortcut on `/auth/signin` (and `POST /api/dev-login`) that signs you
+  into an existing account by creating a DB session directly. Hard-gated to `NODE_ENV !== 'production'`
+  (404 in prod) and only logs in accounts that already exist. Needed because the email (Resend) and
+  Google providers have no credentials configured in dev, so there was no way to log in locally.
 - **Sign in / sign out on the site** — signed-out visitors see a "Sign in" link (→ existing
   `/auth/signin`), signed-in users see their name/email + a "Sign out" server action, and admins get
   an "Admin" link. (Auth was already wired via NextAuth Google + Resend; there was just no way in/out
@@ -35,6 +45,9 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   error-report form.
 
 ### Changed
+- **Navigation labels** (user request): removed the "Order Services" link from the top navbar; the
+  footer's "Order Services" link is relabeled **"List of Lab Providers"** (still points to
+  `/order-services`).
 - **Test detail page is now ISR-cacheable** — removed the per-request `auth()` (it only gated the
   now-removed Save/Alert buttons), so anonymous views no longer pay a session lookup. Also dropped the
   unused biomarkers query/prop that was fetched on every view for nothing.

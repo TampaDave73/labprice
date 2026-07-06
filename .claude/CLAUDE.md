@@ -62,6 +62,11 @@ is optional — without it, admin email alerts on suggestion-form submissions
 (`lib/services/notify-service.ts`) just no-op; the DB row (reviewable at `/admin/suggestions`) is
 unaffected either way.
 
+**Local login:** `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` are empty in dev, so the
+magic-link and Google buttons on `/auth/signin` do nothing. To log in locally, use the **Dev sign-in**
+box on that page (or `POST /api/dev-login` with an `email`) — it mints a DB session for an existing
+user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs those provider creds set.
+
 ## ⚠️ Gotchas that have bitten us (do not relearn the hard way)
 
 1. **Tailwind v4 + arbitrary values are unreliable here.** `text-[oklch(...)]`, `bg-[...]`, `p-[..]`

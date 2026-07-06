@@ -52,13 +52,6 @@ export default function Navbar() {
           </span>
         </Link>
         <div className="flex-1" />
-        <Link
-          href="/order-services"
-          className="no-underline"
-          style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.35 0.05 230)', marginRight: 24, textDecoration: 'none' }}
-        >
-          Order Services
-        </Link>
         <NavAuth />
       </div>
     </nav>

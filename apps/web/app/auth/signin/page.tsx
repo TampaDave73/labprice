@@ -1,4 +1,6 @@
-export default function SignIn() {
+export default async function SignIn({ searchParams }: { searchParams: Promise<{ devError?: string }> }) {
+  const { devError } = await searchParams;
+  const isDev = process.env.NODE_ENV !== 'production';
   return (
     <div className="min-h-screen flex items-center justify-center bg-brand-50 px-4">
       <div className="w-full max-w-md bg-white rounded-card border border-brand-200 p-8">
@@ -50,6 +52,34 @@ export default function SignIn() {
             Google
           </button>
         </form>
+
+        {isDev && (
+          // Local-only shortcut: the email/Google providers need credentials that aren't set in dev,
+          // so this signs you straight into an existing account. Never rendered in production.
+          <div className="mt-8 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Dev sign-in (local only)</p>
+            <p className="mt-1 text-xs text-amber-700/80">
+              Email &amp; Google login need <code>RESEND_API_KEY</code> / <code>GOOGLE_CLIENT_*</code> in <code>.env</code>.
+              Until those are set, use this to sign into an existing account.
+            </p>
+            {devError && <p className="mt-2 text-xs font-medium text-red-600">{devError}</p>}
+            <form action="/api/dev-login" method="POST" className="mt-3 flex gap-2">
+              <input
+                name="email"
+                type="email"
+                required
+                defaultValue="davidsabot@gmail.com"
+                className="min-w-0 flex-1 rounded-btn border border-amber-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-500"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-btn bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Sign in
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

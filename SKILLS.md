@@ -30,11 +30,18 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   link. Split on purpose: `Navbar.tsx` is a **static** server component and the auth state lives in
   `NavAuth.tsx`, a **client** island that reads `/api/auth/session` after hydration — calling
   `auth()` on the server would read cookies and force every page rendering the Navbar to be dynamic,
-  defeating the home page's `revalidate` and the ISR-cacheable test pages.
-- **Order Services** (`/order-services`) — every active vendor as an expandable card (`VendorAccordionList.tsx`)
-  showing test count, from-price, and a full test→price table on expand, ordered via `/api/v1/go/[offeringId]`.
-- **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — static
-  content pages sharing `components/StaticPageLayout.tsx`.
+  defeating the home page's `revalidate` and the ISR-cacheable test pages. (The navbar no longer has
+  an "Order Services" link — reach the provider list from the footer.)
+- **List of Lab Providers** (`/order-services`) — every active vendor as an expandable card
+  (`VendorAccordionList.tsx`) showing test count, from-price, and a full test→price table on expand,
+  ordered via `/api/v1/go/[offeringId]`. Linked from the footer as "List of Lab Providers".
+- **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — **editable
+  from `/admin/pages`**. Content lives in `system_settings` (`page_<slug>`, `lib/static-pages.ts`),
+  falls back to the default copy when unset, and renders via `StaticPageBody` (blank line = paragraph,
+  `## ` = heading, `- ` = bullet). Share `components/StaticPageLayout.tsx`.
+- **Sign in** (`/auth/signin`) — Resend magic-link + Google. In **dev**, a dashed "Dev sign-in" box
+  (and `POST /api/dev-login`) logs you into an existing account by minting a DB session directly —
+  gated to `NODE_ENV !== 'production'`. It exists because Resend/Google have no credentials in dev.
 - **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" buttons that
   open a modal form (`components/SuggestionForms.tsx` → shared `components/SuggestionModal.tsx` →
   `/api/v1/suggestions/vendor|test`); submitting emails all admins (`lib/services/notify-service.ts`)
@@ -81,6 +88,9 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
   to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
 - **Change Queue** — review staged price changes (Approve/Reject); has an in-UI workflow explainer.
+- **Pages** (`/admin/pages`) — edit the public About / Terms / Privacy / Medical Disclaimer copy
+  (title, "last updated" label, body). Saved to `system_settings` (`page_<slug>`) via
+  `GET`/`PATCH /api/v1/admin/pages`; the live page is revalidated on save.
 - **Settings** — grouped controls: scraping schedule/timeout, **auto-approval thresholds**, feature
   flags. The worker reads thresholds from here.
 - **Users** — list + role management + **add/remove** (`POST`/`DELETE /api/v1/admin/users`): invite by
