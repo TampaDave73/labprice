@@ -10,6 +10,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Sign in / sign out on the site** — the Navbar is now a server component that reads the session:
+  signed-out visitors see a "Sign in" link (→ existing `/auth/signin`), signed-in users see their
+  name/email + a "Sign out" server action, and admins get an "Admin" link. (Auth was already wired
+  via NextAuth Google + Resend; there was just no way in/out from the public UI.)
+- **`/search` results page** — the "Compare" button and plain Enter in the search bar now go to a
+  full results page (server-rendered via the existing FTS `search()` service, reused `TestCard`,
+  `noindex`). Arrow-selecting a suggestion still deep-links straight to the test. This makes the
+  previously-unused `/api/v1/search` route + `search()` service live.
+- **Price-freshness line on test pages** — "Prices last checked N ago" (from the freshest offering
+  `priceUpdatedAt`), a trust signal for a price-comparison site.
+- **Generated social share card** — `app/opengraph-image.tsx` renders a branded OG/Twitter image
+  (the metadata previously pointed at a missing `/og-image.png`). Added `metadataBase`.
 - **"Report an error" on test pages** — a card under the info accordions ("Spot a wrong price or a
   dead link?") opens a modal where a visitor can flag a wrong price/dead link/wrong code, optionally
   pinpointing which vendor listing. New `ResultErrorReport` model (schema pushed), public
@@ -21,8 +33,35 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   error-report form.
 
 ### Changed
+- **Test detail page is now ISR-cacheable** — removed the per-request `auth()` (it only gated the
+  now-removed Save/Alert buttons), so anonymous views no longer pay a session lookup. Also dropped the
+  unused biomarkers query/prop that was fetched on every view for nothing.
+- **`autocomplete()` is cached** (`unstable_cache`, 60s, keyed on term+limit) so debounced keystrokes
+  hit cache instead of re-running the offerings join.
 - **Footer "Suggest a Vendor"/"Suggest a Test" are now buttons that open a modal** (were inline
   accordion forms — user request). Fields gained visible labels and a proper textarea for notes.
+
+### Removed
+- **Save / Price Alert / "Free Account"** (user request). Removed the dead "Free Account" navbar
+  `<div>`, the `SaveTestButton`/`PriceAlertButton`, the `/dashboard`, and the
+  `/api/v1/me/{saved-tests,alerts,notifications}` routes. The `SavedTest`/`PriceAlert`/`Notification`/
+  `AlertNotification` Prisma models are **kept but dormant** — dropping them is a destructive
+  `db:push` against custom `ddl.sql` constraints/partitions, and `lib/publish-change.ts` still
+  references them.
+
+### Security
+- **Abuse protection on public write endpoints** — new `lib/rate-limit.ts` (in-memory fixed-window
+  limiter + honeypot). `suggestions/vendor|test` and `reports/result-error` get a hidden `company`
+  honeypot (→ silent fake-success) + 5–8 req / 10 min per IP; `analytics/event` gets a 120 req/min
+  floodgate. `notify-service` caps admin alert emails at 100/day (DB row still saved).
+- **Content-Security-Policy** added in `middleware.ts` (`frame-ancestors 'none'`, `base-uri 'self'`,
+  `object-src 'none'`, `form-action 'self'`; inline styles/scripts allowed since public pages need
+  them; dev adds `'unsafe-eval'` + ws for Turbopack).
+- **`/api/v1/go/[offeringId]`** now only redirects/logs for live offerings (`isActive`+`deletedAt`
+  filter) and records hashed IP/UA for later bot-dedupe.
+- **Admin `tests/[id]` PATCH** validates its body with zod (a wrong-typed field was a 500, now 400);
+  PATCH/DELETE handle missing rows as 404.
+- **`search()`** strips tsquery operator chars from user input so `to_tsquery` can't throw a 500.
 - **Footer readability**: text lightness raised from oklch 0.5–0.65 grays to 0.78–0.85 on the dark
   navy (the old values were hard to read — user report), separators lightened to match, and the
   copyright year is now dynamic (was hardcoded © 2025).

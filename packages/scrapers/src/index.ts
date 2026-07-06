@@ -16,7 +16,6 @@ export type { HttpEngineOptions } from './engines/http-engine';
 export { ProxyManager } from './proxy-manager';
 export { normalizePrice, detectChange, shouldAutoApprove } from './normalizer';
 export type { PriceChange, ApprovalDecision } from './normalizer';
-export { publishPriceChange } from './publisher';
 
 // Vendor configs
 export { lifeExtensionConfig } from './configs/life-extension';

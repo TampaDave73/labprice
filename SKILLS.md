@@ -11,17 +11,23 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 ### Public site (`apps/web/app`)
 - **Homepage** (`page.tsx`)
   - Hero **search** with live **autocomplete** (`components/SearchBar.tsx` → `/api/v1/search/autocomplete`);
-    suggestions show test name, Quest/LabCorp codes, and "from $X".
+    suggestions show test name, Quest/LabCorp codes, and "from $X". Clicking a suggestion deep-links to
+    the test; the **Compare** button / plain **Enter** go to the **`/search` results page** (FTS).
   - **Live, data-driven stats**: "Live prices from N ordering services" + stats bar (N Ordering
     Services = active vendors, N Common Tests). `revalidate = 60`.
   - **Popular Tests** cards and an **All Tests** list with A–Z / price sort and a **category filter**
     that respects a test's *full* category set (`components/HomeTestList.tsx`).
 - **Test detail** (`test/[slug]`) — price-comparison table across vendors, **best-price** banner
   (green), savings, sortable; accordion (About / How It's Performed / How To Prepare / Normal Ranges);
-  Save + Price-Alert for signed-in users; JSON-LD `MedicalTest`.
+  a "**Prices last checked N ago**" freshness line (from the freshest offering `priceUpdatedAt`);
+  JSON-LD `MedicalTest`. Fully public + ISR-cacheable (no `auth()` — Save/Price-Alert were removed).
 - **Category pages** (`category/[slug]`) — lists tests via the many-to-many, so a test appears under
   every category it belongs to.
-- **Search API** (`/api/v1/search`) — Postgres full-text with trigram fallback.
+- **Search results** (`/search?q=…`) — SSR page over the FTS `search()` service (reuses `TestCard`,
+  `noindex`); backed by **Search API** (`/api/v1/search`, Postgres full-text with trigram fallback).
+- **Navbar auth** (`components/Navbar.tsx`, server component) — signed-out shows "Sign in"
+  (→ `/auth/signin`, NextAuth Google + Resend); signed-in shows name/email + a "Sign out" server
+  action; ADMIN/SUPER_ADMIN also get an "Admin" link.
 - **Order Services** (`/order-services`) — every active vendor as an expandable card (`VendorAccordionList.tsx`)
   showing test count, from-price, and a full test→price table on expand, ordered via `/api/v1/go/[offeringId]`.
 - **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — static
@@ -35,6 +41,16 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `POST /api/v1/reports/result-error` → `ResultErrorReport` row (test/offering ids validated; the
   offering must belong to the test), admin email alert, triaged in the "Result error reports" panel
   at `/admin/suggestions` (`kind: 'report'` on the PATCH).
+- **Public read API (v1)** — `/api/v1/tests` (paginated, `category`/`sort`/`cursor`/`limit`),
+  `/api/v1/tests/popular`, `/api/v1/tests/[slug]`, `/api/v1/categories`, `/api/v1/trends/[testId]`,
+  `/api/v1/search`. Read-only, zod-validated, no UI callers by design — kept as a deliberate API
+  surface (e.g. a future mobile client), not dead code.
+- **Abuse protection on public writes** (`lib/rate-limit.ts`) — the suggestion/report forms carry a
+  hidden `company` **honeypot** (a non-empty value → silent fake-success, no DB write) and a per-IP
+  **rate limit** (5–8 / 10 min); `analytics/event` has a 120/min floodgate. `notify-service` caps
+  admin alert emails at 100/day (the DB row is still saved). In-memory + per-instance — swap for Redis
+  if we scale horizontally. `middleware.ts` also sets a **Content-Security-Policy** (framing/base-uri/
+  object/form-action locked down; inline styles+scripts allowed because public pages need them).
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
 - **Dashboard** — KPI counts + recent audit activity.

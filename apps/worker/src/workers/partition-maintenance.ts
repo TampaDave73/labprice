@@ -4,6 +4,12 @@ import { redisConnection } from '../redis';
 
 const PARTITIONED_TABLES = ['price_history', 'affiliate_clicks', 'search_logs', 'page_views'];
 
+// Retention: analytics tables grow unbounded (a row per keystroke/pageview/click), so drop their
+// partitions older than this window. `price_history` is deliberately excluded — it's the long-term
+// trend data the product is built on and must be kept.
+const RETENTION_MONTHS = 6;
+const RETENTION_TABLES = ['affiliate_clicks', 'search_logs', 'page_views'];
+
 function getPartitionName(table: string, year: number, month: number): string {
   return `${table}_y${year}m${String(month).padStart(2, '0')}`;
 }
@@ -50,7 +56,34 @@ export function createPartitionWorker() {
       }
 
       console.log(`[partition] Ensured ${created} partitions across ${PARTITIONED_TABLES.length} tables`);
-      return { created };
+
+      // Drop analytics partitions older than the retention window. Dropping whole partitions is far
+      // cheaper than DELETE (no row-by-row work, reclaims space immediately) and can't touch newer
+      // data. We enumerate actual child partitions via pg_inherits rather than guessing names.
+      const cutoff = new Date(now.getFullYear(), now.getMonth() - RETENTION_MONTHS, 1);
+      let dropped = 0;
+      for (const table of RETENTION_TABLES) {
+        try {
+          const partitions = await prisma.$queryRawUnsafe<{ name: string }[]>(
+            `SELECT inhrelid::regclass::text AS name FROM pg_inherits WHERE inhparent = '${table}'::regclass`,
+          );
+          for (const { name } of partitions) {
+            const m = name.match(/_y(\d{4})m(\d{2})$/);
+            if (!m) continue;
+            const partStart = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+            if (partStart < cutoff) {
+              await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS ${name}`);
+              dropped++;
+              console.log(`[partition] Dropped expired partition ${name}`);
+            }
+          }
+        } catch (err) {
+          console.warn(`[partition] Retention sweep failed for ${table}:`, err);
+        }
+      }
+
+      console.log(`[partition] Retention: dropped ${dropped} partitions older than ${RETENTION_MONTHS} months`);
+      return { created, dropped };
     },
     { connection: redisConnection },
   );
