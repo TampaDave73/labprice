@@ -10,10 +10,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
-- **Sign in / sign out on the site** — the Navbar is now a server component that reads the session:
-  signed-out visitors see a "Sign in" link (→ existing `/auth/signin`), signed-in users see their
-  name/email + a "Sign out" server action, and admins get an "Admin" link. (Auth was already wired
-  via NextAuth Google + Resend; there was just no way in/out from the public UI.)
+- **Sign in / sign out on the site** — signed-out visitors see a "Sign in" link (→ existing
+  `/auth/signin`), signed-in users see their name/email + a "Sign out" server action, and admins get
+  an "Admin" link. (Auth was already wired via NextAuth Google + Resend; there was just no way in/out
+  from the public UI.) Implemented as a static `Navbar` + a client `NavAuth` island that reads
+  `/api/auth/session` after hydration — deliberately *not* `auth()` in the server component, which
+  would force every page dynamic and defeat ISR (see Changed: test page is ISR-cacheable).
 - **`/search` results page** — the "Compare" button and plain Enter in the search bar now go to a
   full results page (server-rendered via the existing FTS `search()` service, reused `TestCard`,
   `noindex`). Arrow-selecting a suggestion still deep-links straight to the test. This makes the

@@ -25,9 +25,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   every category it belongs to.
 - **Search results** (`/search?q=…`) — SSR page over the FTS `search()` service (reuses `TestCard`,
   `noindex`); backed by **Search API** (`/api/v1/search`, Postgres full-text with trigram fallback).
-- **Navbar auth** (`components/Navbar.tsx`, server component) — signed-out shows "Sign in"
-  (→ `/auth/signin`, NextAuth Google + Resend); signed-in shows name/email + a "Sign out" server
-  action; ADMIN/SUPER_ADMIN also get an "Admin" link.
+- **Navbar auth** — signed-out shows "Sign in" (→ `/auth/signin`, NextAuth Google + Resend);
+  signed-in shows name/email + a "Sign out" server action; ADMIN/SUPER_ADMIN also get an "Admin"
+  link. Split on purpose: `Navbar.tsx` is a **static** server component and the auth state lives in
+  `NavAuth.tsx`, a **client** island that reads `/api/auth/session` after hydration — calling
+  `auth()` on the server would read cookies and force every page rendering the Navbar to be dynamic,
+  defeating the home page's `revalidate` and the ISR-cacheable test pages.
 - **Order Services** (`/order-services`) — every active vendor as an expandable card (`VendorAccordionList.tsx`)
   showing test count, from-price, and a full test→price table on expand, ordered via `/api/v1/go/[offeringId]`.
 - **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — static
