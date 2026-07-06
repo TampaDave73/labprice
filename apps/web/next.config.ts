@@ -2,11 +2,11 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // NOTE: don't add `serverExternalPackages: ['@prisma/client']` here — in this pnpm-hoisted monorepo
+  // it conflicts with transpiling `@labprice/database` (which re-exports the client) and produces
+  // "can't be external / could not be resolved" errors. The benign Turbopack "@prisma/client can't be
+  // external" *warning* is preferable; a real prod-build fix needs the client resolvable from apps/web.
   transpilePackages: ['@labprice/shared', '@labprice/ui', '@labprice/database'],
-  // Keep Prisma's generated client external (it ships its own query-engine binary and can't be
-  // bundled) — Prisma's recommended Next config, and it silences the Turbopack
-  // "@prisma/client can't be external" warnings that otherwise noise up the prod build.
-  serverExternalPackages: ['@prisma/client', 'prisma'],
   experimental: {
     serverActions: {
       bodySizeLimit: '2mb',

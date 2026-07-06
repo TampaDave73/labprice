@@ -26,7 +26,11 @@ missing frontend auth. Knocking these off one at a time; each gets a commit.
       page_views partitions older than 6 months (price_history kept for trends)
 - [x] B8 — Cache autocomplete (unstable_cache 60s)
 - [x] B10 — Content-Security-Policy header in middleware
-- [x] B11 — next.config serverExternalPackages: ['@prisma/client','prisma'] (silences Turbopack warning)
+- [~] B11 — REVERTED. `serverExternalPackages: ['@prisma/client']` doesn't help: Next already
+      externalizes @prisma/client via its DEFAULT list, so the "can't be external" warning is emitted
+      regardless (it's the pre-existing benign one). Adding it explicitly also conflicts with
+      transpiling @labprice/database in this pnpm-hoisted layout. A real fix needs @prisma/client
+      resolvable from apps/web (e.g. an install/hoist tweak) — left as a documented no-op for now.
 
 ## Frontend
 - [x] F1 — Make test page ISR-cacheable (removed auth() from the public test page)
