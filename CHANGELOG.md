@@ -10,6 +10,20 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Deployment readiness (Railway + Cloudflare)** — new `DEPLOY.md` (accurate, repo-specific runbook +
+  pre-launch security checklist) and `docs/database/ddl-core.sql` (the launch subset of `ddl.sql`:
+  extensions + citext + FTS `search_vector`, idempotent, applied after `prisma db push`). Fixed the
+  broken `docker-compose.yml` migrate step (there are no Prisma migrations) to use db push + core DDL
+  + seed.
+
+### Fixed
+- **Production build was broken.** `next build` failed (`<Html> should not be imported…` on `/404`)
+  because `.env` pinned `NODE_ENV=development`, which the dotenv build wrapper injected; removed it
+  from `.env`/`.env.example` (Next sets `NODE_ENV` per command). Also the worker's `tsc` build
+  (pre-existing ioredis dual-version type errors) was failing the whole `pnpm build`; the worker now
+  runs via `tsx` with a no-op build (`start`/Dockerfile CMD updated). `pnpm build` now passes 6/6.
+
+### Added (features)
 - **Editable static pages** — About, Terms of Service, Privacy Policy, and Medical Disclaimer are now
   edited from a new **`/admin/pages`** screen instead of being hardcoded. Content is stored in
   `system_settings` under `page_<slug>` (`lib/static-pages.ts`), falls back to the original copy when

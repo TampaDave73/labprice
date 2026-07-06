@@ -31,9 +31,13 @@ services:
     build:
       context: .
       target: builder
+    # No Prisma migrations exist (schema uses `db push`). Create tables, then apply the core raw DDL
+    # (extensions + citext + FTS search_vector), then seed. See DEPLOY.md / docs/database/ddl-core.sql.
     command: >
-      sh -c "pnpm --filter @labprice/database exec prisma migrate deploy &&
-             pnpm --filter @labprice/database db:seed"
+      sh -c "cd packages/database &&
+             pnpm exec prisma db push --skip-generate &&
+             pnpm exec prisma db execute --schema prisma/schema.prisma --file ../../docs/database/ddl-core.sql &&
+             pnpm exec tsx prisma/seed.ts"
     environment:
       DATABASE_URL: postgresql://labprice:labprice@postgres:5432/labprice
     depends_on:

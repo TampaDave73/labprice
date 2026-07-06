@@ -37,6 +37,8 @@ ENV HOSTNAME="0.0.0.0"
 CMD ["node", "apps/web/server.js"]
 
 # Stage 4b: worker
+# Runs via tsx (no compile step) — the worker has pre-existing ioredis dual-version type errors that
+# block `tsc`, and it already runs under tsx in dev. tsx executes the TS source directly.
 FROM base AS worker
 ENV NODE_ENV=production
 WORKDIR /app
@@ -47,5 +49,4 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 USER worker
-EXPOSE 3001
-CMD ["node", "apps/worker/dist/index.js"]
+CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
