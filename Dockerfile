@@ -22,7 +22,24 @@ COPY . .
 RUN pnpm --filter @labprice/database exec prisma generate
 RUN pnpm build
 
-# Stage 4a: web
+# Stage 4a: worker
+# Runs via tsx (no compile step) — the worker has pre-existing ioredis dual-version type errors that
+# block `tsc`, and it already runs under tsx in dev. tsx executes the TS source directly.
+# (Defined BEFORE `web` on purpose: `web` is the LAST stage, so a plain `docker build` / Railway build
+# with no --target produces the web image. Build the worker with `--target worker`.)
+FROM base AS worker
+ENV NODE_ENV=production
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 worker
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/worker ./apps/worker
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+USER worker
+CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
+
+# Stage 4b: web (DEFAULT/final stage — Railway builds this with zero target config)
 FROM base AS web
 ENV NODE_ENV=production
 WORKDIR /app
@@ -35,18 +52,3 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 CMD ["node", "apps/web/server.js"]
-
-# Stage 4b: worker
-# Runs via tsx (no compile step) — the worker has pre-existing ioredis dual-version type errors that
-# block `tsc`, and it already runs under tsx in dev. tsx executes the TS source directly.
-FROM base AS worker
-ENV NODE_ENV=production
-WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 worker
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/worker ./apps/worker
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-USER worker
-CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]

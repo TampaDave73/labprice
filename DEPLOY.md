@@ -23,6 +23,43 @@ login is **admin**, so "lock down the backend login" = "secure `/admin`" (see th
 
 ---
 
+## 📚 Official step-by-step docs (bookmark these)
+
+- **Railway — deploy from a GitHub repo:** https://docs.railway.com/guides/github-autodeploys
+- **Railway — deploy a Dockerfile:** https://docs.railway.com/guides/dockerfiles
+- **Railway — add PostgreSQL:** https://docs.railway.com/guides/postgresql
+- **Railway — add Redis:** https://docs.railway.com/guides/redis
+- **Railway — variables & references:** https://docs.railway.com/guides/variables
+- **Railway — custom domains:** https://docs.railway.com/guides/public-networking#custom-domains
+- **Railway — config as code (`railway.json`):** https://docs.railway.com/reference/config-as-code
+- **Cloudflare — add a site / DNS:** https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/
+- **Cloudflare — SSL Full (Strict):** https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/
+- **Cloudflare — rate limiting rules:** https://developers.cloudflare.com/waf/rate-limiting-rules/
+
+This repo is pre-configured for Railway: **`railway.json`** sets the Dockerfile build + the
+`/api/health` healthcheck, and the `Dockerfile`'s **default stage is the web app** — so the web
+service needs *zero* build config.
+
+## ⚡ Fast path (web + database, ~15 minutes)
+
+Do just this to get users testing. The scrape worker is optional (add it later, Step 4).
+
+1. **Railway → New Project → Deploy from GitHub repo** → pick this repo. (Railway reads `railway.json`
+   and builds the web image from the Dockerfile automatically.)
+2. In the project: **New → Database → PostgreSQL**. Then **New → Database → Redis**.
+3. Open the **web service → Variables** and add the vars in Step 5. For `DATABASE_URL` and `REDIS_URL`,
+   use Railway's **reference** picker (`${{Postgres.DATABASE_URL}}`, `${{Redis.REDIS_URL}}`) so they
+   wire automatically. Set `AUTH_SECRET`, `AUTH_URL`, `AUTH_TRUST_HOST=true`, `NEXT_PUBLIC_BASE_URL`,
+   `EMAIL_FROM`, `RESEND_API_KEY`.
+4. **Bootstrap the DB once** (Step 2 below) — run the three commands against the Railway Postgres.
+5. **Custom domain:** web service → Settings → Networking → add `labtestcompare.com`; Railway gives you
+   a DNS target. In **Cloudflare → DNS**, add a **proxied CNAME** for the apex (and `www`) to that
+   target (Step 6).
+6. Redeploy. Visit `https://labtestcompare.com/api/health` → `{"status":"ok"}`. Do the Security
+   Checklist. Done.
+
+---
+
 ## What was already fixed to make this deployable
 
 - **Worker runs via `tsx`** (no compile). Its `tsc` build has pre-existing `ioredis` dual-version type
@@ -70,22 +107,29 @@ DATABASE_URL="<railway postgres url>" pnpm exec tsx prisma/seed.ts
 > skips the analytics-table RANGE partitioning (a scale optimization) — the app works with plain
 > tables. **Re-run `ddl-core.sql` after any future `prisma db push`** (push drops `search_vector`).
 
-## Step 3 — Web service
+## Step 3 — Web service (zero build config)
 
-- **Build:** Dockerfile, target `web` (`railway.json` / service settings → Dockerfile path `Dockerfile`,
-  target stage `web`). Or use Railway's Docker build with `--target web`.
-- **Port:** the image listens on `3000` (`PORT`/`HOSTNAME` are set in the Dockerfile).
-- **Variables** (Step 5 lists them). The build reads `DATABASE_URL` (a few pages prerender from the
-  DB), so reference the Postgres plugin var in the **build** env too, and create Postgres before web.
+Handled for you by `railway.json` + the Dockerfile:
 
-## Step 4 — Worker service (optional for the first user test)
+- **Build:** the Dockerfile's default (final) stage is `web`, so Railway builds the web image with no
+  target setting. Nothing to configure.
+- **Healthcheck:** `railway.json` points Railway at `/api/health` (checks the DB); a bad deploy fails
+  the check instead of serving errors.
+- **Port:** the image listens on `3000` (set in the Dockerfile). Railway detects it.
+- Just set the **Variables** (Step 5). The build prerenders a few pages from the DB, so make sure the
+  Postgres service exists first and `DATABASE_URL` is referenced.
 
-Not required for users to browse/search/compare — it only runs scheduled scraping. Add it when you
-want automated price refreshes.
+## Step 4 — Worker service (optional; add when you want automated scraping)
 
-- **Build:** same Dockerfile, target `worker`.
-- **Variables:** `DATABASE_URL`, `REDIS_URL`, `NODE_ENV=production` (+ `ANTHROPIC_API_KEY` if used).
-- It's a background service — no public port/domain.
+Not needed for users to browse/search/compare — it only runs scheduled price scraping. When you want it:
+
+1. In the same project, **New → GitHub Repo → (this repo)** to create a second service.
+2. Service **Settings → Build**: set the **Docker target** (a.k.a. build stage) to **`worker`** (the
+   web is the default stage, so the worker must be selected explicitly). If your Railway plan doesn't
+   expose a target field, set the service's config path to a small `railway.worker.json` with
+   `"build": { "target": "worker" }`, or split out `apps/worker/Dockerfile`.
+3. Service **Settings → Deploy**: clear the healthcheck path (the worker has no HTTP server).
+4. **Variables:** `DATABASE_URL`, `REDIS_URL` (references), and `ANTHROPIC_API_KEY` if used. No domain.
 
 ## Step 5 — Environment variables (Railway service vars)
 
