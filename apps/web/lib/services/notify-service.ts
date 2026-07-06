@@ -58,3 +58,17 @@ export async function notifyTestSuggestion(params: {
     params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
   ]);
 }
+
+export async function notifyResultErrorReport(params: {
+  testName: string;
+  vendorName?: string | null;
+  message: string;
+  email?: string | null;
+}) {
+  await sendAdminAlert(`Result error report: ${params.testName}`, [
+    `Test: ${params.testName}`,
+    params.vendorName ? `Vendor: ${params.vendorName}` : 'Vendor: (general — not vendor-specific)',
+    `Message: ${params.message}`,
+    params.email ? `Submitted by: ${params.email}` : 'Submitted anonymously',
+  ]);
+}

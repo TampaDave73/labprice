@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import SuggestionModal from '../../components/SuggestionModal';
 
 interface Offering {
   id: string;
@@ -20,6 +21,7 @@ interface Biomarker {
 }
 
 interface TestInfo {
+  id: string;
   name: string;
   slug: string;
   category: string;
@@ -66,6 +68,7 @@ const ACCENT = 'oklch(0.58 0.136 230)';
 export default function TestDetailClient({ test, offerings }: Props) {
   const [sortBy, setSortBy] = useState<'price' | 'alpha'>('price');
   const [openSection, setOpenSection] = useState<string | null>('about');
+  const [reportOpen, setReportOpen] = useState(false);
 
   const sorted = [...offerings].sort((a, b) =>
     sortBy === 'alpha' ? a.vendorName.localeCompare(b.vendorName) : a.price - b.price,
@@ -194,6 +197,52 @@ export default function TestDetailClient({ test, offerings }: Props) {
               </div>
             );
           })}
+
+          {/* Report an error — sits under the info accordions so it's visible wherever the results
+              are being read. Opens the shared modal; reports land in ResultErrorReport for admin
+              triage (never mutates prices directly). */}
+          <div style={{ background: '#fff', borderRadius: 13, border: '1.5px solid oklch(0.92 0.02 230)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'oklch(0.95 0.04 60)' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 2L14.5 13.5H1.5L8 2zM8 7v3M8 12h.01" stroke="oklch(0.55 0.14 60)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span style={{ fontSize: 13, color: 'oklch(0.45 0.04 230)', lineHeight: 1.4 }}>
+                Spot a wrong price or a dead link?
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 8, border: '1.5px solid oklch(0.84 0.04 230)', background: '#fff', color: 'oklch(0.45 0.087 230)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              Report an error
+            </button>
+          </div>
+
+          <SuggestionModal
+            open={reportOpen}
+            onClose={() => setReportOpen(false)}
+            title="Report an error"
+            intro={`See something wrong in the ${test.name} results — a price that doesn't match the vendor's site, a dead order link, a wrong code? Tell us and we'll fix it.`}
+            endpoint="/api/v1/reports/result-error"
+            extra={{ testId: test.id }}
+            submitLabel="Send report"
+            fields={[
+              {
+                name: 'offeringId',
+                label: 'Which listing?',
+                type: 'select',
+                options: [
+                  { value: '', label: 'General / not about one vendor' },
+                  ...offerings.map((o) => ({ value: o.id, label: `${o.vendorName} — $${o.price.toFixed(2)}` })),
+                ],
+              },
+              { name: 'message', label: "What's wrong?", type: 'textarea', required: true, placeholder: 'e.g. The vendor’s site shows $12.99, not $8.99' },
+              { name: 'email', label: 'Your email (optional)', type: 'email', placeholder: 'So we can follow up' },
+            ]}
+          />
         </div>
 
         {/* Right: Price comparison */}

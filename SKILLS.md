@@ -26,10 +26,15 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   showing test count, from-price, and a full test→price table on expand, ordered via `/api/v1/go/[offeringId]`.
 - **About / Terms / Privacy / Disclaimer** (`/about`, `/terms`, `/privacy`, `/disclaimer`) — static
   content pages sharing `components/StaticPageLayout.tsx`.
-- **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" collapsed
-  links that expand into an inline form (`components/SuggestionForms.tsx` →
+- **Footer** (`components/Footer.tsx`, every page) — "Suggest a Vendor" / "Suggest a Test" buttons that
+  open a modal form (`components/SuggestionForms.tsx` → shared `components/SuggestionModal.tsx` →
   `/api/v1/suggestions/vendor|test`); submitting emails all admins (`lib/services/notify-service.ts`)
   and the row is reviewed at `/admin/suggestions`. Also links to the pages above.
+- **Report an error** (test detail page, under the left accordions) — button opens the shared
+  `SuggestionModal` with an optional "which listing?" vendor select →
+  `POST /api/v1/reports/result-error` → `ResultErrorReport` row (test/offering ids validated; the
+  offering must belong to the test), admin email alert, triaged in the "Result error reports" panel
+  at `/admin/suggestions` (`kind: 'report'` on the PATCH).
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
 - **Dashboard** — KPI counts + recent audit activity.
@@ -64,8 +69,9 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   guarded against self-delete and removing the last SUPER_ADMIN.
 - **Analytics** (`/admin/analytics`) — top searches, **zero-result searches** (what to add next),
   vendor click-through, most-viewed tests. `GET /api/v1/admin/analytics?days=7|30|90`.
-- **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions,
-  mark reviewed/dismissed (`PATCH /api/v1/admin/suggestions/[id]`).
+- **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions
+  plus test-page **result error reports**, mark reviewed/dismissed
+  (`PATCH /api/v1/admin/suggestions/[id]` with `kind: 'vendor' | 'test' | 'report'`).
 
 ### Scrape pipeline (`apps/worker`, `@labprice/scrapers`)
 - Queues (BullMQ, hyphenated names): `scrape-schedule` → `scrape-execute` → `scrape-publish`, plus

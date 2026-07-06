@@ -23,9 +23,20 @@ type TestSuggestion = {
   createdAt: string;
 };
 
+type ErrorReport = {
+  id: string;
+  message: string;
+  email: string | null;
+  status: Status;
+  createdAt: string;
+  test: { name: string; slug: string };
+  offering: { vendor: { name: string } } | null;
+};
+
 export default function SuggestionsPage() {
   const [vendors, setVendors] = useState<VendorSuggestion[]>([]);
   const [tests, setTests] = useState<TestSuggestion[]>([]);
+  const [reports, setReports] = useState<ErrorReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -36,6 +47,7 @@ export default function SuggestionsPage() {
       .then((j) => {
         setVendors(j.data?.vendors ?? []);
         setTests(j.data?.tests ?? []);
+        setReports(j.data?.reports ?? []);
       })
       .finally(() => setLoading(false));
   }
@@ -44,7 +56,7 @@ export default function SuggestionsPage() {
 
   const [error, setError] = useState<string | null>(null);
 
-  async function setStatus(kind: 'vendor' | 'test', id: string, status: Status) {
+  async function setStatus(kind: 'vendor' | 'test' | 'report', id: string, status: Status) {
     setBusyId(id);
     setError(null);
     try {
@@ -126,6 +138,40 @@ export default function SuggestionsPage() {
               </div>
             )}
           </div>
+
+          {/* Result error reports — visitor-flagged wrong prices / dead links on test pages. Spans
+              the full row since the message + test/vendor context is wider than a suggestion card. */}
+          <div className="admin-card p-5 lg:col-span-2">
+            <h2 className="mb-3 text-sm font-semibold text-brand-700">Result error reports</h2>
+            {reports.length === 0 ? (
+              <p className="py-4 text-center text-sm text-brand-400">No error reports yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {reports.map((r) => (
+                  <div key={r.id} className="rounded-lg border border-brand-100 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-brand-900">
+                          <a href={`/test/${r.test.slug}`} target="_blank" rel="noreferrer" className="underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500">
+                            {r.test.name}
+                          </a>
+                          {r.offering ? (
+                            <span className="ml-2 font-normal text-brand-500">· {r.offering.vendor.name}</span>
+                          ) : (
+                            <span className="ml-2 font-normal text-brand-400">· general</span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-brand-600">{r.message}</p>
+                        {r.email && <p className="mt-1 text-xs text-brand-400">from {r.email}</p>}
+                        <p className="mt-1 text-xs text-brand-300">{new Date(r.createdAt).toLocaleString()}</p>
+                      </div>
+                      <StatusControls kind="report" id={r.id} status={r.status} busy={busyId === r.id} onChange={setStatus} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -139,11 +185,11 @@ function StatusControls({
   busy,
   onChange,
 }: {
-  kind: 'vendor' | 'test';
+  kind: 'vendor' | 'test' | 'report';
   id: string;
   status: Status;
   busy: boolean;
-  onChange: (kind: 'vendor' | 'test', id: string, status: Status) => void;
+  onChange: (kind: 'vendor' | 'test' | 'report', id: string, status: Status) => void;
 }) {
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">

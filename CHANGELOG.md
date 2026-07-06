@@ -9,6 +9,24 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added
+- **"Report an error" on test pages** — a card under the info accordions ("Spot a wrong price or a
+  dead link?") opens a modal where a visitor can flag a wrong price/dead link/wrong code, optionally
+  pinpointing which vendor listing. New `ResultErrorReport` model (schema pushed), public
+  `POST /api/v1/reports/result-error` (validates the test id and that the offering belongs to that
+  test), admin email alert, and a "Result error reports" triage panel on `/admin/suggestions`
+  (`kind: 'report'`).
+- **Shared `SuggestionModal` component** — accessible modal form (Esc/backdrop close, body scroll
+  lock, labeled fields, textarea/select support) now powering the footer suggestion forms and the new
+  error-report form.
+
+### Changed
+- **Footer "Suggest a Vendor"/"Suggest a Test" are now buttons that open a modal** (were inline
+  accordion forms — user request). Fields gained visible labels and a proper textarea for notes.
+- **Footer readability**: text lightness raised from oklch 0.5–0.65 grays to 0.78–0.85 on the dark
+  navy (the old values were hard to read — user report), separators lightened to match, and the
+  copyright year is now dynamic (was hardcoded © 2025).
+
 ### Fixed
 - **Hardening pass over the 2026-07-05 feature round** (senior-review sweep, all verified live against
   the running app):

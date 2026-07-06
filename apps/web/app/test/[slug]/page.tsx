@@ -111,6 +111,7 @@ export default async function TestDetailPage({ params }: Props) {
       )}
       <TestDetailClient
         test={{
+          id: test.id,
           name: test.name,
           slug: test.slug,
           category: test.category.name,

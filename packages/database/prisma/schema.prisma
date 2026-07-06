@@ -139,6 +139,7 @@ model User {
   systemSettings  SystemSetting[]     @relation("SettingUpdater")
   vendorSuggestions VendorSuggestion[]
   testSuggestions   TestSuggestion[]
+  resultErrorReports ResultErrorReport[]
 
   @@index([role])
   @@map("users")
@@ -243,6 +244,7 @@ model Test {
   scrapeResults ScrapeResult[]
   pageViews     PageView[]
   seoPages      SeoPage[]
+  errorReports  ResultErrorReport[]
 
   @@index([categoryId])
   @@index([isPopular])
@@ -360,6 +362,7 @@ model Offering {
   scrapeResults      ScrapeResult[]
   affiliateClicks    AffiliateClick[]
   alertNotifications AlertNotification[]
+  errorReports       ResultErrorReport[]
 
   @@unique([testId, vendorId])
   @@index([testId])
@@ -770,4 +773,26 @@ model TestSuggestion {
 
   @@index([status, createdAt])
   @@map("test_suggestions")
+}
+
+/// Visitor-reported problem with a test page's listed results ("price is wrong", "dead order link",
+/// "wrong code"). Reviewed alongside vendor/test suggestions at /admin/suggestions — purely a triage
+/// queue; nothing here mutates prices or offerings.
+model ResultErrorReport {
+  id         String           @id @default(cuid())
+  testId     String           @map("test_id")
+  offeringId String?          @map("offering_id") // optionally pinpoints which vendor row is wrong
+  message    String
+  email      String?
+  status     SuggestionStatus @default(PENDING)
+  userId     String?          @map("user_id")
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  test     Test      @relation(fields: [testId], references: [id], onDelete: Cascade)
+  offering Offering? @relation(fields: [offeringId], references: [id], onDelete: SetNull)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([testId])
+  @@map("result_error_reports")
 }

@@ -26,10 +26,19 @@ export async function GET(req: NextRequest) {
   }
   const where = status ? { status: status as Status } : {};
 
-  const [vendors, tests] = await Promise.all([
+  const [vendors, tests, reports] = await Promise.all([
     prisma.vendorSuggestion.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 }),
     prisma.testSuggestion.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 }),
+    prisma.resultErrorReport.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+      include: {
+        test: { select: { name: true, slug: true } },
+        offering: { select: { vendor: { select: { name: true } } } },
+      },
+    }),
   ]);
 
-  return NextResponse.json({ data: { vendors, tests } });
+  return NextResponse.json({ data: { vendors, tests, reports } });
 }

@@ -12,7 +12,7 @@ async function requireAdmin() {
 }
 
 const patchSchema = z.object({
-  kind: z.enum(['vendor', 'test']),
+  kind: z.enum(['vendor', 'test', 'report']),
   status: z.enum(['PENDING', 'REVIEWED', 'DISMISSED']),
 });
 
@@ -41,7 +41,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const updated =
       kind === 'vendor'
         ? await prisma.vendorSuggestion.update({ where: { id }, data: { status } })
-        : await prisma.testSuggestion.update({ where: { id }, data: { status } });
+        : kind === 'test'
+          ? await prisma.testSuggestion.update({ where: { id }, data: { status } })
+          : await prisma.resultErrorReport.update({ where: { id }, data: { status } });
     return NextResponse.json({ data: updated });
   } catch (err) {
     if (isRecordNotFound(err)) {
