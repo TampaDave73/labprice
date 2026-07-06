@@ -15,25 +15,27 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  // Absolute base for OG/canonical URLs; also lets the generated opengraph-image resolve.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com'),
   title: {
     default: 'LabTestCompare — Compare Blood Test Prices',
     template: '%s | LabTestCompare',
   },
   description: 'Compare self-pay blood test prices across ordering services. Find the cheapest Vitamin D, Testosterone, CBC, and more.',
   keywords: ['blood test prices', 'lab test comparison', 'self-pay lab tests', 'cheap blood tests'],
+  // No `images` here on purpose — the generated app/opengraph-image.tsx card is picked up
+  // automatically for og:image and twitter:image (and per-page routes can still override it).
   openGraph: {
     title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services. Find the cheapest lab tests.',
     url: 'https://labtestcompare.com',
     siteName: 'LabTestCompare',
     type: 'website',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'LabTestCompare' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services.',
-    images: ['/og-image.png'],
   },
 };
 

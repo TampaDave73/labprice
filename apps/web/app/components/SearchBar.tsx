@@ -53,6 +53,15 @@ export default function SearchBar() {
     router.push(`/test/${slug}`);
   };
 
+  // Enter / the Compare button go to the full results page (unless the user arrow-selected a
+  // specific suggestion, which deep-links straight to that test).
+  const goToResults = () => {
+    const q = query.trim();
+    if (!q) return;
+    setOpen(false);
+    router.push(`/search?q=${encodeURIComponent(q)}`);
+  };
+
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -64,8 +73,8 @@ export default function SearchBar() {
       e.preventDefault();
       if (activeIdx >= 0 && suggestions[activeIdx] != null) {
         navigate(suggestions[activeIdx]!.slug);
-      } else if (suggestions.length > 0 && suggestions[0] != null) {
-        navigate(suggestions[0]!.slug);
+      } else {
+        goToResults();
       }
     } else if (e.key === 'Escape') {
       setOpen(false);
@@ -115,9 +124,7 @@ export default function SearchBar() {
           }}
         />
         <button
-          onClick={() => {
-            if (suggestions.length > 0 && suggestions[0] != null) navigate(suggestions[0]!.slug);
-          }}
+          onClick={goToResults}
           style={{
             flexShrink: 0,
             background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',

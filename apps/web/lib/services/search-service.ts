@@ -1,6 +1,7 @@
 // Test search. `search()` uses Postgres full-text (to_tsquery on tests.search_vector) and falls
 // back to pg_trgm similarity when FTS finds nothing. `autocomplete()` does a fast substring match
 // across name/short-name/codes and returns the min price for the suggestion dropdown.
+import { unstable_cache } from 'next/cache';
 import { prisma } from '@labprice/database';
 import type { TestSummaryDTO } from '@labprice/shared';
 
@@ -108,41 +109,52 @@ export interface AutocompleteSuggestion {
   minPrice: number | null;
 }
 
+// The actual autocomplete query, wrapped in unstable_cache: this runs on every debounced keystroke
+// and joins offerings, but the catalog changes at most a few times a day. A 60s cache (keyed on
+// term+limit) turns repeat prefixes into cache hits without making suggestions feel stale.
+const cachedAutocomplete = unstable_cache(
+  async (term: string, limit: number): Promise<AutocompleteSuggestion[]> => {
+    // Substring match across name, short name, and Quest/LabCorp codes — mirrors the
+    // prototype's "smart suggestions" which match on any of those fields.
+    const tests = await prisma.test.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { name: { contains: term, mode: 'insensitive' } },
+          { shortName: { contains: term, mode: 'insensitive' } },
+          { questCode: { contains: term, mode: 'insensitive' } },
+          { labcorpCode: { contains: term, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        category: { select: { name: true } },
+        offerings: {
+          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+          select: { currentPrice: true },
+        },
+      },
+      orderBy: [{ isPopular: 'desc' }, { displayOrder: 'asc' }],
+      take: limit,
+    });
+
+    return tests.map((t) => {
+      const prices = t.offerings.map((o) => Number(o.currentPrice));
+      return {
+        name: t.name,
+        slug: t.slug,
+        category: t.category.name,
+        questCode: t.questCode,
+        labcorpCode: t.labcorpCode,
+        minPrice: prices.length > 0 ? Math.min(...prices) : null,
+      };
+    });
+  },
+  ['test-autocomplete'],
+  { revalidate: 60 },
+);
+
 export async function autocomplete(query: string, limit = 8): Promise<AutocompleteSuggestion[]> {
   const term = query.trim();
-
-  // Substring match across name, short name, and Quest/LabCorp codes — mirrors the
-  // prototype's "smart suggestions" which match on any of those fields.
-  const tests = await prisma.test.findMany({
-    where: {
-      deletedAt: null,
-      OR: [
-        { name: { contains: term, mode: 'insensitive' } },
-        { shortName: { contains: term, mode: 'insensitive' } },
-        { questCode: { contains: term, mode: 'insensitive' } },
-        { labcorpCode: { contains: term, mode: 'insensitive' } },
-      ],
-    },
-    include: {
-      category: { select: { name: true } },
-      offerings: {
-        where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
-        select: { currentPrice: true },
-      },
-    },
-    orderBy: [{ isPopular: 'desc' }, { displayOrder: 'asc' }],
-    take: limit,
-  });
-
-  return tests.map((t) => {
-    const prices = t.offerings.map((o) => Number(o.currentPrice));
-    return {
-      name: t.name,
-      slug: t.slug,
-      category: t.category.name,
-      questCode: t.questCode,
-      labcorpCode: t.labcorpCode,
-      minPrice: prices.length > 0 ? Math.min(...prices) : null,
-    };
-  });
+  if (!term) return [];
+  return cachedAutocomplete(term, limit);
 }

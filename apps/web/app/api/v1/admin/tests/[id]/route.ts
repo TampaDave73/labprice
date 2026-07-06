@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 
 type Params = { params: Promise<{ id: string }> };
+
+// Whitelisted, type-checked updatable fields. Without this a non-string questCode (or any wrong-typed
+// value) reached prisma.update() and surfaced as an opaque 500 instead of a clean 400. `categoryId`
+// is intentionally absent — it's derived from `categoryIds` below, never set directly.
+const patchSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    shortName: z.string().trim().max(100).nullable(),
+    slug: z.string().trim().min(1).max(200),
+    description: z.string().max(8000).nullable(),
+    purpose: z.string().max(8000).nullable(),
+    procedure: z.string().max(8000).nullable(),
+    preparation: z.string().max(8000).nullable(),
+    normalRange: z.string().max(8000).nullable(),
+    questCode: z.string().trim().max(50).nullable(),
+    labcorpCode: z.string().trim().max(50).nullable(),
+    isPopular: z.boolean(),
+    displayOrder: z.number().int(),
+    categoryIds: z.array(z.string()),
+  })
+  .partial();
+
+// Prisma's "record to update/delete not found" — a 404, not a 500.
+function isRecordNotFound(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2025';
+}
 
 export async function GET(_req: NextRequest, { params }: Params) {
   const session = await auth();
@@ -45,22 +72,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  const body = await req.json();
-
-  // Whitelist updatable scalar fields. `categoryId` is NOT directly settable — it's
-  // derived from the selected category set below.
-  const fields = [
-    'name', 'shortName', 'slug', 'description', 'purpose',
-    'procedure', 'preparation', 'normalRange', 'questCode', 'labcorpCode',
-    'isPopular', 'displayOrder',
-  ] as const;
-  const data: Record<string, unknown> = {};
-  for (const f of fields) {
-    if (f in body) data[f] = body[f];
+  const body: unknown = await req.json().catch(() => null);
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: 'Invalid update', details: parsed.error.flatten() } },
+      { status: 400 },
+    );
   }
 
-  // Category set (m2m). When provided, require ≥1 and recompute the display pointer.
-  const categoryIds: string[] | null = Array.isArray(body.categoryIds) ? body.categoryIds.filter(Boolean) : null;
+  // Only the fields the client actually sent (zod omits absent optionals). `categoryIds` is handled
+  // separately — it drives both the m2m rows and the derived `categoryId` display pointer.
+  const { categoryIds: rawCategoryIds, ...scalars } = parsed.data;
+  const data: Record<string, unknown> = { ...scalars };
+
+  const categoryIds = rawCategoryIds ? rawCategoryIds.filter(Boolean) : null;
   if (categoryIds) {
     if (categoryIds.length === 0) {
       return NextResponse.json({ error: { code: 'validation_error', message: 'At least one category is required.' } }, { status: 400 });
@@ -72,23 +98,31 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     data.categoryId = [...cats].sort((a, b) => a.displayOrder - b.displayOrder)[0]!.id;
   }
 
-  const test = await prisma.test.update({
-    where: { id },
-    data,
-    include: { category: true },
-  });
+  try {
+    const test = await prisma.test.update({
+      where: { id },
+      data,
+      include: { category: true },
+    });
 
-  if (categoryIds) {
-    await prisma.$transaction([
-      prisma.testCategory.deleteMany({ where: { testId: id } }),
-      prisma.testCategory.createMany({
-        data: categoryIds.map((categoryId) => ({ testId: id, categoryId })),
-        skipDuplicates: true,
-      }),
-    ]);
+    if (categoryIds) {
+      await prisma.$transaction([
+        prisma.testCategory.deleteMany({ where: { testId: id } }),
+        prisma.testCategory.createMany({
+          data: categoryIds.map((categoryId) => ({ testId: id, categoryId })),
+          skipDuplicates: true,
+        }),
+      ]);
+    }
+
+    return NextResponse.json({ data: test });
+  } catch (err) {
+    if (isRecordNotFound(err)) {
+      return NextResponse.json({ error: { code: 'not_found', message: 'Test not found' } }, { status: 404 });
+    }
+    console.error('[PATCH /api/v1/admin/tests/[id]]', err);
+    return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, { status: 500 });
   }
-
-  return NextResponse.json({ data: test });
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
@@ -101,10 +135,17 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params;
-  await prisma.test.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
-
-  return NextResponse.json({ data: { success: true } });
+  try {
+    await prisma.test.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return NextResponse.json({ data: { success: true } });
+  } catch (err) {
+    if (isRecordNotFound(err)) {
+      return NextResponse.json({ error: { code: 'not_found', message: 'Test not found' } }, { status: 404 });
+    }
+    console.error('[DELETE /api/v1/admin/tests/[id]]', err);
+    return NextResponse.json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } }, { status: 500 });
+  }
 }
