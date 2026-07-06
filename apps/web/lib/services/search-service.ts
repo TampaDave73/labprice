@@ -39,16 +39,22 @@ function toSummary(row: SearchResult): Omit<TestSummaryDTO, 'codes' | 'minPrice'
 }
 
 export async function search(query: string, limit = 25) {
-  // Convert user query to tsquery format: split words, join with &
-  const tsQuery = query
+  // Build a prefix tsquery from user input. We strip every non-alphanumeric character from each
+  // token first: `to_tsquery` throws on raw operators (`&`, `|`, `!`, `:`, `'`, unbalanced parens),
+  // so an unsanitized "mom's & dad's" would 500. Stripping keeps prefix matching (`word:*`) while
+  // making any input safe. (We deliberately don't use websearch_to_tsquery — it has no prefix mode.)
+  const tokens = query
     .trim()
     .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => `${w}:*`)
-    .join(' & ');
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean);
+
+  // Nothing searchable after stripping (e.g. query was all punctuation) — skip FTS, try trigram.
+  const tsQuery = tokens.map((w) => `${w}:*`).join(' & ');
 
   // Try full-text search first, fall back to trigram
-  const results = await prisma.$queryRawUnsafe<SearchResult[]>(
+  const results = tsQuery
+    ? await prisma.$queryRawUnsafe<SearchResult[]>(
     `
     SELECT
       t.id, t.name, t.short_name, t.slug, t.is_popular,
@@ -62,9 +68,10 @@ export async function search(query: string, limit = 25) {
     ORDER BY rank DESC
     LIMIT $2
     `,
-    tsQuery,
-    limit,
-  );
+        tsQuery,
+        limit,
+      )
+    : [];
 
   if (results.length > 0) {
     return results.map(toSummary);

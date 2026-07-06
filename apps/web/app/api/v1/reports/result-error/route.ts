@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 import { notifyResultErrorReport } from '@/lib/services/notify-service';
+import { getClientIp, isHoneypotTripped, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 
 const schema = z.object({
   testId: z.string().min(1).max(50),
@@ -19,6 +20,17 @@ export async function POST(req: NextRequest) {
   try {
     // Malformed JSON is a client error (400 via safeParse), not a 500.
     const body: unknown = await req.json().catch(() => null);
+
+    // Honeypot: naive bots fill the hidden `company` field. Fake a success so they don't retry.
+    if (isHoneypotTripped(body)) return NextResponse.json({ data: { ok: true } });
+
+    // Abuse guard: unauthenticated endpoint that fans out to an admin email.
+    const rl = rateLimit(getClientIp(req), 'report-error', { limit: 8, windowMs: 10 * 60 * 1000 });
+    if (!rl.ok) {
+      const { body: errBody, retryAfterSec } = tooManyRequests(rl.retryAfterSec);
+      return NextResponse.json(errBody, { status: 429, headers: { 'Retry-After': String(retryAfterSec) } });
+    }
+
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logPageView, logSearch } from '@/lib/services/analytics-service';
+import { getClientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit';
 
 const eventSchema = z.discriminatedUnion('type', [
   z.object({
@@ -23,6 +24,14 @@ const eventSchema = z.discriminatedUnion('type', [
 
 export async function POST(req: NextRequest) {
   try {
+    // Generous floodgate: pageview/search fire on real navigation + debounced typing, so the ceiling
+    // is high — it exists to stop a script from filling SearchLog/PageView, not to limit real users.
+    const rl = rateLimit(getClientIp(req), 'analytics', { limit: 120, windowMs: 60 * 1000 });
+    if (!rl.ok) {
+      const { body: errBody, retryAfterSec } = tooManyRequests(rl.retryAfterSec);
+      return NextResponse.json(errBody, { status: 429, headers: { 'Retry-After': String(retryAfterSec) } });
+    }
+
     const body = await req.json();
     const parsed = eventSchema.safeParse(body);
 

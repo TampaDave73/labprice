@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { prisma } from '@labprice/database';
 import { logAffiliateClick } from '@/lib/services/analytics-service';
 import { buildOrderUrl } from '@/lib/affiliate-url';
+import { getClientIp } from '@/lib/rate-limit';
+
+// One-way hash for click attribution: lets us dedupe bot/self clicks later without storing raw
+// IP/UA (PII). Salt keeps the digests from being reversible via a rainbow table of common IPs.
+function hashValue(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const salt = process.env.ANALYTICS_HASH_SALT ?? 'labtestcompare-clicks';
+  return createHash('sha256').update(salt).update(value).digest('hex').slice(0, 32);
+}
 
 export async function GET(
   req: NextRequest,
@@ -10,8 +20,10 @@ export async function GET(
   try {
     const { offeringId } = await params;
 
-    const offering = await prisma.offering.findUnique({
-      where: { id: offeringId },
+    // findFirst (not findUnique) so we can also require the offering be live — never redirect to or
+    // log a click for an inactive/soft-deleted listing.
+    const offering = await prisma.offering.findFirst({
+      where: { id: offeringId, isActive: true, deletedAt: null },
       include: {
         vendor: { select: { affiliateUrlTemplate: true, websiteUrl: true } },
       },
@@ -24,10 +36,12 @@ export async function GET(
       );
     }
 
-    // Fire-and-forget click logging
+    // Fire-and-forget click logging, with hashed IP/UA for later bot-dedupe.
     logAffiliateClick({
       offeringId,
       referrer: req.headers.get('referer') ?? undefined,
+      ipHash: hashValue(getClientIp(req)),
+      userAgentHash: hashValue(req.headers.get('user-agent')),
     });
 
     // Land on the exact product page we discovered, with affiliate tracking layered on if configured.

@@ -51,13 +51,35 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
   const [state, setState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const firstInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Esc closes; body scroll locks while open. Reset to a fresh form on every open.
+  // Esc closes; body scroll locks while open; focus is trapped inside the dialog (a11y — Tab must
+  // not escape to the page behind the modal). Reset to a fresh form on every open.
   useEffect(() => {
     if (!open) return;
     setState('idle');
     setErrorMsg(null);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      // Cycle focus within the dialog. Exclude the honeypot (tabindex=-1) so keyboard users skip it.
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), textarea, input, select'),
+      ).filter((el) => el.getAttribute('tabindex') !== '-1');
+      if (focusable.length === 0) return;
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -109,7 +131,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
         padding: 20,
       }}
     >
-      <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: '24px 26px 26px', boxShadow: '0 20px 60px oklch(0.15 0.03 230 / 0.35)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div ref={dialogRef} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: '24px 26px 26px', boxShadow: '0 20px 60px oklch(0.15 0.03 230 / 0.35)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: intro ? 6 : 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'oklch(0.2 0.04 230)', margin: 0 }}>{title}</h2>
           <button
@@ -138,6 +160,16 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
           </div>
         ) : (
           <form onSubmit={onSubmit}>
+            {/* Honeypot: hidden from humans (off-screen, no tab stop, aria-hidden). Bots that fill
+                every field trip it and the server silently discards the submission. */}
+            <input
+              type="text"
+              name="company"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }}
+            />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {fields.map((f, i) => (
                 <div key={f.name}>

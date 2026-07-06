@@ -14,10 +14,10 @@ missing frontend auth. Knocking these off one at a time; each gets a commit.
 - [x] A1 — Add sign in / sign out UI (auth-aware Navbar: Sign in / Admin link / Sign out server action)
 
 ## Backend
-- [ ] B1 — Rate limiting + honeypot on public POST endpoints (suggestions, reports, analytics); daily email cap
-- [ ] B2 — /api/v1/go/[offeringId]: filter isActive/deletedAt; populate ipHash/userAgentHash
+- [x] B1 — Rate limiting + honeypot on public POST endpoints (suggestions, reports, analytics); daily email cap
+- [x] B2 — /api/v1/go/[offeringId]: filter isActive/deletedAt; populate ipHash/userAgentHash
 - [ ] B3 — Retire seed admin admin@labprice.com (needs A1 first: sign in real account, promote, remove seed)
-- [ ] B4 — search(): use websearch_to_tsquery for user input safety
+- [x] B4 — search(): sanitize tokens so to_tsquery can't throw (kept prefix matching)
 - [ ] B5 — zod-validate older admin routes (tests PATCH)
 - [ ] B6 — Delete/fix worker publisher.ts (stale snake_case models)
 - [ ] B7 — Analytics retention job (SearchLog etc. > 180 days)
@@ -28,7 +28,7 @@ missing frontend auth. Knocking these off one at a time; each gets a commit.
 ## Frontend
 - [x] F1 — Make test page ISR-cacheable (removed auth() from the public test page)
 - [ ] F3 — SearchBar Enter → /search results page (wire existing FTS) or drop route
-- [~] F4 — a11y: aria-expanded on accordions DONE; focus trap in SuggestionModal TODO
+- [x] F4 — a11y: aria-expanded on accordions + focus trap in SuggestionModal
 - [x] F5 — Price-freshness indicator ("checked N days ago") from priceUpdatedAt
 - [ ] F7 — og:image for social sharing
 - [x] F8 — Remove unused biomarkers prop/query from test page
