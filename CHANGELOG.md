@@ -45,6 +45,9 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   error-report form.
 
 ### Changed
+- **Admin Vendors list — "Tests" column now shows `withUrl/total`** (e.g. `33/35`), amber when some of
+  a vendor's linked tests have no product URL, so vendors needing manual URL review stand out at a
+  glance. The API (`/api/v1/admin/vendors`) returns `offeringsWithUrl` alongside `_count.offerings`.
 - **Navigation labels** (user request): removed the "Order Services" link from the top navbar; the
   footer's "Order Services" link is relabeled **"List of Lab Providers"** (still points to
   `/order-services`).

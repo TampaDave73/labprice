@@ -36,6 +36,16 @@ export async function GET(req: NextRequest) {
     include: { _count: { select: { offerings: true } } },
   });
 
+  // How many of each vendor's offerings actually have a product URL. Missing URLs are what the admin
+  // needs to review, so the list shows `withUrl/total` and flags incomplete vendors. Counted over the
+  // same population as `_count.offerings` (all offerings) so the denominator matches the total shown.
+  const withUrlGroups = await prisma.offering.groupBy({
+    by: ['vendorId'],
+    where: { vendorId: { in: vendors.map((v) => v.id) }, NOT: [{ externalUrl: null }, { externalUrl: '' }] },
+    _count: { _all: true },
+  });
+  const withUrlMap = new Map(withUrlGroups.map((g) => [g.vendorId, g._count._all]));
+
   // Attach effective trust (override ?? computed) for display and trust-sorting.
   // Trust is computed for the whole page in TWO queries (batched) to avoid an
   // N+1 that made this list very slow.
@@ -44,6 +54,7 @@ export async function GET(req: NextRequest) {
   let data = vendors.map((v) => ({
     ...v,
     effectiveTrust: (v.trustOverride ?? computedMap.get(v.id) ?? 'MEDIUM') as TrustLevel,
+    offeringsWithUrl: withUrlMap.get(v.id) ?? 0,
   }));
 
   if (sort === 'trust') {

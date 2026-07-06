@@ -14,6 +14,7 @@ type Vendor = {
   isActive: boolean;
   createdAt: string;
   _count: { offerings: number };
+  offeringsWithUrl: number;
 };
 
 type SortKey = 'name' | 'trust' | 'offerings' | 'active';
@@ -69,7 +70,7 @@ export default function VendorsListPage() {
               <th className="p-3">Slug</th>
               <th className="p-3">Website</th>
               <th className={thCls} onClick={() => toggleSort('trust')}>Trust{arrow('trust')}</th>
-              <th className={`${thCls} text-right`} onClick={() => toggleSort('offerings')}>Tests{arrow('offerings')}</th>
+              <th className={`${thCls} text-right`} onClick={() => toggleSort('offerings')} title="Tests with a product URL / total linked. Amber = some are missing a URL and need review.">Tests{arrow('offerings')}</th>
               <th className={thCls} onClick={() => toggleSort('active')}>Active{arrow('active')}</th>
               <th className="p-3">Created</th>
             </tr>
@@ -86,7 +87,19 @@ export default function VendorsListPage() {
                   <td className="p-3 font-mono text-xs text-brand-400">{v.slug}</td>
                   <td className="p-3 text-brand-600 truncate max-w-48">{v.websiteUrl ?? '—'}</td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRUST_BADGE[v.effectiveTrust]}`}>{v.effectiveTrust}</span></td>
-                  <td className="p-3 text-right text-brand-600">{v._count.offerings}</td>
+                  <td className="p-3 text-right">
+                    {/* withUrl/total — amber when some linked tests have no product URL (need review). */}
+                    {v.offeringsWithUrl < v._count.offerings ? (
+                      <span
+                        className="font-medium text-amber-600"
+                        title={`${v._count.offerings - v.offeringsWithUrl} of ${v._count.offerings} linked test(s) have no product URL — needs review`}
+                      >
+                        {v.offeringsWithUrl}/{v._count.offerings}
+                      </span>
+                    ) : (
+                      <span className="text-brand-600">{v._count.offerings}</span>
+                    )}
+                  </td>
                   <td className="p-3"><span className={`inline-block h-2.5 w-2.5 rounded-full ${v.isActive ? 'bg-success-500' : 'bg-brand-200'}`} /></td>
                   <td className="p-3 text-brand-400">{new Date(v.createdAt).toLocaleDateString()}</td>
                 </tr>
