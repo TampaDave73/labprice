@@ -40,6 +40,18 @@ This repo is pre-configured for Railway: **`railway.json`** sets the Dockerfile 
 `/api/health` healthcheck, and the `Dockerfile`'s **default stage is the web app** — so the web
 service needs *zero* build config.
 
+> ### ⚠️ If Railway uses "Railpack" and the install fails
+> Railway's default builder (Railpack/Nixpacks) can't build this pnpm monorepo — you must use the
+> **Dockerfile**. `railway.json` requests it, but if the service was created before that file landed
+> (or Railway ignores it), force it manually:
+>
+> **Service → Settings → Build → Builder → select `Dockerfile`.** (Leave "Dockerfile Path" as
+> `Dockerfile`.) Then **Deploy** again. That single toggle fixes the Railpack install errors.
+>
+> Also make sure the service is deployed from the **latest commit** — the build was only made
+> DB-independent recently; older commits fail at `next build` with `Environment variable not found:
+> DATABASE_URL`.
+
 ## ⚡ Fast path (web + database, ~15 minutes)
 
 Do just this to get users testing. The scrape worker is optional (add it later, Step 4).
