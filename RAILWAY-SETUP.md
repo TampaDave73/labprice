@@ -154,11 +154,12 @@ pnpm docker:dev
 docker exec labprice-postgres-1 pg_dump -U labprice -d labprice -Fc --no-owner --no-acl -f /tmp/labprice.dump
 ```
 
-**Step 5d — restore it into Railway** (paste your `DATABASE_PUBLIC_URL` in the quotes):
+**Step 5d — restore it into Railway** (paste your `DATABASE_PUBLIC_URL` in the quotes). Run this as
+**one single line** — do not break it with a `\` (on Windows/PowerShell the backslash isn't a line
+continuation and `pg_restore` errors with "too many command-line arguments"):
 
 ```bash
-docker exec labprice-postgres-1 pg_restore --no-owner --no-acl --clean --if-exists \
-  -d "postgresql://postgres:PASSWORD@somehost.proxy.rlwy.net:12345/railway" /tmp/labprice.dump
+docker exec labprice-postgres-1 pg_restore --no-owner --no-acl --clean --if-exists -d "postgresql://postgres:PASSWORD@somehost.proxy.rlwy.net:12345/railway" /tmp/labprice.dump
 ```
 
 That's it — Railway Postgres now has an exact copy of your dev database, including your curated catalog
