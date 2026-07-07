@@ -4,6 +4,10 @@ import AdminSidebar from './components/AdminSidebar';
 
 export const metadata = { title: 'Admin' };
 
+// The admin area is authenticated and data-heavy — never prerender any of it at build (that would
+// also require a DB during the image build). force-dynamic on the layout covers every /admin/* page.
+export const dynamic = 'force-dynamic';
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) {

@@ -142,7 +142,16 @@ export async function getPageContent(slug: string): Promise<PageContent> {
   const def = PAGE_BY_SLUG[slug];
   if (!def) throw new Error(`Unknown static page: ${slug}`);
 
-  const row = await prisma.systemSetting.findUnique({ where: { key: pageSettingKey(slug) } });
+  // The DB may be unreachable at build time (Railway/CI containers build without DATABASE_URL). These
+  // pages prerender at build, so swallow any DB error and fall back to the default (canonical) copy;
+  // the saved override is picked up at runtime / on the next revalidate.
+  let row: { value: unknown } | null = null;
+  try {
+    row = await prisma.systemSetting.findUnique({ where: { key: pageSettingKey(slug) } });
+  } catch {
+    return def.default;
+  }
+
   const saved = row?.value as Partial<PageContent> | null | undefined;
   if (!saved || typeof saved !== 'object') return def.default;
 

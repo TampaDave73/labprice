@@ -13,7 +13,10 @@ export const metadata: Metadata = {
   description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
 };
 
-export const revalidate = 60;
+// Rendered on demand (not prerendered at build) so the build needs no DB. At request time it queries
+// the live catalog, so users always see current vendors/prices; low-traffic enough that per-request
+// rendering is fine (and Cloudflare can cache in front).
+export const dynamic = 'force-dynamic';
 
 async function getVendors() {
   const vendors = await prisma.vendor.findMany({

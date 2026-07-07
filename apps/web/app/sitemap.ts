@@ -1,6 +1,10 @@
 import { prisma } from '@labprice/database';
 import type { MetadataRoute } from 'next';
 
+// Rendered on demand (not at build) so the build needs no DB and the sitemap always reflects the
+// current test/category set. It's cheap and infrequently hit (by crawlers).
+export const dynamic = 'force-dynamic';
+
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
