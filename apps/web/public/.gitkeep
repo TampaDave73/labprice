@@ -1,0 +1,4 @@
+# Keeps apps/web/public/ present in git. The Dockerfile copies this directory into the runtime image
+# (COPY --from=builder /app/apps/web/public ...); without a tracked file here, git omits the empty
+# directory and the Docker build fails with "/app/apps/web/public: not found". Add real static assets
+# (favicon, images) here as needed.
