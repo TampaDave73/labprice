@@ -1,5 +1,9 @@
 # Deploying LabTestCompare (Railway + Cloudflare)
 
+> 👉 **New to Railway? Use [`RAILWAY-SETUP.md`](RAILWAY-SETUP.md)** — a click-by-click, from-scratch
+> guide with the exact Railway doc links and fixes for the Railpack / internal-URL / old-data issues.
+> This file is the condensed reference.
+
 This is the **accurate, repo-specific** runbook (the older `docs/08-deployment.md` is an aspirational
 design doc and does not match the actual code — ignore its `prisma migrate deploy`, separate
 Dockerfiles, and Sentry/proxy env vars).
