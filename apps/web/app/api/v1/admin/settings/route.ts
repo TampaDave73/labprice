@@ -11,12 +11,8 @@ export async function GET() {
     );
   }
 
-  const [settings, featureFlags] = await Promise.all([
-    prisma.systemSetting.findMany(),
-    prisma.featureFlag.findMany(),
-  ]);
-
-  return NextResponse.json({ data: { settings, featureFlags } });
+  const settings = await prisma.systemSetting.findMany();
+  return NextResponse.json({ data: { settings } });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -29,7 +25,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { settings, featureFlags } = body;
+  const { settings } = body;
 
   if (settings) {
     for (const { key, value } of settings) {
@@ -41,20 +37,6 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  if (featureFlags) {
-    for (const { key, isEnabled } of featureFlags) {
-      await prisma.featureFlag.upsert({
-        where: { key },
-        create: { key, isEnabled },
-        update: { isEnabled },
-      });
-    }
-  }
-
-  const [updatedSettings, updatedFlags] = await Promise.all([
-    prisma.systemSetting.findMany(),
-    prisma.featureFlag.findMany(),
-  ]);
-
-  return NextResponse.json({ data: { settings: updatedSettings, featureFlags: updatedFlags } });
+  const updatedSettings = await prisma.systemSetting.findMany();
+  return NextResponse.json({ data: { settings: updatedSettings } });
 }

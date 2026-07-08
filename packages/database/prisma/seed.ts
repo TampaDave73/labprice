@@ -216,24 +216,8 @@ async function main() {
   });
   console.log('  1 admin user upserted');
 
-  // ── Feature Flags ──
-  const featureFlags = [
-    { key: 'price_alerts', description: 'Enable price alert notifications for users', isEnabled: false },
-    { key: 'scraper_v2', description: 'Use the v2 scraping engine with Playwright', isEnabled: false },
-    { key: 'affiliate_tracking', description: 'Enable affiliate click tracking and revenue reporting', isEnabled: true },
-    { key: 'search_suggestions', description: 'Show search autocomplete suggestions', isEnabled: true },
-    { key: 'user_registration', description: 'Allow new user sign-ups', isEnabled: true },
-    { key: 'price_history_charts', description: 'Show price history charts on test detail pages', isEnabled: false },
-  ];
-
-  for (const ff of featureFlags) {
-    await prisma.featureFlag.upsert({
-      where: { key: ff.key },
-      update: { description: ff.description, isEnabled: ff.isEnabled },
-      create: ff,
-    });
-  }
-  console.log(`  ${featureFlags.length} feature flags upserted`);
+  // (Feature flags removed 2026-07-08: the seeded toggles were decorative — no code ever read
+  // FeatureFlag — and the misleading admin UI for them is gone. The table stays in the schema.)
 
   // ── System Settings ──
   const systemSettings = [

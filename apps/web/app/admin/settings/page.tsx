@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-type Flag = { key: string; description: string | null; isEnabled: boolean };
-
 type FieldDef = {
   key: string;
   label: string;
@@ -25,10 +23,10 @@ const GROUPS = ['Scraping', 'Auto-approval'];
 
 export default function SettingsPage() {
   const [values, setValues] = useState<Record<string, number | boolean>>({});
-  const [flags, setFlags] = useState<Flag[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     fetch('/api/v1/admin/settings').then((r) => r.json()).then((j) => {
@@ -41,7 +39,6 @@ export default function SettingsPage() {
         else v[f.key] = raw === undefined ? (f.default as number) : Number(raw);
       }
       setValues(v);
-      setFlags(j.data?.featureFlags ?? []);
       setLoading(false);
     });
   }, []);
@@ -52,10 +49,25 @@ export default function SettingsPage() {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         settings: FIELDS.map((f) => ({ key: f.key, value: values[f.key] })),
-        featureFlags: flags.map((f) => ({ key: f.key, isEnabled: f.isEnabled })),
       }),
     });
     setSaving(false); setMsg('Settings saved.');
+  };
+
+  // Danger zone: wipe all traffic analytics. Native confirm() is enough friction — the wipe is
+  // scoped to traffic counters (never prices/scrape history) and audit-logged server-side.
+  const resetAnalytics = async () => {
+    if (!confirm('Reset ALL analytics? This permanently deletes every search log, vendor click, and page view. Prices and scrape history are NOT affected.')) return;
+    setResetting(true); setMsg(null);
+    const res = await fetch('/api/v1/admin/analytics/reset', { method: 'POST' });
+    const j = await res.json().catch(() => ({}));
+    setResetting(false);
+    if (res.ok) {
+      const d = j.data ?? {};
+      setMsg(`Analytics reset — deleted ${d.searches ?? 0} searches, ${d.clicks ?? 0} clicks, ${d.pageViews ?? 0} page views.`);
+    } else {
+      setMsg(j.error?.message ?? 'Could not reset analytics.');
+    }
   };
 
   const Toggle = ({ on, onClick }: { on: boolean; onClick: () => void }) => (
@@ -93,24 +105,27 @@ export default function SettingsPage() {
         </div>
       ))}
 
-      <div className="admin-card max-w-2xl space-y-3 p-6">
-        <h2 className="admin-h2">Feature Flags</h2>
-        {flags.length === 0 ? (
-          <p className="text-sm text-brand-400">No feature flags configured.</p>
-        ) : (
-          flags.map((f) => (
-            <div key={f.key} className="flex items-center justify-between gap-6 border-b border-brand-50 pb-3 last:border-0 last:pb-0">
-              <div>
-                <div className="text-sm font-medium text-brand-900">{f.key}</div>
-                {f.description && <div className="mt-0.5 text-xs text-brand-400">{f.description}</div>}
-              </div>
-              <Toggle on={f.isEnabled} onClick={() => setFlags((prev) => prev.map((x) => (x.key === f.key ? { ...x, isEnabled: !x.isEnabled } : x)))} />
-            </div>
-          ))
-        )}
-      </div>
-
       <button onClick={save} disabled={saving} className="admin-btn">{saving ? 'Saving...' : 'Save All'}</button>
+
+      <div className="admin-card max-w-2xl space-y-3 border-red-200 p-6">
+        <h2 className="admin-h2 text-red-700">Danger zone</h2>
+        <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="text-sm font-medium text-brand-900">Reset all analytics</div>
+            <div className="mt-0.5 text-xs text-brand-400">
+              Permanently deletes every search log, vendor click, and page view — the Analytics page starts from zero.
+              Prices, price history, and scrape history are untouched.
+            </div>
+          </div>
+          <button
+            onClick={resetAnalytics}
+            disabled={resetting}
+            className="shrink-0 rounded-btn bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {resetting ? 'Resetting…' : 'Reset analytics'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

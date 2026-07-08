@@ -60,7 +60,9 @@ pnpm dev:all             # web + worker (turbo dev)
 from the vendor catalogs (Dirt Cheap Labs) and just skips the generated copy. Similarly, `RESEND_API_KEY`
 is optional — without it, admin email alerts on suggestion-form submissions
 (`lib/services/notify-service.ts`) just no-op; the DB row (reviewable at `/admin/suggestions`) is
-unaffected either way.
+unaffected either way. The **worker** also uses `RESEND_API_KEY`/`EMAIL_FROM` for the weekly scrape
+digest + failure alerts (`apps/worker/src/report.ts`) — without the key it logs the email body to the
+console instead of sending (expected local behavior).
 
 **Local login:** `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` are empty in dev, so the
 magic-link and Google buttons on `/auth/signin` do nothing. To log in locally, use the **Dev sign-in**

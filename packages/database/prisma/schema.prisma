@@ -403,6 +403,8 @@ model ScrapeVendorConfig {
   selectors    Json         @default("{}")
   authConfig   Json?        @map("auth_config")
   scheduleCron String?      @map("schedule_cron")
+  // How often the daily scheduler tick scrapes this vendor. 0 = manual only ("Scrape now").
+  frequencyDays Int         @default(7) @map("frequency_days")
   isEnabled    Boolean      @default(true) @map("is_enabled")
   maxRetries   Int          @default(3) @map("max_retries")
   timeoutMs    Int          @default(30000) @map("timeout_ms")

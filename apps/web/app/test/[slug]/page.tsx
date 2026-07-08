@@ -56,6 +56,25 @@ export default async function TestDetailPage({ params }: Props) {
     priceUpdatedAt: o.priceUpdatedAt ? o.priceUpdatedAt.toISOString() : null,
   }));
 
+  // Price history (last 12 months) for the chart — only rows for the offerings shown above.
+  // PriceHistory records CHANGES only, so each vendor's line is a step series; the client extends
+  // the last known price to "now". Capped defensively: a busy test still ships a bounded payload.
+  const yearAgo = new Date();
+  yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  const historyRows = test.offerings.length > 0
+    ? await prisma.priceHistory.findMany({
+        where: { offeringId: { in: test.offerings.map((o) => o.id) }, observedAt: { gte: yearAgo } },
+        orderBy: { observedAt: 'asc' },
+        take: 1000,
+        select: { offeringId: true, newPrice: true, observedAt: true },
+      })
+    : [];
+  const priceHistory = historyRows.map((h) => ({
+    offeringId: h.offeringId,
+    price: Number(h.newPrice),
+    observedAt: h.observedAt.toISOString(),
+  }));
+
   const questCode = test.questCode ?? test.codes.find((c) => c.codeType === 'QUEST')?.codeValue ?? null;
   const labcorpCode = test.labcorpCode ?? test.codes.find((c) => c.codeType === 'LABCORP')?.codeValue ?? null;
 
@@ -102,6 +121,7 @@ export default async function TestDetailPage({ params }: Props) {
           labcorpCode,
         }}
         offerings={offerings}
+        priceHistory={priceHistory}
       />
       <Footer />
     </div>

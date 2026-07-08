@@ -74,7 +74,7 @@ type ConfigForm = {
   priceSelector: string;
   nameSelector: string;
   containerSelector: string;
-  scheduleCron: string;
+  frequencyDays: number;
   isEnabled: boolean;
   timeoutMs: number;
   maxRetries: number;
@@ -82,7 +82,7 @@ type ConfigForm = {
 
 const DEFAULT_CONFIG: ConfigForm = {
   engine: 'HTTP', baseUrl: '', catalogMode: false, catalogAdapter: 'goodlabs', catalogPath: '', priceSelector: '', nameSelector: '', containerSelector: '',
-  scheduleCron: '', isEnabled: true, timeoutMs: 30000, maxRetries: 3,
+  frequencyDays: 7, isEnabled: true, timeoutMs: 30000, maxRetries: 3,
 };
 
 const TRUST_BADGE: Record<TrustLevel, string> = {
@@ -165,7 +165,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
           priceSelector: sel.priceSelector ?? '',
           nameSelector: sel.nameSelector ?? '',
           containerSelector: sel.containerSelector ?? '',
-          scheduleCron: c.scheduleCron ?? '',
+          frequencyDays: c.frequencyDays ?? 7,
           isEnabled: c.isEnabled ?? true,
           timeoutMs: c.timeoutMs ?? 30000,
           maxRetries: c.maxRetries ?? 3,
@@ -491,8 +491,16 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className={labelCls}>Schedule (cron)</label>
-            <input className="admin-input" placeholder="0 6 * * *" value={config.scheduleCron} onChange={(e) => setC('scheduleCron', e.target.value)} />
+            {/* Drives the worker's daily tick — how often this vendor is scraped automatically. */}
+            <label className={labelCls}>Scrape frequency</label>
+            <select className="admin-input" value={config.frequencyDays} onChange={(e) => setC('frequencyDays', Number(e.target.value))}>
+              <option value={1}>Daily</option>
+              <option value={3}>Every 3 days</option>
+              <option value={7}>Weekly</option>
+              <option value={14}>Every 2 weeks</option>
+              <option value={30}>Monthly</option>
+              <option value={0}>Manual only</option>
+            </select>
           </div>
           <div>
             <label className={labelCls}>Timeout (ms)</label>

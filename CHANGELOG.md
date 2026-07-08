@@ -10,6 +10,31 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Added
+- **Automatic scheduled scraping.** The worker now registers a daily tick (06:00 UTC) that scrapes
+  each vendor on its own cadence: new `ScrapeVendorConfig.frequencyDays` (default 7 = weekly; 0 =
+  manual only), edited via a **Scrape frequency** dropdown on the admin vendor page (replaces the
+  never-read cron field). The tick respects the `scrape_enabled` master switch, counts ANY prior run
+  (manual scrapes reset the clock), and enqueues catalog vendors to `scrape-discover` / per-URL
+  vendors to `scrape-execute`.
+- **Scraper status emails.** New `scrape-report` queue + worker sends a **weekly digest** (Mondays
+  12:00 UTC) to all admins: per-vendor status (ok/failed/overdue/never-ran), price changes, linked
+  tests that could NOT be priced (UNMATCHED results by name), pending change-queue count, and weekly
+  error totals. Scheduled scrape failures also send an **immediate alert** (throttled to one per
+  vendor per day). Emails go via Resend from the worker (`apps/worker/src/report.ts`); without
+  `RESEND_API_KEY` the body is logged instead.
+- **Price-history charts on test pages.** Test detail pages now render an inline-SVG step chart of
+  the last 12 months of `PriceHistory` per vendor (top 5 by movement), with the current price
+  extended to "today". Hidden until a test has at least one recorded price change.
+- **Reset analytics.** New Danger-zone card on admin Settings wipes all traffic analytics (search
+  logs, vendor clicks, page views) via `POST /api/v1/admin/analytics/reset` — audit-logged, and
+  never touches prices/scrape history.
+
+### Removed
+- **Dead feature flags.** The `feature_flags` seed rows and the Settings-page toggles
+  (`price_history_charts`, `user_registration`, `scraper_v2`, etc.) are gone — no code ever read
+  them, so the toggles were decorative and misleading. (Table stays in the schema. Prod cleanup:
+  `DELETE FROM feature_flags;`.) Price-history charts now actually exist (above) instead of being a
+  fake toggle.
 - **Deployment readiness (Railway + Cloudflare)** — new `DEPLOY.md` (accurate, repo-specific runbook +
   pre-launch security checklist) and `docs/database/ddl-core.sql` (the launch subset of `ddl.sql`:
   extensions + citext + FTS `search_vector`, idempotent, applied after `prisma db push`). Fixed the

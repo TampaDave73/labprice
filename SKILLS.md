@@ -91,8 +91,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Pages** (`/admin/pages`) — edit the public About / Terms / Privacy / Medical Disclaimer copy
   (title, "last updated" label, body). Saved to `system_settings` (`page_<slug>`) via
   `GET`/`PATCH /api/v1/admin/pages`; the live page is revalidated on save.
-- **Settings** — grouped controls: scraping schedule/timeout, **auto-approval thresholds**, feature
-  flags. The worker reads thresholds from here.
+- **Settings** — grouped controls: scraping master switch/timeout, **auto-approval thresholds**, and
+  a **Danger zone** (reset all analytics: wipes search logs, vendor clicks, page views via
+  `POST /api/v1/admin/analytics/reset`; audit-logged, never touches prices/scrape history). The
+  worker reads thresholds from here. (Feature flags removed 2026-07-08 — they were decorative.)
 - **Users** — list + role management + **add/remove** (`POST`/`DELETE /api/v1/admin/users`): invite by
   email (restores a soft-deleted user instead of duplicating), remove revokes sessions immediately;
   guarded against self-delete and removing the last SUPER_ADMIN.
@@ -118,6 +120,19 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Vendor trust** (`packages/database/src/vendor-trust.ts`): success rate + freshness + reject rate
   → LOW/MEDIUM/HIGH; `Vendor.trustOverride` pins it manually. (Trust is resolved *before* a run is
   created, so a brand-new vendor's first run doesn't self-drag to LOW.)
+- **Automatic scheduling** (`workers/scrape-schedule.ts`): the worker registers a **daily tick**
+  (06:00 UTC, BullMQ job scheduler in `index.ts`). Each tick scrapes vendors that are *due* per
+  `ScrapeVendorConfig.frequencyDays` (admin vendor page → "Scrape frequency"; default 7 = weekly,
+  0 = manual only). ANY prior ScrapeJob resets the clock (manual runs count). Master switch:
+  `scrape_enabled` on admin Settings.
+- **Status emails** (`apps/worker/src/report.ts`, `workers/scrape-report.ts`): weekly digest to all
+  admins (Mondays 12:00 UTC) — per-vendor last-run status, unpriced tests (UNMATCHED results),
+  overdue detection, pending change count, weekly error count. Scheduled-run failures also alert
+  immediately (throttled 1/vendor/day). Needs `RESEND_API_KEY` on the worker; without it the email
+  body is logged to the worker console instead (handy for local dry-runs).
+- **Price-history charts**: test detail pages chart the last 12 months of `PriceHistory` per vendor
+  (`apps/web/app/test/[slug]/PriceHistoryChart.tsx`, inline-SVG step chart). Appears automatically
+  once a test has ≥1 recorded price change.
 
 #### GoodLabs catalog scraper (the first live scraper)
 - **How it works**: GoodLabs (goodlabs.com) is a Next.js reseller with no price API and no stable

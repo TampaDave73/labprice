@@ -1,10 +1,12 @@
-import 'dotenv/config';
+import './env'; // FIRST import on purpose — loads .env (incl. monorepo root) before anything reads process.env
 import { connection } from './redis';
+import { scrapeScheduleQueue, scrapeReportQueue } from './queues';
 import { createScheduleWorker } from './workers/scrape-schedule';
 import { createExecuteWorker } from './workers/scrape-execute';
 import { createDiscoverWorker } from './workers/scrape-discover';
 import { createPublishWorker } from './workers/scrape-publish';
 import { createPartitionWorker } from './workers/partition-maintenance';
+import { createReportWorker } from './workers/scrape-report';
 import { startHealthServer } from './health';
 
 async function main() {
@@ -16,10 +18,17 @@ async function main() {
     createDiscoverWorker(),
     createPublishWorker(),
     createPartitionWorker(),
+    createReportWorker(),
   ];
 
   console.log(`[worker] Registered ${workers.length} workers`);
-  console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-discover, scrape-publish, partition-maintain');
+  console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-discover, scrape-publish, partition-maintain, scrape-report');
+
+  // Recurring jobs (idempotent upserts — safe on every startup). The daily tick decides per vendor
+  // whether it's actually due (frequencyDays), so firing daily does NOT mean scraping daily.
+  await scrapeScheduleQueue.upsertJobScheduler('daily-tick', { pattern: '0 6 * * *' }, { name: 'tick' });
+  await scrapeReportQueue.upsertJobScheduler('weekly-digest', { pattern: '0 12 * * 1' }, { name: 'digest' });
+  console.log('[worker] Schedulers: daily scrape tick @ 06:00 UTC, weekly digest Mondays @ 12:00 UTC');
 
   startHealthServer();
 

@@ -9,6 +9,7 @@ import { browserFetchHtml } from '@labprice/scrapers/src/catalog/browser-fetch';
 import { redisConnection } from '../redis';
 import { scrapePublishQueue } from '../queues';
 import { runVendorDiscovery } from '../discovery';
+import { sendScrapeFailureAlert } from '../report';
 
 interface DiscoverJobData {
   vendorId: string;
@@ -31,13 +32,26 @@ export function createDiscoverWorker() {
       const selectors = config?.selectors as Record<string, unknown> | null;
       const needsBrowser = adapterNeedsBrowser(selectors?.adapter as string | undefined);
 
-      const summary = await runVendorDiscovery({
-        vendorId,
-        triggeredBy: triggeredBy ?? 'SCHEDULE',
-        offeringIds,
-        ...(needsBrowser ? { fetchHtml: browserFetchHtml() } : {}),
-        onLog: (m) => console.log(`[discover]   ${m}`),
-      });
+      let summary;
+      try {
+        summary = await runVendorDiscovery({
+          vendorId,
+          triggeredBy: triggeredBy ?? 'SCHEDULE',
+          offeringIds,
+          ...(needsBrowser ? { fetchHtml: browserFetchHtml() } : {}),
+          onLog: (m) => console.log(`[discover]   ${m}`),
+        });
+      } catch (err) {
+        // Alert admins immediately when an UNATTENDED (scheduled) crawl dies on its final attempt —
+        // manual runs already surface errors in the admin UI. Alert then rethrow so BullMQ records
+        // the failure.
+        const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+        if ((triggeredBy ?? 'SCHEDULE') === 'SCHEDULE' && finalAttempt) {
+          const vendor = await prisma.vendor.findUnique({ where: { id: vendorId }, select: { name: true } });
+          await sendScrapeFailureAlert(vendorId, vendor?.name ?? vendorId, err instanceof Error ? err.message : String(err));
+        }
+        throw err;
+      }
 
       // Publish auto-approved changes through the normal publish queue.
       for (const stagedChangeId of summary.autoApprovedStagedIds) {

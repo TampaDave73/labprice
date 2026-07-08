@@ -213,12 +213,51 @@ https://docs.railway.com/networking/troubleshooting/ssl
 
 ---
 
-## Part 8 — (Optional, later) the scrape worker
+## Part 8 — The scrape worker (automated weekly scraping + email reports)
 
-Not needed for users to browse/search/compare. When you want automated price scraping, add a second
-service from the same repo, and in **Settings → Build** set the **Docker target/stage** to **`worker`**
-(the web is the default stage). Clear its healthcheck (no HTTP server), and give it `DATABASE_URL` /
-`REDIS_URL` reference variables like the web service. Full notes in `DEPLOY.md` → "Worker service".
+The worker is what makes scraping **automatic**: it runs a daily tick that scrapes each vendor on its
+own schedule (set per vendor on the admin Vendors page — default weekly), emails you an immediate
+alert when a scheduled scrape fails, and sends a **weekly digest every Monday** summarizing every
+scraper's health. No worker = manual "Scrape now" only, and no report emails.
+
+You should already have **Redis** from Part 3. If not, do that first (**New → Database → Add Redis**).
+
+1. **Add the service:** project canvas → **New → GitHub Repo** → pick the same `labprice` repo again.
+   Yes — the same repo twice; the two services just start different processes from it.
+2. **Rename it** (Settings → the name field) to `worker` so the canvas isn't two identical boxes.
+3. **Settings → Build:**
+   - **Builder** = **Dockerfile** (same fix as Part 2 — Railpack will fail).
+   - **Dockerfile path** = `Dockerfile`.
+   - **Docker target/stage** = **`worker`** ← this is the whole trick. The Dockerfile's default
+     (final) stage is the web app; the `worker` stage runs the scrape workers instead. On Railway
+     this is the **"Target Stage"** field under the Dockerfile settings (docs:
+     https://docs.railway.com/builds/dockerfiles).
+   - Make sure **Build command / Start command are EMPTY** (the Dockerfile handles both).
+4. **Settings → Deploy:** if there's a healthcheck path set, either clear it or set it to `/health` —
+   the worker serves a small status page on port `3001` (set `HEALTH_PORT` if you change it).
+   **Settings → Networking:** do NOT add a public domain — the worker needs no public traffic.
+5. **Variables** (worker service → Variables → Raw editor):
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+   | `REDIS_URL` | `${{Redis.REDIS_URL}}` |
+   | `RESEND_API_KEY` | same `re_...` key as the web service — this is what sends the report emails |
+   | `EMAIL_FROM` | `LabTestCompare <noreply@labtestcompare.com>` |
+
+   Also confirm the **web** service has `REDIS_URL = ${{Redis.REDIS_URL}}` (Part 4) — the admin
+   "Scrape now" button queues browser-based vendors through Redis to this worker.
+6. **Deploy.** The logs should show `Registered 6 workers` and
+   `Schedulers: daily scrape tick @ 06:00 UTC, weekly digest Mondays @ 12:00 UTC`.
+
+**What you'll see once it's live:**
+- Every day at 06:00 UTC the tick checks which vendors are due (per-vendor **Scrape frequency** on
+  the admin vendor page; default **Weekly**, `Manual only` opts a vendor out) and scrapes them.
+- Every Monday at 12:00 UTC you get the **scrape report** email: one line per vendor
+  (✅ ok / 🟡 some tests not priced / ❌ failed / ⚠ overdue / ⏸ disabled), which linked tests could
+  not be priced, pending changes to review, and error counts.
+- If a **scheduled** scrape fails, you get an immediate ⚠ email (max one per vendor per day).
+- The master kill switch is **admin → Settings → Scraping enabled**.
 
 ---
 

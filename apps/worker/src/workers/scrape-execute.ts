@@ -8,6 +8,7 @@ import type { VendorConfig, ScrapeResult, ScrapeError } from '@labprice/scrapers
 import { PlaywrightEngine } from '@labprice/scrapers/src/engines/playwright-engine';
 import { redisConnection } from '../redis';
 import { scrapePublishQueue } from '../queues';
+import { sendScrapeFailureAlert } from '../report';
 
 // Prisma 6 exposes Decimal under the Prisma namespace; alias it for use as type + value.
 type Decimal = Prisma.Decimal;
@@ -17,6 +18,9 @@ interface ExecuteJobData {
   offeringId: string;
   vendorId: string;
   testId: string;
+  // Who queued this: the daily tick sets SCHEDULE; admin "Scrape now" jobs omit it (MANUAL).
+  // Scheduled failures email an alert — manual ones are watched live in the admin UI.
+  triggeredBy?: 'SCHEDULE' | 'MANUAL' | 'RETRY';
 }
 
 function isScrapeError(r: ScrapeResult | ScrapeError): r is ScrapeError {
@@ -67,7 +71,7 @@ export function createExecuteWorker() {
   const worker = new Worker<ExecuteJobData>(
     'scrape-execute',
     async (job: Job<ExecuteJobData>) => {
-      const { offeringId, vendorId, testId } = job.data;
+      const { offeringId, vendorId, testId, triggeredBy = 'MANUAL' } = job.data;
       console.log(`[execute] Scraping offering=${offeringId} vendor=${vendorId} test=${testId}`);
 
       const offering = await prisma.offering.findUnique({
@@ -83,7 +87,7 @@ export function createExecuteWorker() {
       const scrapeJob = await prisma.scrapeJob.create({
         data: {
           vendorId,
-          triggeredBy: 'SCHEDULE',
+          triggeredBy,
           status: 'RUNNING',
           startedAt: new Date(),
         },
@@ -139,6 +143,13 @@ export function createExecuteWorker() {
           where: { id: scrapeJob.id },
           data: { status: 'FAILED', completedAt: new Date(), errorMessage: result.message },
         });
+
+        // Alert on scheduled failures only, and only once retries are exhausted (a retryable error
+        // that succeeds on attempt 2 shouldn't email anyone). Throttled per vendor/day in report.ts.
+        const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
+        if (triggeredBy === 'SCHEDULE' && (!result.retryable || finalAttempt)) {
+          await sendScrapeFailureAlert(vendorId, offering.vendor.name, `${offering.test.name}: ${result.message}`);
+        }
 
         if (result.retryable) {
           throw new Error(`Retryable scrape error: ${result.message}`);

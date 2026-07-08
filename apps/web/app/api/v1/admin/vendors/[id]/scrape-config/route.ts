@@ -48,11 +48,16 @@ export async function PUT(req: NextRequest, { params }: Params) {
     containerSelector: typeof body.containerSelector === 'string' ? body.containerSelector : '',
   } satisfies Prisma.InputJsonValue;
 
+  // Automatic scrape cadence for the worker's daily tick. 0 = manual only. Clamped to the same set
+  // the UI offers so a bad payload can't set a nonsense interval.
+  const ALLOWED_FREQUENCIES = [0, 1, 3, 7, 14, 30];
+  const frequencyDays = ALLOWED_FREQUENCIES.includes(Number(body.frequencyDays)) ? Number(body.frequencyDays) : 7;
+
   const shared = {
     engine,
     baseUrl: body.baseUrl || null,
     selectors,
-    scheduleCron: body.scheduleCron || null,
+    frequencyDays,
     isEnabled: body.isEnabled !== false,
     timeoutMs: Number(body.timeoutMs) || 30000,
     maxRetries: Number(body.maxRetries) || 3,

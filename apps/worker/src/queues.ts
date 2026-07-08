@@ -15,3 +15,6 @@ export const scrapePublishQueue = new Queue('scrape-publish', { connection });
 
 /** Monthly partition maintenance for time-series tables. */
 export const partitionMaintainQueue = new Queue('partition-maintain', { connection });
+
+/** Weekly admin email digest summarizing every scraper's health. */
+export const scrapeReportQueue = new Queue('scrape-report', { connection });
