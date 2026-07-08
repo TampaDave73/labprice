@@ -39,16 +39,16 @@ COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 USER worker
 CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
 
-# Stage 4b: web (DEFAULT/final stage — Railway builds this with zero target config)
+# Stage 4b: web (DEFAULT/final stage — Railway builds this with zero target config).
+# Runs a normal `next start` over the FULL build, NOT Next's standalone server: the standalone
+# file-tracer drops Prisma's generated client + query engine in this pnpm monorepo, which breaks every
+# DB call at runtime (`database: down`). Copying the whole /app keeps @prisma/client + the linux engine
+# present. Larger image, but reliable. Listens on $PORT (Railway sets it) bound to 0.0.0.0.
 FROM base AS web
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
 WORKDIR /app
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
-USER nextjs
+COPY --from=builder /app ./
+WORKDIR /app/apps/web
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-CMD ["node", "apps/web/server.js"]
+CMD ["pnpm", "exec", "next", "start", "-H", "0.0.0.0"]
