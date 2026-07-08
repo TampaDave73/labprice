@@ -120,7 +120,9 @@ model User {
   email           String    @unique // citext in ddl.sql
   name            String?
   role            Role      @default(USER)
-  emailVerifiedAt DateTime? @map("email_verified_at")
+  // MUST be named `emailVerified` (not `emailVerifiedAt`): the Auth.js Prisma adapter writes this
+  // exact field on the magic-link callback (updateUser). The DB column stays `email_verified_at`.
+  emailVerified   DateTime? @map("email_verified_at")
   image           String?
   deletedAt       DateTime? @map("deleted_at")
   createdAt       DateTime  @default(now()) @map("created_at")

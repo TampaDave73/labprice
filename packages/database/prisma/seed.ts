@@ -211,7 +211,7 @@ async function main() {
       email: 'admin@labprice.com',
       name: 'LabTestCompare Admin',
       role: Role.SUPER_ADMIN,
-      emailVerifiedAt: new Date(),
+      emailVerified: new Date(),
     },
   });
   console.log('  1 admin user upserted');
