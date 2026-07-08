@@ -52,6 +52,10 @@ declare module 'next-auth' {
 const nextAuth: NextAuthResult = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: 'database' },
+  // Always behind a proxy (Cloudflare → Railway). Without this, Auth.js can't verify the request host
+  // when building the callback URL and throws a `Configuration`/`UntrustedHost` error on the magic-link
+  // callback. Setting it in code means it doesn't depend on the AUTH_TRUST_HOST env var being present.
+  trustHost: true,
   providers,
   pages: {
     signIn: '/auth/signin',
