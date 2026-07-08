@@ -62,6 +62,19 @@ const nextAuth: NextAuthResult = NextAuth({
     verifyRequest: '/auth/verify',
   },
   callbacks: {
+    // Sign-in is invite-only: only accounts that ALREADY exist (and aren't soft-deleted) may sign in.
+    // The app has no public self-service accounts, so this rejects a stranger's unknown email BEFORE
+    // any user is created or magic-link email is sent (the check runs on the "send link" request too).
+    // To grant someone access, add them from the admin Users screen first. Deleted/retired users
+    // (e.g. the old seed admin) are also blocked here.
+    async signIn({ user }) {
+      if (!user?.email) return false;
+      const existing = await prisma.user.findFirst({
+        where: { email: user.email, deletedAt: null },
+        select: { id: true },
+      });
+      return existing != null;
+    },
     session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;

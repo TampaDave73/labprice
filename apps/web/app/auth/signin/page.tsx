@@ -9,6 +9,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   email: "We couldn't send the email. Double-check the address and try again.",
   Verification: 'That sign-in link has expired or was already used. Request a new one.',
   Configuration: 'Sign-in is temporarily unavailable. Please try again shortly.',
+  // Returned when the signIn callback rejects an email that isn't an existing account (invite-only).
+  AccessDenied: "That email isn't authorized to sign in. Ask an admin to add you first.",
   default: 'Something went wrong signing in. Please try again.',
 };
 
