@@ -3,7 +3,7 @@
 // has no CSRF token). The dev-only box mints a session directly for local use.
 import { redirect } from 'next/navigation';
 import { AuthError } from 'next-auth';
-import { signIn } from '@/lib/auth';
+import { signIn, auth } from '@/lib/auth';
 
 const ERROR_MESSAGES: Record<string, string> = {
   email: "We couldn't send the email. Double-check the address and try again.",
@@ -36,6 +36,15 @@ export default async function SignIn({
   searchParams: Promise<{ devError?: string; error?: string }>;
 }) {
   const { devError, error } = await searchParams;
+
+  // Already signed in? The magic-link callback lands back here (callbackUrl defaults to the page you
+  // started from), so without this an authenticated user just sees the login form again. Send admins
+  // to the admin panel, everyone else home.
+  const session = await auth();
+  if (session?.user) {
+    redirect(['ADMIN', 'SUPER_ADMIN'].includes(session.user.role) ? '/admin' : '/');
+  }
+
   const isDev = process.env.NODE_ENV !== 'production';
   const googleEnabled = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
   const errorMessage = error ? ERROR_MESSAGES[error] ?? ERROR_MESSAGES.default : null;
