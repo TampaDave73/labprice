@@ -225,18 +225,20 @@ You should already have **Redis** from Part 3. If not, do that first (**New → 
 1. **Add the service:** project canvas → **New → GitHub Repo** → pick the same `labprice` repo again.
    Yes — the same repo twice; the two services just start different processes from it.
 2. **Rename it** (Settings → the name field) to `worker` so the canvas isn't two identical boxes.
-3. **Settings → Build:**
-   - **Builder** = **Dockerfile** (same fix as Part 2 — Railpack will fail).
-   - **Dockerfile path** = `Dockerfile`.
-   - **Docker target/stage** = **`worker`** ← this is the whole trick. The Dockerfile's default
-     (final) stage is the web app; the `worker` stage runs the scrape workers instead. On Railway
-     this is the **"Target Stage"** field under the Dockerfile settings (docs:
-     https://docs.railway.com/builds/dockerfiles).
-   - Make sure **Build command / Start command are EMPTY** (the Dockerfile handles both).
-4. **Settings → Deploy:** if there's a healthcheck path set, either clear it or set it to `/health` —
+3. **Settings → Build:** exactly like the web service (Part 2) — **Builder = Dockerfile**, path
+   `Dockerfile`, Build command empty. (Railway has no "build stage" picker, so both services build
+   the same image — that's fine, the image contains the whole monorepo including the worker code.)
+4. **Settings → Deploy → Custom Start Command** ← this is the whole trick. Set it to:
+
+   ```
+   sh -c "cd /app && node_modules/.bin/tsx apps/worker/src/index.ts"
+   ```
+
+   The image's default command starts the web app; this override starts the scrape worker instead.
+5. Still under **Settings → Deploy:** if a healthcheck path is set, clear it or set it to `/health` —
    the worker serves a small status page on port `3001` (set `HEALTH_PORT` if you change it).
    **Settings → Networking:** do NOT add a public domain — the worker needs no public traffic.
-5. **Variables** (worker service → Variables → Raw editor):
+6. **Variables** (worker service → Variables → Raw editor):
 
    | Variable | Value |
    |---|---|
@@ -247,7 +249,7 @@ You should already have **Redis** from Part 3. If not, do that first (**New → 
 
    Also confirm the **web** service has `REDIS_URL = ${{Redis.REDIS_URL}}` (Part 4) — the admin
    "Scrape now" button queues browser-based vendors through Redis to this worker.
-6. **Deploy.** The logs should show `Registered 6 workers` and
+7. **Deploy.** The logs should show `Registered 6 workers` and
    `Schedulers: daily scrape tick @ 06:00 UTC, weekly digest Mondays @ 12:00 UTC`.
 
 **What you'll see once it's live:**
