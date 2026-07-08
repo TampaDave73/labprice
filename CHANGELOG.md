@@ -17,6 +17,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   + seed.
 
 ### Fixed
+- **Homepage served fake demo links after every deploy → 404s.** The homepage was an ISR page
+  (`revalidate = 60`) with a `DEMO_TESTS` fallback for DB-less builds; at build time on Railway (no DB)
+  it baked the demo snapshot into the cache, so the first post-deploy visitors got hardcoded demo
+  slugs (`/test/psa`, `/test/thyroid-panel`, …) that don't exist in the real catalog and 404. Made the
+  homepage `export const dynamic = 'force-dynamic'` so it always renders against the live DB; the demo
+  fallback now only appears during a genuine DB outage, never in the prerender.
+- **Magic-link sign-in bounced back to the login form.** The Auth.js callback returns to
+  `/auth/signin` (default `callbackUrl`), which just re-rendered the form for an already-authenticated
+  user. The sign-in page now redirects signed-in users onward (admins → `/admin`, else home).
 - **Production build was broken.** `next build` failed (`<Html> should not be imported…` on `/404`)
   because `.env` pinned `NODE_ENV=development`, which the dotenv build wrapper injected; removed it
   from `.env`/`.env.example` (Next sets `NODE_ENV` per command). Also the worker's `tsc` build

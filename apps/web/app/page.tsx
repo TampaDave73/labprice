@@ -8,10 +8,12 @@ import SearchBar from './components/SearchBar';
 import TestCard from './components/TestCard';
 import HomeTestList from './components/HomeTestList';
 
-// Re-fetch counts/prices at most once a minute so vendor/test counts stay current
-// in production (dev always renders live). Without this the page could be frozen
-// at build time.
-export const revalidate = 60;
+// Always render against the live DB at request time. This page has a DEMO_TESTS fallback (so the
+// build succeeds with no database), and as an ISR/prerendered page it would BAKE that demo snapshot
+// into the cache at build time — shipping fake tests whose slugs 404 (e.g. /test/psa) to the first
+// visitors after every deploy. force-dynamic skips build-time prerender entirely, so real users
+// always get real, resolvable links; the demo fallback only appears during a genuine DB outage.
+export const dynamic = 'force-dynamic';
 
 const DEMO_CATEGORIES = [
   { name: 'Vitamins & Minerals', slug: 'vitamins-minerals' },
