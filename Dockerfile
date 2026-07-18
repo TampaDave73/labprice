@@ -37,7 +37,9 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 USER worker
-CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
+# pnpm doesn't hoist workspace bins to the root .bin — run from the package (see Dockerfile.worker).
+WORKDIR /app/apps/worker
+CMD ["pnpm", "exec", "tsx", "src/index.ts"]
 
 # Stage 4b: web (DEFAULT/final stage — Railway builds this with zero target config).
 # Runs a normal `next start` over the FULL build, NOT Next's standalone server: the standalone

@@ -29,4 +29,7 @@ COPY . .
 RUN pnpm --filter @labprice/database exec prisma generate
 # Health server binds $PORT when Railway injects one (falls back to 3001 locally).
 EXPOSE 3001
-CMD ["node_modules/.bin/tsx", "apps/worker/src/index.ts"]
+# Run from the worker package so `pnpm exec` finds its package-local tsx bin — pnpm does NOT hoist
+# workspace binaries to the root node_modules/.bin (same pattern as the web stage's `pnpm exec next`).
+WORKDIR /app/apps/worker
+CMD ["pnpm", "exec", "tsx", "src/index.ts"]
