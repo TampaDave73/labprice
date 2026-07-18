@@ -16,8 +16,11 @@ async function adminEmails(): Promise<string[]> {
   return admins.map((a) => a.email);
 }
 
-/** Send a plain-text email to all active admins; logs the body when no RESEND_API_KEY is set. */
-export async function sendAdminEmail(subject: string, text: string): Promise<void> {
+/**
+ * Send an email to all active admins; logs the text body when no RESEND_API_KEY is set.
+ * Pass `html` for a rich body — `text` is always kept as the plain-text fallback part.
+ */
+export async function sendAdminEmail(subject: string, text: string, html?: string): Promise<void> {
   if (!resend) {
     console.log(`[report] (no RESEND_API_KEY — would email)\nSubject: ${subject}\n${text}`);
     return;
@@ -28,7 +31,7 @@ export async function sendAdminEmail(subject: string, text: string): Promise<voi
       console.warn('[report] no active admins to email');
       return;
     }
-    await resend.emails.send({ from: FROM, to, subject, text });
+    await resend.emails.send({ from: FROM, to, subject, text, ...(html ? { html } : {}) });
     console.log(`[report] emailed "${subject}" to ${to.length} admin(s)`);
   } catch (err) {
     console.error(`[report] "${subject}" email failed:`, err);
