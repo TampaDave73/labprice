@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Deployed
+- **Worker live on Railway (2026-07-18).** New `scrape-worker` service (same repo, branch
+  `claude/github-write-access-3v9dld`) builds `Dockerfile.worker` selected via the
+  `RAILWAY_DOCKERFILE_PATH` service variable — the repo-wide `railway.json` no longer pins
+  `dockerfilePath` (it overrode the variable for every service). Worker CMD runs
+  `pnpm exec tsx` from `apps/worker` (pnpm doesn't hoist workspace bins to the root `.bin`).
+  Web service gained `REDIS_URL`; prod DB got `frequency_days` + re-applied `ddl-core.sql`.
+  Note: the live Railway environment is named **"Lab Price"** (the "production" env is empty).
+
 ### Added
 - **Automatic scheduled scraping.** The worker now registers a daily tick (06:00 UTC) that scrapes
   each vendor on its own cadence: new `ScrapeVendorConfig.frequencyDays` (default 7 = weekly; 0 =
