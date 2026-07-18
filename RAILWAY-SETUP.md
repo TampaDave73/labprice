@@ -225,18 +225,15 @@ You should already have **Redis** from Part 3. If not, do that first (**New → 
 1. **Add the service:** project canvas → **New → GitHub Repo** → pick the same `labprice` repo again.
    Yes — the same repo twice; the two services just start different processes from it.
 2. **Rename it** (Settings → the name field) to `worker` so the canvas isn't two identical boxes.
-3. **Settings → Build:** exactly like the web service (Part 2) — **Builder = Dockerfile**, path
-   `Dockerfile`, Build command empty. (Railway has no "build stage" picker, so both services build
-   the same image — that's fine, the image contains the whole monorepo including the worker code.)
-4. **Settings → Deploy → Custom Start Command** ← this is the whole trick. Set it to:
-
-   ```
-   sh -c "cd /app && node_modules/.bin/tsx apps/worker/src/index.ts"
-   ```
-
-   The image's default command starts the web app; this override starts the scrape worker instead.
-5. Still under **Settings → Deploy:** if a healthcheck path is set, clear it or set it to `/health` —
-   the worker serves a small status page on port `3001` (set `HEALTH_PORT` if you change it).
+3. **Settings → Build:** **Builder = Dockerfile** (same fix as Part 2), Build/Start commands empty.
+4. **Point it at the worker Dockerfile** ← this is the whole trick. On the worker service's
+   **Variables** tab add `RAILWAY_DOCKERFILE_PATH` = `Dockerfile.worker`. The repo ships a dedicated
+   `Dockerfile.worker` that starts the scrape worker instead of the web app (Railway can't target a
+   stage of the main Dockerfile, so the worker gets its own file).
+   *(Alternative that also works: leave the Dockerfile alone and set Settings → Deploy → Custom
+   Start Command to `sh -c "cd /app && node_modules/.bin/tsx apps/worker/src/index.ts"`.)*
+5. Healthcheck needs no config — the worker answers `/api/health` on Railway's `$PORT` (3001
+   locally), matching the repo's `railway.json`.
    **Settings → Networking:** do NOT add a public domain — the worker needs no public traffic.
 6. **Variables** (worker service → Variables → Raw editor):
 
