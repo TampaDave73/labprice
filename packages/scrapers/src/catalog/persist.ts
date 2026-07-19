@@ -218,6 +218,13 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
     matches = result.matches;
     catalogProducts = result.products;
+    // A real catalog is never empty — 0 products means the crawl was silently blocked (an
+    // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
+    // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
+    // scrape that matched nothing.
+    if (catalogProducts.length === 0) {
+      throw new Error(`catalog crawl returned 0 products for ${vendor.name} — likely blocked (WAF/challenge page) or the site layout changed`);
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await prisma.scrapeRun.update({ where: { id: run.id }, data: { status: 'FAILED', errorsCount: 1, completedAt: new Date(), durationMs: Date.now() - started } });
