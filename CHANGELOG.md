@@ -9,6 +9,27 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-19, after the first overnight scrape)
+- **Worker image can now run browsers.** `Dockerfile.worker` moved to Debian (bookworm-slim) with
+  Playwright Chromium baked in — Request A Test's stealth fetch crashed with "Executable doesn't
+  exist" (alpine can't run Playwright browsers at all). Required pinning Prisma `binaryTargets`
+  (bookworm-slim has no `openssl` binary, so "native" detection fell back to openssl-1.1 and
+  crashed at startup).
+- **Cloudflare-blocked vendors → local scraping.** Request A Test and True Health Labs sit behind
+  Cloudflare challenges that never clear for datacenter IPs (verified with the new
+  `apps/worker/scripts/debug-fetch.ts`) — stealth or not, the cloud can't scrape them. They're now
+  set to **Manual only**, scraped from a residential connection via
+  `scrape-blocked-vendors.ps1` (repo root; Desktop shortcut "Scrape Blocked Vendors") →
+  `apps/worker/scripts/scrape-vendor-local.ts`, which runs the normal discovery inline against the
+  LIVE database (`.env.scrape-prod`, gitignored) and publishes auto-approved prices immediately.
+- **Empty catalog = failure.** A crawl returning 0 products (usually an unresolved WAF challenge)
+  now records a FAILED run + failure alert instead of a "successful" scrape matching nothing.
+  browser-fetch also waits out challenges properly (poll up to 15s, not a fixed 2s) and unwraps
+  Chromium's XML-viewer DOM so sitemap catalogs parse.
+- **Readable emails + dashboard.** Failure alerts are HTML cards (error in a capped monospace box);
+  the admin dashboard's Recent Activity now renders sentences ("Price updated — Vitamin D at
+  Walk-In Lab: $64.00 → $59.00") instead of `price_published offering#cmr6sty0`, with times.
+
 ### Deployed
 - **Worker live on Railway (2026-07-18).** New `scrape-worker` service (same repo, branch
   `claude/github-write-access-3v9dld`) builds `Dockerfile.worker` selected via the
