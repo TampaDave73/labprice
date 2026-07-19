@@ -48,15 +48,31 @@ export async function sendScrapeFailureAlert(vendorId: string, vendorName: strin
   const today = new Date().toISOString().slice(0, 10);
   if (alertedOn.get(vendorId) === today) return;
   alertedOn.set(vendorId, today);
-  await sendAdminEmail(
-    `⚠ Scrape failed: ${vendorName}`,
-    [
-      `The scheduled scrape for ${vendorName} failed.`,
-      '',
-      `Error: ${message}`,
-      '',
-      `Details: /admin/vendors — open the vendor and check its scrape history, or run "Scrape now" to retry.`,
-      `(Further failures for this vendor today are muted; the weekly digest has the full picture.)`,
-    ].join('\n'),
-  );
+
+  // Error messages can be huge and noisy (Playwright prints ASCII-art banners). Cap the length and
+  // show it in a <pre> so whatever remains at least lines up instead of soup-wrapping.
+  const trimmed = message.length > 800 ? `${message.slice(0, 800)}\n… (truncated)` : message;
+  const escaped = trimmed.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  const text = [
+    `The overnight scrape for ${vendorName} failed.`,
+    '',
+    trimmed,
+    '',
+    `Retry from the vendor's admin page ("Scrape now"). Further failures for this vendor today are muted; Monday's digest has the full picture.`,
+  ].join('\n');
+
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f3f4f6;">
+  <div style="max-width:560px;margin:0 auto;padding:24px 16px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+    <div style="background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;border-top:4px solid #dc2626;padding:24px;">
+      <h2 style="margin:0 0 4px;font-size:17px;color:#111827;">Scrape failed: ${vendorName}</h2>
+      <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">The overnight run couldn't get prices from this vendor.</p>
+      <pre style="margin:0;padding:12px 14px;border-radius:8px;background:#f9fafb;border:1px solid #e5e7eb;font-size:12px;line-height:1.5;color:#374151;white-space:pre-wrap;word-break:break-word;overflow-x:auto;">${escaped}</pre>
+      <p style="margin:16px 0 0;font-size:13px;color:#374151;">Retry from the vendor's admin page (<strong>Scrape now</strong>).</p>
+      <p style="margin:12px 0 0;padding-top:12px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">Further failures for this vendor today are muted &middot; Monday's digest has the full picture.</p>
+    </div>
+  </div>
+</body></html>`;
+
+  await sendAdminEmail(`⚠ Scrape failed: ${vendorName}`, text, html);
 }

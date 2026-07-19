@@ -99,7 +99,9 @@ const ADAPTER_DEFAULTS: Record<
   // Dedicated product-only sitemap (single flat fetch, no pagination). The WooCommerce SKU literally
   // encodes "<Lab>_<code>", explicitly labelled per product — strict per-lab tiers, no
   // codeMatchAnyProvider needed.
-  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml' },
+  // needsBrowser (2026-07-19): plain HTTP worked from residential IPs, but from Railway's datacenter
+  // IP the WAF 403s even the sitemap — the stealth browser fetch clears it like a real visitor.
+  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml', needsBrowser: true },
   // Quest's own first-party store (Salesforce Commerce Cloud). Sitemap embeds the Quest order code
   // directly in the URL; every product is Quest-fulfilled by definition.
   questhealth: { baseUrl: 'https://www.questhealth.com', catalogPath: '/sitemap_0.xml' },

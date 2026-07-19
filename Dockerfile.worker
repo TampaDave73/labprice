@@ -1,11 +1,15 @@
 # Worker image — the scrape worker service on Railway builds THIS file instead of ./Dockerfile
 # (set per-service via the RAILWAY_DOCKERFILE_PATH variable). It exists because Railway cannot
 # target a stage of a multi-stage Dockerfile; the main Dockerfile's final stage is the web app.
-# Kept in sync with ./Dockerfile's base/deps stages. No `pnpm build` on purpose: the worker runs
-# its TypeScript straight through tsx (same as dev), so it only needs deps + the Prisma client.
+# No `pnpm build` on purpose: the worker runs its TypeScript straight through tsx (same as dev),
+# so it only needs deps + the Prisma client + Playwright's browser.
+#
+# Debian (bookworm-slim), NOT alpine like the web image: browser-gated vendors (Request A Test,
+# True Health Labs) scrape through headless Chromium, and Playwright's browser builds are
+# glibc-only — they cannot run on musl/alpine at all.
 
 # Stage 1: base
-FROM node:22-alpine AS base
+FROM node:22-bookworm-slim AS base
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
@@ -27,6 +31,9 @@ ENV NODE_ENV=production
 COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @labprice/database exec prisma generate
+# Chromium (+ headless shell) and its OS libraries for the stealth browser fetch. Runs as root, so
+# browsers land in /root/.cache/ms-playwright — the same path Playwright resolves at runtime.
+RUN pnpm --filter @labprice/scrapers exec playwright install --with-deps chromium
 # Health server binds $PORT when Railway injects one (falls back to 3001 locally).
 EXPOSE 3001
 # Run from the worker package so `pnpm exec` finds its package-local tsx bin — pnpm does NOT hoist
