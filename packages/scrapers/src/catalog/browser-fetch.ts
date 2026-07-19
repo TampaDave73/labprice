@@ -40,8 +40,24 @@ export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<s
     try {
       const page = await context.newPage();
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
-      await page.waitForTimeout(2000); // let the challenge's JS finish and the real page swap in.
-      return await page.content();
+      // Cloudflare interstitials take a variable amount of time (worse from datacenter IPs than the
+      // fixed 2s we used to wait) — poll until the challenge title clears, then settle briefly.
+      try {
+        await page.waitForFunction(
+          () => !/just a moment|attention required|checking your browser/i.test(document.title),
+          { timeout: 15_000 },
+        );
+      } catch {
+        // Challenge never cleared — return what we have; the parser yielding 0 products surfaces it.
+      }
+      await page.waitForTimeout(1500);
+      // XML documents (vendor sitemaps): Chromium renders them inside its XML-viewer DOM, so
+      // page.content() would return the viewer wrapper, not the sitemap. The original markup is
+      // preserved under this well-known element — return it verbatim when present.
+      const xml = await page.evaluate(
+        () => document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML ?? null,
+      );
+      return xml ?? (await page.content());
     } finally {
       await context.close();
     }
