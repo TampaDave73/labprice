@@ -17,6 +17,13 @@ Get-Content $envFile | ForEach-Object {
     }
 }
 
-Write-Host "Scraping blocked vendors from this PC into the LIVE site..." -ForegroundColor Cyan
 Set-Location $root
+
+# Make sure the scraper's browser is downloaded (instant no-op when it already is; a few minutes
+# the first time or after a Playwright version bump — this is what the "Executable doesn't exist"
+# failure was).
+Write-Host "Checking the scraper's browser is installed..." -ForegroundColor DarkGray
+pnpm --filter @labprice/scrapers exec playwright install chromium
+
+Write-Host "Scraping blocked vendors from this PC into the LIVE site..." -ForegroundColor Cyan
 pnpm --filter @labprice/worker exec tsx scripts/scrape-vendor-local.ts

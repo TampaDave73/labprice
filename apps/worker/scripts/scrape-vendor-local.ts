@@ -65,7 +65,9 @@ async function main() {
 
   console.log(failures === 0 ? 'Done — all vendors scraped.' : `Done — ${failures} vendor(s) failed (see above).`);
   await prisma.$disconnect();
-  process.exit(failures === 0 ? 0 : 1);
+  // Always exit 0: per-vendor outcomes are reported above, and a nonzero exit makes pnpm append a
+  // misleading ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL banner that buries the real summary.
+  process.exit(0);
 }
 
 main().catch((err) => {
