@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-19)
+- **"Recent Activity" on the admin dashboard was missing most price publishes.** The `price_published`
+  audit-log write only lived in the worker's `scrape-publish` BullMQ job — every other publish path
+  (inline admin "Scrape now", the local CF-blocked-vendor script, and manually approving a change in
+  the Change Queue) called `publishStagedChange()` directly and skipped it entirely. Prices updated
+  correctly either way (offering + PriceHistory were always right), but the dashboard feed silently
+  went stale — a scrape could run clean today and the feed would still show whatever the last
+  *worker-queued* publish was, weeks ago. Moved the audit-log write into `publishStagedChange()`
+  itself (`packages/scrapers/src/catalog/persist.ts`) — the one shared function all ~30 call sites
+  already went through — and had `scrape-publish.ts` delegate to it instead of duplicating the
+  update/history logic, so this can't drift out of sync again.
+
 ### Changed (2026-07-19)
 - **Test page price chart redesigned.** Replaced the per-vendor line chart (unreadable/capped past
   5 vendors) with a single shaded band showing the low-to-high price spread across all vendors over

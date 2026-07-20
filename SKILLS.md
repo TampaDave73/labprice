@@ -116,7 +116,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     URLs (**GoodLabs**). See the dedicated recipe below.
 - **Auto-approval** (shared rules): first price, or a drop/rise within the Settings thresholds,
   auto-approves; **LOW-trust vendors always route to the Change Queue**; HIGH trust gets 1.5×
-  thresholds. Approve → publish writes the live price + price history.
+  thresholds. Approve → publish writes the live price + price history + a `price_published` audit-log
+  row (admin dashboard "Recent Activity" reads that log). All publish paths — the `scrape-publish`
+  queue, inline admin "Scrape now", the local CF-blocked-vendor script, and manually approving in the
+  Change Queue — go through the single `publishStagedChange()` in
+  `packages/scrapers/src/catalog/persist.ts`; don't duplicate its update/history/audit logic per
+  caller (that's exactly how the audit-log write went missing from every path but the queue one,
+  fixed 2026-07-19).
 - **Vendor trust** (`packages/database/src/vendor-trust.ts`): success rate + freshness + reject rate
   → LOW/MEDIUM/HIGH; `Vendor.trustOverride` pins it manually. (Trust is resolved *before* a run is
   created, so a brand-new vendor's first run doesn't self-drag to LOW.)

@@ -1,11 +1,15 @@
 import { Worker, type Job } from 'bullmq';
 import { prisma } from '@labprice/database';
+import { publishStagedChange } from '@labprice/scrapers/src/catalog/persist';
 import { redisConnection } from '../redis';
 
 interface PublishJobData {
   stagedChangeId: string;
 }
 
+// Thin wrapper around the shared publishStagedChange (update + history + audit log all live there
+// now — this job used to duplicate that logic with its own copy, which is how the audit-log write
+// drifted out of sync with the inline/local publish paths; see persist.ts's doc comment).
 export function createPublishWorker() {
   return new Worker<PublishJobData>(
     'scrape-publish',
@@ -13,53 +17,16 @@ export function createPublishWorker() {
       const { stagedChangeId } = job.data;
       console.log(`[publish] Publishing staged change ${stagedChangeId}`);
 
-      const staged = await prisma.stagedPriceChange.findUnique({
-        where: { id: stagedChangeId },
-        include: { offering: true },
-      });
-
+      const staged = await prisma.stagedPriceChange.findUnique({ where: { id: stagedChangeId } });
       if (!staged) {
         throw new Error(`Staged change ${stagedChangeId} not found`);
       }
-
       if (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED') {
         console.log(`[publish] Skipping ${stagedChangeId} — status is ${staged.status}`);
         return { skipped: true };
       }
 
-      // Update the offering with the new price
-      await prisma.offering.update({
-        where: { id: staged.offeringId },
-        data: {
-          previousPrice: staged.oldPrice,
-          currentPrice: staged.newPrice,
-          priceUpdatedAt: new Date(),
-        },
-      });
-
-      // Insert price history record
-      await prisma.priceHistory.create({
-        data: {
-          offeringId: staged.offeringId,
-          oldPrice: staged.oldPrice,
-          newPrice: staged.newPrice,
-          observedAt: staged.scrapedAt,
-          source: 'SCRAPE',
-          scrapeRunId: staged.scrapeRunId,
-        },
-      });
-
-      // Log to audit
-      await prisma.auditLog.create({
-        data: {
-          action: 'price_published',
-          entityType: 'offering',
-          entityId: staged.offeringId,
-          oldValues: { price: staged.oldPrice?.toString() ?? null },
-          newValues: { price: staged.newPrice.toString() },
-        },
-      });
-
+      await publishStagedChange(stagedChangeId);
       console.log(`[publish] Published offering=${staged.offeringId} price=${staged.newPrice}`);
       return { published: true, offeringId: staged.offeringId };
     },

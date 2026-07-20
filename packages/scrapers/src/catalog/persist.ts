@@ -379,7 +379,12 @@ function shouldAutoApprove(oldPrice: Prisma.Decimal | null, newPrice: Prisma.Dec
   return false;
 }
 
-/** Publish one approved/auto-approved staged change to the live offering. */
+/** Publish one approved/auto-approved staged change to the live offering. Single choke point for
+ * every publish path (worker queue, inline "Scrape now", the local CF-blocked-vendor script) — the
+ * `price_published` audit-log write used to live only in the worker's `scrape-publish` job, so any
+ * inline/local publish silently skipped it and the admin dashboard's "Recent Activity" feed went
+ * stale even though prices were updating fine (caught 2026-07-19). Keep publish logic here, not
+ * duplicated per-caller, so this can't drift out of sync again. */
 export async function publishStagedChange(stagedChangeId: string): Promise<boolean> {
   const staged = await prisma.stagedPriceChange.findUnique({ where: { id: stagedChangeId } });
   if (!staged || (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED')) return false;
@@ -391,5 +396,14 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
     data: { offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice, observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId },
   });
   await prisma.stagedPriceChange.update({ where: { id: stagedChangeId }, data: { reviewedAt: new Date() } });
+  await prisma.auditLog.create({
+    data: {
+      action: 'price_published',
+      entityType: 'offering',
+      entityId: staged.offeringId,
+      oldValues: { price: staged.oldPrice?.toString() ?? null },
+      newValues: { price: staged.newPrice.toString() },
+    },
+  });
   return true;
 }
