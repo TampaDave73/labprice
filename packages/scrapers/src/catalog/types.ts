@@ -63,6 +63,14 @@ export interface MatchResult {
   /** Member price of the matched provider, when applicable (MitoHealth). */
   memberPrice?: number | null;
   provider: string | null;
+  /**
+   * Set only under `mergeCodeTiers` (Dirt Cheap Labs) when BOTH labs carry this test at different
+   * prices: the more expensive lab's price/name, so the site can show it as a secondary option
+   * instead of silently discarding it. `price`/`provider` above stay the cheaper lab (the compared,
+   * ranked price) — unchanged behavior for every other vendor.
+   */
+  altPrice?: number | null;
+  altProvider?: string | null;
   sourceUrl: string | null;
   candidates: MatchCandidate[];
   reason: string;

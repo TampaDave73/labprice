@@ -46,6 +46,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   rows are still recorded on every price change (untouched — scrapers, `publish-change.ts`); only the
   chart UI (`PriceHistoryChart.tsx`, deleted) and the page's query for it were removed, so the data's
   there if we build a better visualization later.
+- **Dirt Cheap Labs: the pricier lab is no longer silently dropped.** DCL sells many tests through
+  BOTH Quest and LabCorp at different prices; `mergeCodeTiers` matching always took the cheaper lab
+  and threw the other away. Added `Offering.labProvider` (which lab `currentPrice` came from) and
+  `altLabPrice`/`altLabProvider` (the other lab's price, when it also carries the test) — ranking is
+  unchanged (still the cheaper price), but the test page now shows "$X via LabCorp also available" as
+  a secondary line, same treatment as the existing member-price note. Vendors with only one lab per
+  test are unaffected (alt fields stay null). **Deploy note:** needs `packages/database/prisma/schema.prisma`
+  migrated to prod (`ALTER TABLE offerings ADD COLUMN lab_provider TEXT, ADD COLUMN alt_lab_price
+  DECIMAL(10,2), ADD COLUMN alt_lab_provider TEXT`) before this ships — held back from the
+  2026-07-20 deploy for exactly that reason; see git log for the follow-up commit.
 
 ### Fixed (2026-07-20)
 - **Test pages said "checked 2 weeks ago" despite daily scrapes running fine.** The "checked N ago"

@@ -246,7 +246,11 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   - `ownyourlabs` — Phoenix HTML, `/shop` → `/test/<UUID>`; single Order Code vs both codes
     (`codeMatchAnyProvider`).
   - `dirtcheaplabs` — **API vendor** (`CatalogAdapter.fetchAll`): pulls both lab catalogs from
-    `api.dirtcheaplabs.com/api/catalog/alacarte?lab=…` and takes the cheaper lab (`mergeCodeTiers`).
+    `api.dirtcheaplabs.com/api/catalog/alacarte?lab=…`. Many tests are sold through BOTH Quest and
+    LabCorp at different prices; `mergeCodeTiers` ranks on the cheaper as `currentPrice`/`labProvider`
+    and keeps the other lab's price as `Offering.altLabPrice`/`altLabProvider` (null when only one lab
+    carries the test) — shown on the test page as a secondary "also available via X" line, same
+    treatment as MitoHealth's member price below.
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),

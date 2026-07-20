@@ -52,6 +52,10 @@ export default async function TestDetailPage({ params }: Props) {
     price: Number(o.currentPrice),
     memberPrice: o.memberPrice != null ? Number(o.memberPrice) : null,
     membershipNote: o.vendor.membershipNote ?? null,
+    // Dual-lab vendors (Dirt Cheap Labs): the other lab's price when it also carries this test, so
+    // it's shown as a secondary option instead of silently discarded (price above stays the cheaper).
+    altLabPrice: o.altLabPrice != null ? Number(o.altLabPrice) : null,
+    altLabProvider: o.altLabProvider,
     externalUrl: o.externalUrl,
     // "checked N ago" prefers lastCheckedAt (stamped on every scrape verification, even when the
     // price is unchanged); priceUpdatedAt only moves on a change, which read as false staleness.

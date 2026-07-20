@@ -36,6 +36,21 @@ describe('DCL matching (mergeCodeTiers → cheapest lab)', () => {
     expect(r.provider).toBe('labcorp');
   });
 
+  it('surfaces the pricier lab as altPrice/altProvider instead of dropping it', () => {
+    const test: TestKey = { id: 't', name: 'Ferritin', questCode: '457', labcorpCode: '004598' };
+    const r = matchTestToProducts(test, products, OPTS);
+    expect(r.altPrice).toBe(6.22);
+    expect(r.altProvider).toBe('quest');
+  });
+
+  it('leaves altPrice/altProvider null when only one lab carries the test', () => {
+    // These B12 codes don't hit in this fixture set, so matching falls through to the name tier,
+    // which never sets alt (mergeCodeTiers alt logic only runs in the code-hit branch).
+    const test: TestKey = { id: 't', name: 'Vitamin B12', questCode: '927', labcorpCode: '000429' };
+    const r = matchTestToProducts(test, products, OPTS);
+    expect(r.altPrice ?? null).toBeNull();
+  });
+
   it('drops a wrong-test code hit via name corroboration (TSH quest 867 = "T4 Total")', () => {
     // Seed TSH quest=867 actually resolves to "T4 (Thyroxine), Total" at Quest; only the LabCorp code
     // (004259 → "TSH") is name-compatible, so we price TSH at LabCorp $6.50 instead of the $2.99 T4.

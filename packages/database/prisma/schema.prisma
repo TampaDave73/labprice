@@ -354,6 +354,14 @@ model Offering {
   // `currentPrice` stays the non-member price so cross-vendor ranking is apples-to-apples; the member
   // price is shown as a secondary inline note. See Vendor.membershipNote for the membership terms.
   memberPrice    Decimal?  @map("member_price") @db.Decimal(10, 2)
+  // Which lab fulfills currentPrice ('quest' | 'labcorp' | null) — only meaningfully populated for
+  // vendors matched via mergeCodeTiers (Dirt Cheap Labs sells the same test through both labs at
+  // different prices). altLabPrice/altLabProvider hold the OTHER lab's price when both exist, so it
+  // can be shown as a secondary option instead of silently discarded (currentPrice/labProvider stay
+  // the cheaper lab — unchanged ranking behavior). See packages/scrapers catalog/matcher.ts.
+  labProvider    String?   @map("lab_provider")
+  altLabPrice    Decimal?  @map("alt_lab_price") @db.Decimal(10, 2)
+  altLabProvider String?   @map("alt_lab_provider")
   priceUpdatedAt DateTime? @map("price_updated_at")
   // When a scraper last VERIFIED this price (changed or unchanged). priceUpdatedAt only moves on a
   // price change, so the site's "checked N ago" freshness reads this — not priceUpdatedAt.

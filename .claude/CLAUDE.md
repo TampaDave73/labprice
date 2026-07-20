@@ -99,7 +99,10 @@ user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs th
    module. Live adapters: **GoodLabs** (JSON-LD + flight chunks; `/tests/<slug>`), **Own Your Labs**
    (Phoenix HTML; `/shop` → `/test/<UUID>`, single Order Code vs both codes via `codeMatchAnyProvider`),
    **Dirt Cheap Labs** (API vendor: `CatalogAdapter.fetchAll` pulls both lab catalogs from
-   `api.dirtcheaplabs.com`, `mergeCodeTiers` takes the cheaper lab), and **MitoHealth** (API vendor,
+   `api.dirtcheaplabs.com`; `mergeCodeTiers` ranks on the cheaper lab as `currentPrice`/`labProvider`,
+   and when BOTH labs carry the test, the pricier one is kept as `Offering.altLabPrice`/
+   `altLabProvider` — shown as a secondary "also available via X" line, not discarded), and
+   **MitoHealth** (API vendor,
    tRPC catalog; $9/mo membership → `Offering.memberPrice`/`Vendor.membershipNote`, ranked on the
    non-member price, no lab codes so name-matched). A vendor is catalog-mode when
    `selectors.mode === 'catalog'`, `selectors.adapter` picks the parser. Runs **inline in the web app**

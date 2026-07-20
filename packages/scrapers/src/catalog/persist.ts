@@ -294,7 +294,15 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     // Queue, which governs only the compared non-member currentPrice). lastCheckedAt is stamped on
     // EVERY match — an unchanged price is still a verified price, and the site's "checked N ago"
     // freshness reads it (priceUpdatedAt only moves on a change).
-    const offeringUpdate: Record<string, unknown> = { lastCheckedAt: new Date() };
+    // labProvider/altLab* are set unconditionally (not `if present`, unlike externalUrl/memberPrice
+    // above) so a lab that stops carrying this test clears its stale alt price next scrape instead
+    // of leaving a phantom "also available at $X" forever.
+    const offeringUpdate: Record<string, unknown> = {
+      lastCheckedAt: new Date(),
+      labProvider: result.provider ?? null,
+      altLabPrice: result.altPrice != null ? new Decimal(result.altPrice) : null,
+      altLabProvider: result.altProvider ?? null,
+    };
     if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
     if (result.memberPrice != null) offeringUpdate.memberPrice = new Decimal(result.memberPrice);
     await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });

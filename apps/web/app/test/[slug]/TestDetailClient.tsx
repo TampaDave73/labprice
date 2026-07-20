@@ -11,6 +11,9 @@ interface Offering {
   price: number;
   memberPrice: number | null;
   membershipNote: string | null;
+  // Dual-lab vendors (Dirt Cheap Labs): the other lab's price, when it also carries this test.
+  altLabPrice: number | null;
+  altLabProvider: string | null;
   externalUrl: string | null;
   // Last scrape VERIFICATION (lastCheckedAt, falling back to priceUpdatedAt server-side) — feeds
   // the "checked N ago" dot, so it must move on every check, not just price changes.
@@ -85,6 +88,13 @@ const BEST = {
 };
 
 const ACCENT = 'oklch(0.58 0.136 230)';
+
+// 'quest' | 'labcorp' → 'Quest' | 'LabCorp' for the dual-lab secondary-price line.
+function labLabel(provider: string | null): string {
+  if (provider === 'quest') return 'Quest';
+  if (provider === 'labcorp') return 'LabCorp';
+  return provider ?? '';
+}
 
 export default function TestDetailClient({ test, offerings }: Props) {
   const [sortBy, setSortBy] = useState<'price' | 'alpha'>('price');
@@ -370,6 +380,13 @@ export default function TestDetailClient({ test, offerings }: Props) {
                       <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 230)', marginTop: 2, lineHeight: 1.3 }}>
                         ${row.memberPrice.toFixed(2)} for members
                         {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 230)' }}> ({row.membershipNote})</span> : null}
+                      </div>
+                    )}
+                    {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
+                        LabCorp — the price above is the cheaper; the other lab is still an option. */}
+                    {row.altLabPrice != null && (
+                      <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 230)', marginTop: 2, lineHeight: 1.3 }}>
+                        ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
                       </div>
                     )}
                   </div>

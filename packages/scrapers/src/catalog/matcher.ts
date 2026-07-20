@@ -74,7 +74,10 @@ export function matchTestToProducts(
         const priced = [...trusted].filter((h) => h.provider.price != null).sort((a, b) => a.provider.price! - b.provider.price!);
         const best = priced[0] ?? trusted[0]!;
         const tier: MatchTier = !!test.questCode && best.provider.labTestIDs.includes(test.questCode) ? 'quest' : 'labcorp';
-        return matched(tier, best, trusted.map(toCandidate));
+        // The OTHER lab, if it also carries this test at a (necessarily higher, since `priced` is
+        // sorted ascending) price — surfaced as a secondary option rather than silently dropped.
+        const altBest = priced.find((h) => h.provider.labProvider !== best.provider.labProvider);
+        return matched(tier, best, trusted.map(toCandidate), altBest);
       }
       // Every code hit was name-incompatible → the codes are suspect; fall through to the name tier.
     }
@@ -147,13 +150,15 @@ function tierMatches(
   return subset && (sharesStrongToken(test.name, product.name) || sharesStrongToken(test.name, provider.name));
 }
 
-function matched(tier: MatchTier, best: Flat, candidates: MatchCandidate[]): MatchResult {
+function matched(tier: MatchTier, best: Flat, candidates: MatchCandidate[], alt?: Flat): MatchResult {
   return {
     status: 'matched',
     matchedBy: tier,
     price: best.provider.price,
     memberPrice: best.provider.memberPrice ?? null,
     provider: best.provider.labProvider,
+    altPrice: alt?.provider.price ?? null,
+    altProvider: alt ? alt.provider.labProvider : null,
     sourceUrl: best.product.url,
     candidates,
     reason: `Matched by ${tier} → ${best.product.name} (${best.provider.labProvider}) $${best.provider.price}.`,
