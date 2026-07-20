@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 type Change = {
   id: string;
@@ -18,8 +19,12 @@ type Change = {
 const TABS = ['All', 'PENDING', 'APPROVED', 'REJECTED'] as const;
 
 export default function ChangeQueuePage() {
+  // ?status=PENDING deep-links from the dashboard's attention cards straight to a filtered tab.
+  const initialStatus = useSearchParams().get('status');
   const [changes, setChanges] = useState<Change[]>([]);
-  const [tab, setTab] = useState<string>('All');
+  const [tab, setTab] = useState<string>(
+    initialStatus && (TABS as readonly string[]).includes(initialStatus) ? initialStatus : 'All',
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 

@@ -65,7 +65,17 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   object/form-action locked down; inline styles+scripts allowed because public pages need them).
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
-- **Dashboard** — KPI counts + recent audit activity.
+- **Dashboard** — a "Needs attention" row (pending price changes, low-trust vendors, scrape failures
+  last 7 days, pending suggestions — each card counts waiting work and deep-links to the filtered
+  view: `/admin/changes?status=PENDING`, `/admin/vendors?sort=trust&dir=asc`,
+  `/admin/suggestions?status=PENDING`; the Change Queue/Suggestions/Vendors pages read those params
+  as initial filter state), then KPI counts + recent audit activity (linking to the full Audit Log).
+  Zero counts render green so "all clear" is explicit.
+- **Audit Log** (`/admin/audit`) — the searchable audit trail: filter by action / entity type /
+  actor (incl. "System" for scraper writes) / date range, 50-row pages, via
+  `GET /api/v1/admin/audit`. Rows are humanized by the shared `lib/audit-describe.ts` (also used by
+  the dashboard feed); the API batch-resolves offering/test/vendor entity ids into names and returns
+  the filter vocabularies (distinct actions/types/actors) for the dropdowns.
 - **Tests** — list (sortable, search) + editor: name/codes/copy fields, **Categories multi-select
   (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete.
   - **✨ Auto-fill** (next to the name): `POST /api/v1/admin/tests/lookup` fills short name, slug,
@@ -78,7 +88,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     `/api/v1/admin/tests/[id]/vendors`; attaching a catalog vendor auto-scrapes the price inline.
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
-- **Vendors** — list (sortable incl. by trust) + **Add Vendor**; editor has: details, **Trust
+- **Vendors** — list (sortable incl. by trust) + **Add Vendor** + **Scrape all catalog vendors**
+  (one click queues a `scrape-discover` job for every active catalog-mode vendor via
+  `POST /api/v1/admin/vendors/scrape-all` — all via the worker, nothing inline: 15 sequential
+  catalog crawls in one request would time out; per-URL vendors are excluded on purpose); editor has: details, **Trust
   Override + Scraper Health panel**, **Recent Runs** (last 15 `ScrapeRun`s with status/trigger/
   duration/found-updated counts + any `ScrapeError` messages inline — `GET
   /api/v1/admin/vendors/[id]/runs` — the live insight into scraping failures, so an admin doesn't need
@@ -369,9 +382,10 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   `ioredis` connection "succeeds" (TCP connects) then resets on the first real read/write, over and over,
   looking exactly like a Redis outage even though `redis-cli PING` and Postgres both work fine at the
   same time. `apps/worker/src/redis.ts` already normalizes `localhost` → `127.0.0.1` for the worker's own
-  connections; `apps/web/.../vendors/[id]/scrape/route.ts` needed the identical fix for its own ad-hoc
-  `new IORedis(...)` calls (found live 2026-07-04 debugging the queued-scrape fix above — don't add a raw
-  `new IORedis('redis://localhost:6379')` anywhere in this codebase again).
+  connections; the web app's ad-hoc producers (single-vendor scrape route, bulk scrape-all route) get
+  the same fix from `apps/web/lib/redis-options.ts` (found live 2026-07-04 debugging the queued-scrape
+  fix above — in web code, always build connections from that helper; never a raw
+  `new IORedis('redis://localhost:6379')`).
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds

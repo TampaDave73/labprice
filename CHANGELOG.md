@@ -9,6 +9,26 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-20, ops-audit S-tier)
+- **Dashboard "Needs attention" row** (`/admin`). Four cards — pending price changes, low-trust
+  vendors, scrape failures (7d), pending suggestions — each showing the count of work waiting
+  (amber when >0, green at zero) and deep-linking to the filtered view. Low-trust/failure cards
+  list the vendor names inline. The Change Queue (`?status=`), Suggestions (`?status=`), and
+  Vendors (`?sort=&dir=`) pages now read initial filter state from the URL to make those deep
+  links work. Old KPI tiles (tests/vendors/offerings) kept below; "Pending Changes" moved into
+  the attention row.
+- **"Scrape all catalog vendors" button** on `/admin/vendors`
+  (`POST /api/v1/admin/vendors/scrape-all`): queues a `scrape-discover` job for every active
+  catalog-mode vendor in one click, replacing per-vendor Scrape Now × 15 (or the hand-written SSH
+  script from the Dirt Cheap Labs re-check). Runs entirely via the worker — nothing inline. The
+  web app's ad-hoc Redis producer options were factored into `apps/web/lib/redis-options.ts`
+  (was duplicated inline in the single-vendor scrape route).
+- **Searchable Audit Log** (`/admin/audit`, in the sidebar): action / entity type / actor
+  (incl. "System" for scraper writes) / date-range filters + 50-row pagination over `AuditLog`
+  via `GET /api/v1/admin/audit`; entity ids are batch-resolved into names ("Vitamin D at
+  Walk-In Lab"). The dashboard's row-humanizing logic moved to the shared
+  `apps/web/lib/audit-describe.ts`; its Recent Activity feed now links "View all →" here.
+
 ### Added (2026-07-20)
 - **Admin Analytics overhauled** (`/admin/analytics`). Was 3 KPI totals + 5 tables with no sense of
   trend; now: each KPI tile carries a 12ish-point sparkline, a new "Traffic over time" line chart

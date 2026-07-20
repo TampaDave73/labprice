@@ -92,6 +92,16 @@ const navItems = [
     ),
   },
   {
+    label: 'Audit Log',
+    href: '/admin/audit',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="10" cy="10" r="7" />
+        <path d="M10 6v4l2.5 2.5" />
+      </svg>
+    ),
+  },
+  {
     label: 'Users',
     href: '/admin/users',
     icon: (

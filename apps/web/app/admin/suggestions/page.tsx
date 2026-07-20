@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 type Status = 'PENDING' | 'REVIEWED' | 'DISMISSED';
 type Kind = 'vendor' | 'test' | 'report';
@@ -80,11 +81,15 @@ const STATUS_TABS: { key: Status | 'ALL'; label: string }[] = [
 ];
 
 export default function SuggestionsPage() {
+  // ?status= deep-links from the dashboard's attention cards straight to a filtered tab.
+  const initialStatus = useSearchParams().get('status');
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [statusTab, setStatusTab] = useState<Status | 'ALL'>('PENDING');
+  const [statusTab, setStatusTab] = useState<Status | 'ALL'>(
+    initialStatus && STATUS_TABS.some((t) => t.key === initialStatus) ? (initialStatus as Status | 'ALL') : 'PENDING',
+  );
   const [kindFilter, setKindFilter] = useState<Kind | 'ALL'>('ALL');
 
   function load() {
