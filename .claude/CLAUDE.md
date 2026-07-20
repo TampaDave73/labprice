@@ -109,6 +109,13 @@ user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs th
    ("Scrape now"/add-test) and via the `scrape-discover` worker. Match priority Quest→LabCorp→name;
    panels excluded; a code hit must also share a **distinctive** name token (guards wrong/stale codes);
    >1 surviving price ⇒ ambiguous. Details in `SKILLS.md`.
+   **Ingest layer (2026-07-20):** every crawl also upserts EVERYTHING it saw into `VendorProduct`
+   (nothing discarded); strict auto-match (exact code/alias only) sets `testId` but **never creates
+   offerings** — listing happens in `/admin/discovered` (promote/attach/list), which also **learns
+   `TestAlias` rows** that feed both auto-matching and the pricing name tier/narrowing. **Panels stay
+   excluded from matching/clustering** (user decision 2026-07-20: no two vendors sell the same panel).
+   Tests are editable in bulk via CSV export→edit→import on `/admin/tests` (identity only, no prices;
+   dry-run diff before apply).
 8. **`git push` hangs over HTTP/2 on this Windows box.** Always push with
    `git -c http.version=HTTP/1.1 push`. Git Credential Manager can also stall a push waiting on an
    auth popup; retrying (or backgrounding the push) usually clears it. Push after every commit unless

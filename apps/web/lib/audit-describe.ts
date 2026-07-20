@@ -36,6 +36,32 @@ export function describeAuditRow(log: AuditRow, entityLabel: string | null): { t
         detail: oldPrice ? `$${oldPrice} → $${newPrice}` : `first price: $${newPrice}`,
       };
     }
+    case 'test_promoted': {
+      const v = json(log.newValues);
+      const from = Array.isArray(v.from) ? v.from : [];
+      return {
+        title: `Test created from discovered products — ${(v.name as string) ?? entityLabel ?? 'new test'}${who ? ` by ${who}` : ''}`,
+        detail: from.length ? `from ${from.length} vendor product(s): ${from.slice(0, 3).join('; ')}${from.length > 3 ? '…' : ''}` : null,
+      };
+    }
+    case 'products_attached':
+    case 'products_listed': {
+      const v = json(log.newValues);
+      const products = Array.isArray(v.products) ? v.products : [];
+      const verb = log.action === 'products_attached' ? 'attached to' : 'listed for';
+      return {
+        title: `${products.length} discovered product(s) ${verb} ${entityLabel ?? 'a test'}${who ? ` by ${who}` : ''}`,
+        detail: `${v.offeringsCreated ?? 0} offering(s) created, ${v.aliasesLearned ?? 0} alias(es) learned`,
+      };
+    }
+    case 'tests.csv_import': {
+      const v = json(log.newValues);
+      const cats = Array.isArray(v.newCategories) && v.newCategories.length ? `, ${v.newCategories.length} new categor${v.newCategories.length === 1 ? 'y' : 'ies'}` : '';
+      return {
+        title: `Tests CSV imported${who ? ` by ${who}` : ''}`,
+        detail: `${v.created ?? 0} created, ${v.updated ?? 0} updated, ${v.unchanged ?? 0} unchanged${cats}`,
+      };
+    }
     case 'analytics.reset': {
       const v = json(log.oldValues);
       return {

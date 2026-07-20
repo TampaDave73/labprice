@@ -71,6 +71,28 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `/admin/suggestions?status=PENDING`; the Change Queue/Suggestions/Vendors pages read those params
   as initial filter state), then KPI counts + recent audit activity (linking to the full Audit Log).
   Zero counts render green so "all clear" is explicit.
+- **Discovered** (`/admin/discovered`) — the review queue over the **VendorProduct ingest layer**
+  (see "Ingest layer" under the scrape pipeline). Unmatched, non-panel products clustered across
+  vendors (shared Quest/LabCorp code, else distinctive name tokens). Actions per cluster: **Promote
+  to test** (creates Test + TestCategory + offerings with observed prices), **Attach to existing**
+  (creates offerings), **Ignore** (reversible; Ignored tab restores). Attach/promote/list all
+  **learn aliases**: a confirmed product name that differs from the test's known names becomes a
+  `TestAlias` (source = vendor slug). "Matched, not listed" tab = auto-matched products with no
+  offering yet — `List`/`List all` creates them (matching NEVER auto-publishes an offering). Panels
+  tab is display-only (panels excluded from matching by decision 2026-07-20 — no two vendors sell
+  the same panel). Top of the page: **demand chips** — zero-result `SearchLog` queries that overlap
+  an unmatched product name. `GET/POST /api/v1/admin/discovered` (actions: attach/promote/ignore/
+  restore/list).
+- **Coverage** (`/admin/coverage`) — tests × vendors matrix: green price = live offering, amber dot
+  = vendor sells it per the ingest layer but no offering exists, blank = not carried.
+  `GET /api/v1/admin/coverage`.
+- **Tests CSV round-trip** — `Export CSV` / `Import CSV` buttons on /admin/tests
+  (`GET /api/v1/admin/tests/export`, `POST /api/v1/admin/tests/import`). Identity fields only
+  (id-anchored; name, short_name, slug, codes, categories|pipes, aliases|pipes, is_popular) —
+  **no prices by design** (sheet owns identity, scrapers own prices). Import is always previewed
+  (dry-run diff → confirm), errors block the whole file, applies are transactional + audit-logged.
+  Blank id = create new; categories/aliases are full-set replace; unknown categories get created.
+  CSV helpers in `apps/web/lib/csv.ts` (BOM, quoted fields — Excel-safe).
 - **Audit Log** (`/admin/audit`) — the searchable audit trail: filter by action / entity type /
   actor (incl. "System" for scraper writes) / date range, 50-row pages, via
   `GET /api/v1/admin/audit`. Rows are humanized by the shared `lib/audit-describe.ts` (also used by
@@ -134,6 +156,18 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 ### Scrape pipeline (`apps/worker`, `@labprice/scrapers`)
 - Queues (BullMQ, hyphenated names): `scrape-schedule` → `scrape-execute` → `scrape-publish`, plus
   `scrape-discover` for catalog-mode vendors.
+- **Ingest layer (`VendorProduct`, 2026-07-20)**: every catalog crawl now ALSO upserts everything it
+  saw into `vendor_products` (`ingestVendorProducts` in `persist.ts`, called at the end of
+  `runVendorDiscovery`; non-fatal + idempotent on `[vendorId, slug]`). `discover()` returns
+  `entries` (the full listing) alongside `products` — page vendors' narrow crawls record name+URL
+  rows for unfetched pages (detail fields are never nulled by a detail-less crawl). Auto-match is
+  STRICT: exact code hit guarded by `sharesStrongToken`, or exact `normalizeName` equality against
+  test names + aliases → `status=MATCHED` (no offering created!); token-subset fuzzy →
+  `suggestedTestId` only. Rows already MATCHED/IGNORED are admin-owned — the ingest only refreshes
+  their detail/lastSeenAt. Aliases (`TestAlias`) feed pricing too: `TestKey.aliases` is consulted by
+  the name tier and by catalog narrowing, so confirming a vendor's odd naming once makes that test
+  price automatically on later crawls (verified: CSV-imported test auto-matched by exact name on the
+  next fixture run).
 - Two scrape strategies:
   - **Per-URL** (`scrape-execute.ts`): each offering stores a product `externalUrl`; the engine fetches
     it and reads the price via the vendor's CSS selectors. Original path; for vendors with stable

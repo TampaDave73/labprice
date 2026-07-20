@@ -60,6 +60,26 @@ const navItems = [
     ),
   },
   {
+    label: 'Discovered',
+    href: '/admin/discovered',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="9" cy="9" r="5.5" />
+        <path d="M13 13l4.5 4.5" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Coverage',
+    href: '/admin/coverage',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="3" y="3" width="14" height="14" rx="1" />
+        <path d="M3 8h14M3 13h14M8 3v14M13 3v14" />
+      </svg>
+    ),
+  },
+  {
     label: 'Offerings',
     href: '/admin/offerings',
     icon: (

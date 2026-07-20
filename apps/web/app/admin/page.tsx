@@ -41,6 +41,9 @@ export default async function AdminDashboard() {
     }),
   ]);
 
+  // Discovered products waiting for review (unmatched, non-panel — the /admin/discovered queue).
+  const discoveredCount = await prisma.vendorProduct.count({ where: { status: 'UNMATCHED', isPanel: false } });
+
   const pendingSuggestions = pendingVendorSuggestions + pendingTestSuggestions + pendingErrorReports;
   const failingVendors = [...new Set(failedRuns.map((r) => r.vendor.name))];
 
@@ -87,6 +90,12 @@ export default async function AdminDashboard() {
       href: '/admin/suggestions?status=PENDING',
       hint: 'suggestions + error reports to triage',
     },
+    {
+      label: 'Discovered products',
+      count: discoveredCount,
+      href: '/admin/discovered',
+      hint: discoveredCount ? 'vendor products awaiting review' : 'every scraped product is matched or reviewed',
+    },
   ];
 
   const kpis = [
@@ -100,7 +109,7 @@ export default async function AdminDashboard() {
       <h1 className="admin-h1 mb-6">Dashboard</h1>
 
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-brand-400">Needs attention</h2>
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {attention.map((a) => (
           <Link key={a.label} href={a.href} className="admin-card block p-5 transition-shadow hover:shadow-md">
             <div className="flex items-baseline justify-between gap-2">
