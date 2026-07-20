@@ -172,6 +172,10 @@ export function createExecuteWorker() {
         },
       });
 
+      // Every successful scrape is a verification — stamp lastCheckedAt even when the price is
+      // unchanged, so the site's "checked N ago" reflects checks, not just changes.
+      await prisma.offering.update({ where: { id: offeringId }, data: { lastCheckedAt: new Date() } });
+
       // Check if price changed (BR-9: skip if unchanged)
       const priceChanged = !offering.currentPrice || !scrapedPrice.equals(offering.currentPrice);
 

@@ -234,6 +234,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   }
 
   const summary: DiscoverySummary = { runId: run.id, matched: 0, ambiguous: 0, unmatched: 0, staged: 0, autoApprovedStagedIds: [] };
+  let pricesChanged = 0; // matched AND price moved — the true "updated" count for the run record
   const fetchHtml = opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders);
   const productsBySlug = new Map(catalogProducts.map((p) => [p.slug, p]));
 
@@ -290,19 +291,20 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     // matched
     summary.matched++;
     // Store the product URL + member price (secondary info, updated live — not subject to the Change
-    // Queue, which governs only the compared non-member currentPrice).
-    const offeringUpdate: Record<string, unknown> = {};
+    // Queue, which governs only the compared non-member currentPrice). lastCheckedAt is stamped on
+    // EVERY match — an unchanged price is still a verified price, and the site's "checked N ago"
+    // freshness reads it (priceUpdatedAt only moves on a change).
+    const offeringUpdate: Record<string, unknown> = { lastCheckedAt: new Date() };
     if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
     if (result.memberPrice != null) offeringUpdate.memberPrice = new Decimal(result.memberPrice);
-    if (Object.keys(offeringUpdate).length > 0) {
-      await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
-    }
+    await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
     const price = new Decimal(result.price!);
     const priceChanged = !offering.currentPrice || !price.equals(offering.currentPrice);
     await prisma.scrapeResult.create({
       data: { runId: run.id, testId: test.id, status: priceChanged ? 'PRICE_CHANGED' : 'PRICE_SAME', matchedOfferingId: offering.id, scrapedPrice: price },
     });
     if (priceChanged) {
+      pricesChanged++;
       const autoApprove = shouldAutoApprove(offering.currentPrice, price, trust, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
       const staged = await prisma.stagedPriceChange.create({
         data: {
@@ -316,10 +318,13 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     }
   }
 
+  // pricesUpdated = prices that actually CHANGED (staged for publish), not matches — recording
+  // summary.matched here made every run look like a mass update when most prices were merely
+  // re-verified unchanged (misled the 2026-07-19 staleness investigation).
   await prisma.scrapeRun.update({
     where: { id: run.id },
     data: {
-      status: 'SUCCESS', testsFound: matches.length, pricesUpdated: summary.matched, pricesUnchanged: 0,
+      status: 'SUCCESS', testsFound: matches.length, pricesUpdated: pricesChanged, pricesUnchanged: summary.matched - pricesChanged,
       errorsCount: 0, durationMs: Date.now() - started, completedAt: new Date(),
     },
   });
@@ -390,7 +395,7 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
   if (!staged || (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED')) return false;
   await prisma.offering.update({
     where: { id: staged.offeringId },
-    data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date() },
+    data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
   });
   await prisma.priceHistory.create({
     data: { offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice, observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId },

@@ -53,7 +53,9 @@ export default async function TestDetailPage({ params }: Props) {
     memberPrice: o.memberPrice != null ? Number(o.memberPrice) : null,
     membershipNote: o.vendor.membershipNote ?? null,
     externalUrl: o.externalUrl,
-    priceUpdatedAt: o.priceUpdatedAt ? o.priceUpdatedAt.toISOString() : null,
+    // "checked N ago" prefers lastCheckedAt (stamped on every scrape verification, even when the
+    // price is unchanged); priceUpdatedAt only moves on a change, which read as false staleness.
+    checkedAt: (o.lastCheckedAt ?? o.priceUpdatedAt)?.toISOString() ?? null,
   }));
 
   // Price history (last 12 months) for the chart — only rows for the offerings shown above.

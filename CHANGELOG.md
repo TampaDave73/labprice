@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-20)
+- **Test pages said "checked 2 weeks ago" despite daily scrapes running fine.** The "checked N ago"
+  freshness line/dots read `Offering.priceUpdatedAt`, which only moves when a price *changes* — an
+  unchanged price re-verified every morning still displayed its last change date (July 2–5), making
+  the whole site look abandoned. Added `Offering.lastCheckedAt`, stamped on every successful scrape
+  verification (catalog discovery match, per-URL scrape-execute, and both publish paths), and the
+  test page now reads `lastCheckedAt ?? priceUpdatedAt`. Also fixed `ScrapeRun.pricesUpdated`, which
+  recorded the *matched* count (with `pricesUnchanged` hardcoded 0) — every run looked like a mass
+  update, which sent the staleness investigation down the wrong path; it now records actual price
+  changes, with the rest in `pricesUnchanged`.
+
 ### Fixed (2026-07-19)
 - **"Recent Activity" on the admin dashboard was missing most price publishes.** The `price_published`
   audit-log write only lived in the worker's `scrape-publish` BullMQ job — every other publish path

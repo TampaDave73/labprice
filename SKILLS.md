@@ -19,7 +19,9 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     that respects a test's *full* category set (`components/HomeTestList.tsx`).
 - **Test detail** (`test/[slug]`) — price-comparison table across vendors, **best-price** banner
   (green), savings, sortable; accordion (About / How It's Performed / How To Prepare / Normal Ranges);
-  a "**Prices last checked N ago**" freshness line (from the freshest offering `priceUpdatedAt`);
+  a "**Prices last checked N ago**" freshness line (from the freshest offering `lastCheckedAt`,
+  falling back to `priceUpdatedAt` — `lastCheckedAt` is stamped on every scrape verification even
+  when the price is unchanged; `priceUpdatedAt` only moves on a change);
   JSON-LD `MedicalTest`. Fully public + ISR-cacheable (no `auth()` — Save/Price-Alert were removed).
 - **Category pages** (`category/[slug]`) — lists tests via the many-to-many, so a test appears under
   every category it belongs to.

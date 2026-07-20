@@ -13,7 +13,9 @@ interface Offering {
   memberPrice: number | null;
   membershipNote: string | null;
   externalUrl: string | null;
-  priceUpdatedAt: string | null;
+  // Last scrape VERIFICATION (lastCheckedAt, falling back to priceUpdatedAt server-side) — feeds
+  // the "checked N ago" dot, so it must move on every check, not just price changes.
+  checkedAt: string | null;
 }
 
 interface TestInfo {
@@ -93,7 +95,7 @@ export default function TestDetailClient({ test, offerings, priceHistory }: Prop
 
   // Freshest price-check timestamp across all listings, for the "last checked" trust line.
   const lastChecked = offerings
-    .map((o) => o.priceUpdatedAt)
+    .map((o) => o.checkedAt)
     .filter((t): t is string => t != null)
     .sort()
     .at(-1);
@@ -350,13 +352,13 @@ export default function TestDetailClient({ test, offerings, priceHistory }: Prop
                         &#10003; Best Price
                       </div>
                     )}
-                    {row.priceUpdatedAt && (
+                    {row.checkedAt && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
                         <span
-                          style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.priceUpdatedAt) }}
+                          style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
                           aria-hidden="true"
                         />
-                        <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 230)' }}>checked {relativeTime(row.priceUpdatedAt)}</span>
+                        <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 230)' }}>checked {relativeTime(row.checkedAt)}</span>
                       </div>
                     )}
                   </div>

@@ -29,6 +29,7 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
         previousPrice: staged.oldPrice,
         currentPrice: staged.newPrice,
         priceUpdatedAt: new Date(),
+        lastCheckedAt: new Date(),
         ...(discoveredUrl && !staged.offering.externalUrl ? { externalUrl: discoveredUrl } : {}),
       },
     });

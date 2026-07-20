@@ -355,6 +355,9 @@ model Offering {
   // price is shown as a secondary inline note. See Vendor.membershipNote for the membership terms.
   memberPrice    Decimal?  @map("member_price") @db.Decimal(10, 2)
   priceUpdatedAt DateTime? @map("price_updated_at")
+  // When a scraper last VERIFIED this price (changed or unchanged). priceUpdatedAt only moves on a
+  // price change, so the site's "checked N ago" freshness reads this — not priceUpdatedAt.
+  lastCheckedAt  DateTime? @map("last_checked_at")
   externalUrl    String?   @map("external_url")
   isActive       Boolean   @default(true) @map("is_active")
   deletedAt      DateTime? @map("deleted_at")
