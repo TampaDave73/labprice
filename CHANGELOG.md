@@ -9,6 +9,44 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-20)
+- **Admin Analytics overhauled** (`/admin/analytics`). Was 3 KPI totals + 5 tables with no sense of
+  trend; now: each KPI tile carries a 12ish-point sparkline, a new "Traffic over time" line chart
+  (page views + unique visitors, hover crosshair + tooltip), a "Top pages" table (every page, not just
+  test pages), and a "Top referrers" table — `AffiliateClick.referrer` had been logged since day one
+  but never surfaced anywhere. Chart hand-rolled in SVG per the dataviz skill (validated blue/green
+  categorical pair, 2px lines, hairline gridlines, legend, crosshair).
+- **Fixed: "unique visitors" was structurally impossible before this** — `sessionId` was accepted by
+  the API/schema but the client never sent one, so every `PageView`/`SearchLog`/`AffiliateClick` row
+  had `sessionId = null`. Added an anonymous `sid` cookie (`middleware.ts`, httpOnly, 180-day) read
+  server-side by the event/click routes instead of trusting a client-supplied value — this also covers
+  the affiliate-click redirect for free (a plain `<a href>` navigation, not a fetch a script could
+  attach an id to). `PageViewTracker` was also only mounted on test pages; now also on the homepage
+  and category pages, so "Top pages" isn't test-only either. Historical rows stay `null` — only new
+  traffic gets a session id.
+- **GA4 scaffold added** (`GoogleAnalytics.tsx` + `NEXT_PUBLIC_GA_MEASUREMENT_ID`). Renders nothing
+  until that env var is set (currently unset everywhere) — a true no-op, not a live integration.
+  Never fires on `/admin/*` (would otherwise pollute reports with staff usage). CSP
+  (`middleware.ts`) allows `googletagmanager.com`/`google-analytics.com` unconditionally since the
+  script never requests them while unconfigured. **Pulling GA4's own reports (sessions, geo, device,
+  funnels) into the admin dashboard is a separate follow-up** — that needs a GA4 property + service
+  account credentials only the site owner can provide (see TODO below).
+
+### Changed (2026-07-20, cont'd)
+- **Admin Suggestions reworked.** Replaced the three-card-grid layout with one sortable table (matches
+  the Offerings/Users admin pattern) with status tabs (Pending/Reviewed/Dismissed/All) and a type
+  filter. Dismiss now actually archives — it's filtered out of the default Pending view instead of
+  just changing a badge color forever. Added a real permanent-delete action
+  (`DELETE /api/v1/admin/suggestions/[id]?kind=...`) — these are public-form leads, not audited data,
+  so no soft-delete/undo, matching the `confirm()`-gated delete pattern used elsewhere in admin.
+
+### Changed (2026-07-20)
+- **Price history chart removed from test pages** — it never read well once a test had more than a
+  few vendors (the redesign to a low/high band in the last release didn't fix that). `PriceHistory`
+  rows are still recorded on every price change (untouched — scrapers, `publish-change.ts`); only the
+  chart UI (`PriceHistoryChart.tsx`, deleted) and the page's query for it were removed, so the data's
+  there if we build a better visualization later.
+
 ### Fixed (2026-07-20)
 - **Test pages said "checked 2 weeks ago" despite daily scrapes running fine.** The "checked N ago"
   freshness line/dots read `Offering.priceUpdatedAt`, which only moves when a price *changes* — an

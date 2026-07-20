@@ -21,6 +21,49 @@ function isRecordNotFound(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2025';
 }
 
+const KINDS = ['vendor', 'test', 'report'] as const;
+type Kind = (typeof KINDS)[number];
+
+function deleteByKind(kind: Kind, id: string) {
+  return kind === 'vendor'
+    ? prisma.vendorSuggestion.delete({ where: { id } })
+    : kind === 'test'
+      ? prisma.testSuggestion.delete({ where: { id } })
+      : prisma.resultErrorReport.delete({ where: { id } });
+}
+
+// Permanent delete — these are lightweight, spam-prone public-form leads (not price/audit data), so
+// unlike most admin deletes there's no soft-delete/undo: once triaged (reviewed/dismissed) or
+// obviously spam, just remove it. Dismiss (PATCH status=DISMISSED) is the reversible "archive" step.
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ error: { code: 'forbidden', message: 'Admin access required' } }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const kindParam = req.nextUrl.searchParams.get('kind');
+  if (!kindParam || !(KINDS as readonly string[]).includes(kindParam)) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: `?kind= must be one of ${KINDS.join(', ')}` } },
+      { status: 400 },
+    );
+  }
+
+  try {
+    await deleteByKind(kindParam as Kind, id);
+    return NextResponse.json({ data: { deleted: true } });
+  } catch (err) {
+    if (isRecordNotFound(err)) {
+      return NextResponse.json({ error: { code: 'not_found', message: 'Suggestion not found' } }, { status: 404 });
+    }
+    console.error('[DELETE /api/v1/admin/suggestions/[id]]', err);
+    return NextResponse.json(
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: { code: 'forbidden', message: 'Admin access required' } }, { status: 403 });

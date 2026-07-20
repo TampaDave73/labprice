@@ -1,8 +1,8 @@
 'use client';
 
-// Fire-and-forget page view logging (feeds the admin Analytics dashboard's "most-viewed tests" view).
-// Mounted on the test detail page with the resolved test id; drop it into other pages with testId
-// omitted if broader traffic tracking is needed later.
+// Fire-and-forget page view logging (feeds the admin Analytics dashboard's "most-viewed tests" and
+// "top pages" views). Mounted on the test detail page (with the resolved test id), the homepage, and
+// category pages (testId omitted) — add it to further pages the same way if more coverage is needed.
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 

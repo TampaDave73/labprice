@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans } from 'next/font/google';
+import GoogleAnalytics from './components/GoogleAnalytics';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${dmSans.className} min-h-screen antialiased`}
         style={{ background: 'oklch(0.985 0.005 230)' }}
       >
+        <GoogleAnalytics />
         {children}
       </body>
     </html>

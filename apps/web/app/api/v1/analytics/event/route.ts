@@ -9,7 +9,6 @@ const eventSchema = z.discriminatedUnion('type', [
     data: z.object({
       path: z.string().max(500),
       testId: z.string().optional(),
-      sessionId: z.string().optional(),
     }),
   }),
   z.object({
@@ -17,7 +16,6 @@ const eventSchema = z.discriminatedUnion('type', [
     data: z.object({
       query: z.string().max(200),
       resultsCount: z.number().int().min(0),
-      sessionId: z.string().optional(),
     }),
   }),
 ]);
@@ -43,11 +41,15 @@ export async function POST(req: NextRequest) {
     }
 
     const event = parsed.data;
+    // Session id comes from the `sid` cookie (set by middleware.ts) rather than a client-supplied
+    // value — a plain cookie is sent automatically on every request, including the affiliate-click
+    // redirect (a top-level navigation, not a fetch this page's JS could attach an id to).
+    const sessionId = req.cookies.get('sid')?.value;
 
     if (event.type === 'pageview') {
-      logPageView(event.data);
+      logPageView({ ...event.data, sessionId });
     } else {
-      logSearch(event.data);
+      logSearch({ ...event.data, sessionId });
     }
 
     return NextResponse.json({ data: { ok: true } });

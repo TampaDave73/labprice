@@ -1,6 +1,7 @@
 // Admin analytics summary: what people search for (incl. zero-result queries — the gap-finding signal
-// for "should we add this test?"), which vendors get clicked the most (CTR), and which tests get the
-// most page views. Backed by SearchLog/AffiliateClick/PageView, all logged live (see
+// for "should we add this test?"), which vendors get clicked the most (CTR), which tests/pages get the
+// most traffic, where clicks are referred from, and a daily trend so none of this is just one static
+// total. Backed by SearchLog/AffiliateClick/PageView, all logged live (see
 // lib/services/analytics-service.ts and its call sites).
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
@@ -20,6 +21,21 @@ function parseDays(raw: string | null): number {
   return Math.min(Math.max(Math.trunc(n), 1), 365);
 }
 
+function dayKey(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// Best-effort hostname from a referrer URL ("Direct / unknown" for empty/unparseable — most direct
+// hits and same-origin navigations have no referrer at all).
+function referrerHost(raw: string | null): string {
+  if (!raw) return 'Direct / unknown';
+  try {
+    return new URL(raw).hostname.replace(/^www\./, '');
+  } catch {
+    return 'Direct / unknown';
+  }
+}
+
 export async function GET(req: NextRequest) {
   if (!(await requireAdmin())) {
     return NextResponse.json({ error: { code: 'forbidden', message: 'Admin access required' } }, { status: 403 });
@@ -29,9 +45,10 @@ export async function GET(req: NextRequest) {
     const days = parseDays(req.nextUrl.searchParams.get('days'));
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // All six base queries are independent — run them in one parallel batch (was a 7-deep sequential
-    // chain; only the two lookups below actually depend on earlier results).
-    const [searchRows, clickGroups, viewGroups, totalSearches, totalClicks, totalPageViews] = await Promise.all([
+    const [
+      searchRows, clickGroups, viewGroups, totalSearches, totalClicks, totalPageViews,
+      uniqueSessionsRow, pageViewsByDay, searchesByDay, clicksByDay, pageGroups, referrerGroups,
+    ] = await Promise.all([
       // Searches: fetched raw and aggregated in JS (case/whitespace-normalized) — SearchLog.query is free
       // text, so a DB-level groupBy can't collapse "Vitamin D" vs "vitamin d". Capped at 20k rows so this
       // stays cheap even on a busy day; that's a lot of searches for one admin view to need more than.
@@ -58,6 +75,39 @@ export async function GET(req: NextRequest) {
       prisma.searchLog.count({ where: { createdAt: { gte: since } } }),
       prisma.affiliateClick.count({ where: { clickedAt: { gte: since } } }),
       prisma.pageView.count({ where: { createdAt: { gte: since } } }),
+      // Distinct sessions — the closest thing to a GA "users" count this schema can produce.
+      prisma.$queryRaw<{ c: bigint }[]>`
+        SELECT COUNT(DISTINCT session_id)::bigint AS c FROM page_views
+        WHERE created_at >= ${since} AND session_id IS NOT NULL
+      `,
+      // Daily trend, aggregated in Postgres (not fetched raw — a 90-day window can be a lot of rows).
+      prisma.$queryRaw<{ day: Date; views: bigint; sessions: bigint }[]>`
+        SELECT date_trunc('day', created_at) AS day, COUNT(*)::bigint AS views,
+               COUNT(DISTINCT session_id)::bigint AS sessions
+        FROM page_views WHERE created_at >= ${since} GROUP BY day ORDER BY day
+      `,
+      prisma.$queryRaw<{ day: Date; count: bigint }[]>`
+        SELECT date_trunc('day', created_at) AS day, COUNT(*)::bigint AS count
+        FROM search_logs WHERE created_at >= ${since} GROUP BY day ORDER BY day
+      `,
+      prisma.$queryRaw<{ day: Date; count: bigint }[]>`
+        SELECT date_trunc('day', clicked_at) AS day, COUNT(*)::bigint AS count
+        FROM affiliate_clicks WHERE clicked_at >= ${since} GROUP BY day ORDER BY day
+      `,
+      // Top pages by raw path — broader than "most-viewed tests" (includes home/category/etc pages).
+      prisma.pageView.groupBy({
+        by: ['path'],
+        where: { createdAt: { gte: since } },
+        _count: { path: true },
+        orderBy: { _count: { path: 'desc' } },
+        take: 20,
+      }),
+      // Where affiliate clicks were referred from — never surfaced before (referrer was logged but unused).
+      prisma.affiliateClick.groupBy({
+        by: ['referrer'],
+        where: { clickedAt: { gte: since } },
+        _count: { referrer: true },
+      }),
     ]);
 
     // Second (and last) round trip: resolve the grouped ids to display names, both lookups in parallel.
@@ -107,15 +157,53 @@ export async function GET(req: NextRequest) {
       .map((g) => ({ test: g.testId ? testById.get(g.testId) : undefined, views: g._count.testId }))
       .filter((v): v is { test: { id: string; name: string; slug: string }; views: number } => !!v.test);
 
+    const topPages = pageGroups.map((g) => ({ path: g.path, views: g._count.path })).sort((a, b) => b.views - a.views);
+
+    const referrerCounts = new Map<string, number>();
+    for (const g of referrerGroups) {
+      const host = referrerHost(g.referrer);
+      referrerCounts.set(host, (referrerCounts.get(host) ?? 0) + g._count.referrer);
+    }
+    const topReferrers = [...referrerCounts.entries()]
+      .map(([referrer, clicks]) => ({ referrer, clicks }))
+      .sort((a, b) => b.clicks - a.clicks)
+      .slice(0, 15);
+
+    // Fill every day in the window (not just days with activity) so the trend line doesn't skip —
+    // a quiet Sunday should show as a dip to zero, not a gap in the x-axis.
+    const viewsByDay = new Map(pageViewsByDay.map((r) => [dayKey(r.day), { views: Number(r.views), sessions: Number(r.sessions) }]));
+    const searchesByDayMap = new Map(searchesByDay.map((r) => [dayKey(r.day), Number(r.count)]));
+    const clicksByDayMap = new Map(clicksByDay.map((r) => [dayKey(r.day), Number(r.count)]));
+    const daily: { date: string; pageViews: number; uniqueSessions: number; searches: number; clicks: number }[] = [];
+    for (let t = new Date(since); t <= new Date(); t.setDate(t.getDate() + 1)) {
+      const key = dayKey(t);
+      const v = viewsByDay.get(key);
+      daily.push({
+        date: key,
+        pageViews: v?.views ?? 0,
+        uniqueSessions: v?.sessions ?? 0,
+        searches: searchesByDayMap.get(key) ?? 0,
+        clicks: clicksByDayMap.get(key) ?? 0,
+      });
+    }
+
     return NextResponse.json({
       data: {
         days,
-        totals: { searches: totalSearches, clicks: totalClicks, pageViews: totalPageViews },
+        totals: {
+          searches: totalSearches,
+          clicks: totalClicks,
+          pageViews: totalPageViews,
+          uniqueVisitors: Number(uniqueSessionsRow[0]?.c ?? 0),
+        },
+        daily,
         topSearches,
         zeroResultSearches,
         vendorClicks,
         topOfferingClicks: topOfferingClicks.slice(0, 25),
         topViewedTests: topViewedTests.slice(0, 25),
+        topPages,
+        topReferrers,
       },
     });
   } catch (err) {

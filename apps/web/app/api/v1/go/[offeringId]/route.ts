@@ -36,12 +36,15 @@ export async function GET(
       );
     }
 
-    // Fire-and-forget click logging, with hashed IP/UA for later bot-dedupe.
+    // Fire-and-forget click logging, with hashed IP/UA for later bot-dedupe. sessionId comes from the
+    // `sid` cookie (middleware.ts) — this route is hit via a plain <a href> navigation, so there's no
+    // client JS in the loop to attach an id to a fetch; the cookie rides along automatically.
     logAffiliateClick({
       offeringId,
       referrer: req.headers.get('referer') ?? undefined,
       ipHash: hashValue(getClientIp(req)),
       userAgentHash: hashValue(req.headers.get('user-agent')),
+      sessionId: req.cookies.get('sid')?.value,
     });
 
     // Land on the exact product page we discovered, with affiliate tracking layered on if configured.

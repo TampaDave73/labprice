@@ -100,11 +100,23 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Users** — list + role management + **add/remove** (`POST`/`DELETE /api/v1/admin/users`): invite by
   email (restores a soft-deleted user instead of duplicating), remove revokes sessions immediately;
   guarded against self-delete and removing the last SUPER_ADMIN.
-- **Analytics** (`/admin/analytics`) — top searches, **zero-result searches** (what to add next),
-  vendor click-through, most-viewed tests. `GET /api/v1/admin/analytics?days=7|30|90`.
+- **Analytics** (`/admin/analytics`) — KPI tiles (searches, vendor clicks, page views, unique
+  visitors) each with a sparkline; a "Traffic over time" chart (page views + unique visitors, daily);
+  top searches, **zero-result searches** (what to add next), vendor click-through, most-viewed tests,
+  **top pages** (every page, not just tests), and **top referrers**. `GET /api/v1/admin/analytics?days=7|30|90`.
+  "Unique visitors" comes from an anonymous `sid` cookie (`middleware.ts`, httpOnly) read server-side
+  by the event/click routes — not a client-supplied id, so it also covers the `/api/v1/go/[id]`
+  affiliate redirect (a plain navigation, no client JS in the loop). `PageViewTracker` is mounted on
+  the homepage, category pages, and test pages; add it to more pages the same way for more coverage.
+  Separately, **GA4** (`GoogleAnalytics.tsx`) is scaffolded but inert until
+  `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set — never fires on `/admin/*`.
 - **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions
-  plus test-page **result error reports**, mark reviewed/dismissed
-  (`PATCH /api/v1/admin/suggestions/[id]` with `kind: 'vendor' | 'test' | 'report'`).
+  plus test-page **result error reports**, unified into one sortable table (not per-type cards) with
+  status tabs (Pending/Reviewed/Dismissed/All — Dismissed is filtered OUT of the default Pending view,
+  acting as a real archive) and a type filter. Mark reviewed/dismissed via
+  `PATCH /api/v1/admin/suggestions/[id]` (`kind: 'vendor' | 'test' | 'report'`); permanently remove via
+  `DELETE /api/v1/admin/suggestions/[id]?kind=...` — hard delete, no soft-delete/undo, since these are
+  low-stakes public-form leads rather than audited business data.
 
 ### Scrape pipeline (`apps/worker`, `@labprice/scrapers`)
 - Queues (BullMQ, hyphenated names): `scrape-schedule` → `scrape-execute` → `scrape-publish`, plus

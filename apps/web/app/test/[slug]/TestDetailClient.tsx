@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SuggestionModal from '../../components/SuggestionModal';
-import PriceHistoryChart, { type HistoryPoint } from './PriceHistoryChart';
 
 interface Offering {
   id: string;
@@ -36,7 +35,6 @@ interface TestInfo {
 interface Props {
   test: TestInfo;
   offerings: Offering[];
-  priceHistory: HistoryPoint[];
 }
 
 // "Prices last checked N ago" trust signal (F5). Uses the freshest offering timestamp; we surface
@@ -88,7 +86,7 @@ const BEST = {
 
 const ACCENT = 'oklch(0.58 0.136 230)';
 
-export default function TestDetailClient({ test, offerings, priceHistory }: Props) {
+export default function TestDetailClient({ test, offerings }: Props) {
   const [sortBy, setSortBy] = useState<'price' | 'alpha'>('price');
   const [openSection, setOpenSection] = useState<string | null>('about');
   const [reportOpen, setReportOpen] = useState(false);
@@ -389,12 +387,6 @@ export default function TestDetailClient({ test, offerings, priceHistory }: Prop
               );
             })}
           </div>
-
-          {/* Price history chart — renders nothing until scrapes have recorded actual changes. */}
-          <PriceHistoryChart
-            offerings={offerings.map((o) => ({ id: o.id, vendorName: o.vendorName, price: o.price }))}
-            history={priceHistory}
-          />
 
           {/* Disclaimer */}
           <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 10, border: '1px solid oklch(0.92 0.01 230)', display: 'flex', alignItems: 'flex-start', gap: 9, background: 'oklch(0.985 0.005 230)' }}>

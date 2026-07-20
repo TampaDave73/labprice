@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import SearchBar from './components/SearchBar';
 import TestCard from './components/TestCard';
 import HomeTestList from './components/HomeTestList';
+import PageViewTracker from './components/PageViewTracker';
 
 // Always render against the live DB at request time. This page has a DEMO_TESTS fallback (so the
 // build succeeds with no database), and as an ISR/prerendered page it would BAKE that demo snapshot
@@ -111,6 +112,7 @@ export default async function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 230)' }}>
+      <PageViewTracker />
       <Navbar />
 
       {/* Hero */}

@@ -1,20 +1,28 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import TrafficChart, { type DailyPoint } from './TrafficChart';
 
 type SearchRow = { query: string; count: number; zeroResultCount: number };
 type VendorClickRow = { vendorName: string; vendorSlug: string; clicks: number };
 type OfferingClickRow = { testName: string; vendorName: string; clicks: number };
 type ViewedTestRow = { test: { id: string; name: string; slug: string }; views: number };
+type PageRow = { path: string; views: number };
+type ReferrerRow = { referrer: string; clicks: number };
+
+type DailyRow = DailyPoint & { searches: number; clicks: number };
 
 type AnalyticsData = {
   days: number;
-  totals: { searches: number; clicks: number; pageViews: number };
+  totals: { searches: number; clicks: number; pageViews: number; uniqueVisitors: number };
+  daily: DailyRow[];
   topSearches: SearchRow[];
   zeroResultSearches: SearchRow[];
   vendorClicks: VendorClickRow[];
   topOfferingClicks: OfferingClickRow[];
   topViewedTests: ViewedTestRow[];
+  topPages: PageRow[];
+  topReferrers: ReferrerRow[];
 };
 
 const DAY_OPTIONS = [7, 30, 90];
@@ -73,20 +81,20 @@ export default function AnalyticsPage() {
         <p className="text-brand-400">Loading…</p>
       ) : (
         <>
-          {/* KPI cards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="admin-card p-5">
-              <div className="text-xs font-medium uppercase tracking-wide text-brand-400">Searches</div>
-              <div className="mt-1 text-3xl font-bold text-brand-900">{data.totals.searches.toLocaleString()}</div>
-            </div>
-            <div className="admin-card p-5">
-              <div className="text-xs font-medium uppercase tracking-wide text-brand-400">Vendor clicks</div>
-              <div className="mt-1 text-3xl font-bold text-brand-900">{data.totals.clicks.toLocaleString()}</div>
-            </div>
-            <div className="admin-card p-5">
-              <div className="text-xs font-medium uppercase tracking-wide text-brand-400">Test page views</div>
-              <div className="mt-1 text-3xl font-bold text-brand-900">{data.totals.pageViews.toLocaleString()}</div>
-            </div>
+          {/* KPI tiles — each with a 12ish-point sparkline of its own daily trend, so a total is never
+              just a number with no sense of direction. */}
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile label="Searches" value={data.totals.searches} series={data.daily.map((d) => d.searches)} />
+            <StatTile label="Vendor clicks" value={data.totals.clicks} series={data.daily.map((d) => d.clicks)} />
+            <StatTile label="Test page views" value={data.totals.pageViews} series={data.daily.map((d) => d.pageViews)} />
+            <StatTile label="Unique visitors" value={data.totals.uniqueVisitors} series={data.daily.map((d) => d.uniqueSessions)} />
+          </div>
+
+          {/* Traffic over time — the headline chart; everything else below is a breakdown of it. */}
+          <div className="admin-card mb-6 p-5">
+            <h2 className="mb-1 text-sm font-semibold text-brand-700">Traffic over time</h2>
+            <p className="mb-3 text-xs text-brand-400">Site-wide page views and unique visitors, by day.</p>
+            <TrafficChart daily={data.daily} />
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -118,16 +126,16 @@ export default function AnalyticsPage() {
               />
             </div>
 
-            {/* Vendor CTR */}
+            {/* Top pages — every page, not just test detail pages (home, categories, etc). */}
             <div className="admin-card p-5">
-              <h2 className="mb-1 text-sm font-semibold text-brand-700">Vendor click-through</h2>
-              <p className="mb-3 text-xs text-brand-400">Which "Order" links people click most, across all tests.</p>
+              <h2 className="mb-1 text-sm font-semibold text-brand-700">Top pages</h2>
+              <p className="mb-3 text-xs text-brand-400">Every page on the site, by traffic — not just test pages.</p>
               <Table
-                empty="No clicks in this window."
-                rows={data.vendorClicks}
+                empty="No page views in this window."
+                rows={data.topPages}
                 columns={[
-                  { header: 'Vendor', render: (r) => r.vendorName },
-                  { header: 'Clicks', render: (r) => r.clicks, align: 'right' },
+                  { header: 'Path', render: (r) => <span className="font-mono text-xs">{r.path}</span> },
+                  { header: 'Views', render: (r) => r.views, align: 'right' },
                 ]}
               />
             </div>
@@ -142,6 +150,35 @@ export default function AnalyticsPage() {
                 columns={[
                   { header: 'Test', render: (r) => r.test.name },
                   { header: 'Views', render: (r) => r.views, align: 'right' },
+                ]}
+              />
+            </div>
+
+            {/* Vendor CTR */}
+            <div className="admin-card p-5">
+              <h2 className="mb-1 text-sm font-semibold text-brand-700">Vendor click-through</h2>
+              <p className="mb-3 text-xs text-brand-400">Which "Order" links people click most, across all tests.</p>
+              <Table
+                empty="No clicks in this window."
+                rows={data.vendorClicks}
+                columns={[
+                  { header: 'Vendor', render: (r) => r.vendorName },
+                  { header: 'Clicks', render: (r) => r.clicks, align: 'right' },
+                ]}
+              />
+            </div>
+
+            {/* Referrers — where the traffic that clicks "Order" came from. Logged since day one but
+                never surfaced anywhere in admin until now. */}
+            <div className="admin-card p-5">
+              <h2 className="mb-1 text-sm font-semibold text-brand-700">Top referrers</h2>
+              <p className="mb-3 text-xs text-brand-400">Where people were before they clicked an "Order" link.</p>
+              <Table
+                empty="No referrer data in this window."
+                rows={data.topReferrers}
+                columns={[
+                  { header: 'Source', render: (r) => r.referrer },
+                  { header: 'Clicks', render: (r) => r.clicks, align: 'right' },
                 ]}
               />
             </div>
@@ -162,6 +199,34 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// Stat tile: label, big value, and a de-emphasized sparkline with the latest point picked out in the
+// accent color (dataviz skill's stat-tile contract) — so a KPI is never just a lonely total.
+function StatTile({ label, value, series }: { label: string; value: number; series: number[] }) {
+  const w = 100;
+  const h = 28;
+  const max = Math.max(1, ...series);
+  const pts = series.map((v, i) => {
+    const x = series.length <= 1 ? 0 : (i / (series.length - 1)) * w;
+    const y = h - (v / max) * (h - 4) - 2;
+    return [x, y] as const;
+  });
+  const path = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+
+  return (
+    <div className="admin-card p-5">
+      <div className="text-xs font-medium uppercase tracking-wide text-brand-400">{label}</div>
+      <div className="mt-1 text-3xl font-bold text-brand-900">{value.toLocaleString()}</div>
+      {series.length > 1 && (
+        <svg viewBox={`0 0 ${w} ${h}`} className="mt-2 h-7 w-full" preserveAspectRatio="none">
+          <path d={path} fill="none" stroke="#c3c2b7" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          {last && <circle cx={last[0]} cy={last[1]} r={2.2} fill="#2a78d6" />}
+        </svg>
       )}
     </div>
   );

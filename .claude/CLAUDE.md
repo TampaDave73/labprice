@@ -119,7 +119,8 @@ user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs th
     analytics style) must add the honeypot + per-IP `rateLimit()` like the existing ones, and the
     public form should render the hidden `company` honeypot field (see `SuggestionModal`). CSP lives in
     `middleware.ts` — it allows inline styles/scripts (public pages need them); tighten the other
-    directives, not those, or the site breaks.
+    directives, not those, or the site breaks. It also pre-allows `googletagmanager.com`/
+    `google-analytics.com` for the (currently inert) GA4 scaffold — harmless while unconfigured.
 
 ## Verifying changes
 
@@ -139,3 +140,8 @@ admin session cookie.
       crawls GoodLabs → stages, 0 ECONNABORTED.
 - [ ] Clean up the benign `@prisma/client` "can't be external" Turbopack warnings before prod build.
 - [x] Setup/deployment guide — see `docs/08-deployment.md`.
+- [ ] **Pull GA4's own reports into `/admin/analytics`** (sessions/geo/device/funnels — beyond what our
+      own SearchLog/PageView/AffiliateClick tables track). Needs a GA4 property + a service account
+      (or OAuth) with Analytics Data API access — credentials only the site owner can provide; the
+      `NEXT_PUBLIC_GA_MEASUREMENT_ID` tag itself is already scaffolded (`GoogleAnalytics.tsx`, currently
+      unset/inert).

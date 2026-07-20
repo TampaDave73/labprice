@@ -17,10 +17,15 @@ function contentSecurityPolicy(): string {
     "img-src 'self' data: https:",
     "font-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-    `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
+    // GA4 (googletagmanager.com/google-analytics.com) is allowed unconditionally — harmless when
+    // NEXT_PUBLIC_GA_MEASUREMENT_ID is unset (GoogleAnalytics.tsx renders nothing, so nothing ever
+    // requests these) and saves a CSP edit whenever the env var eventually gets set.
+    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com${isDev ? " 'unsafe-eval'" : ''}`,
+    `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com${isDev ? ' ws: wss:' : ''}`,
   ].join('; ');
 }
+
+const SID_COOKIE = 'sid';
 
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
@@ -31,6 +36,20 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Content-Security-Policy', contentSecurityPolicy());
+
+  // Anonymous session id for internal analytics ("unique visitors", not auth) — set here (not
+  // client-side) so it's a plain cookie the browser sends on every request automatically, including
+  // the `/api/v1/go/[id]` affiliate redirect (a top-level navigation, not a fetch a client script
+  // could attach a header to). httpOnly since no client JS needs to read it.
+  if (!request.cookies.get(SID_COOKIE)) {
+    response.cookies.set(SID_COOKIE, crypto.randomUUID(), {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 60 * 60 * 24 * 180,
+      path: '/',
+    });
+  }
 
   return response;
 }

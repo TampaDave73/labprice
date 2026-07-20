@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import TestCard from '../../components/TestCard';
+import PageViewTracker from '../../components/PageViewTracker';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -63,6 +64,7 @@ export default async function CategoryPage({ params }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+      <PageViewTracker />
       <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 py-10">
         {/* Breadcrumb */}
