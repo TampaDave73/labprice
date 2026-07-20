@@ -1,9 +1,10 @@
 'use client';
 
-// Price-history step chart for the test detail page. Hand-rolled inline SVG on purpose: public
-// pages use inline styles (Tailwind arbitrary values are unreliable here — see CLAUDE.md gotcha #1)
-// and a chart library is overkill for one step-line chart. PriceHistory records price CHANGES only,
-// so each vendor's series is drawn as steps and the last known price extends flat to "today".
+// Price-range chart for the test detail page. Hand-rolled inline SVG on purpose: public pages use
+// inline styles (Tailwind arbitrary values are unreliable here — see CLAUDE.md gotcha #1) and a
+// chart library is overkill for one chart. Rather than one line per vendor (unreadable past a
+// handful, and capped/sorted arbitrarily), this draws a single shaded band: the low-to-high price
+// spread across ALL vendors, stepping whenever any vendor's price changes.
 
 export interface HistoryPoint {
   offeringId: string;
@@ -14,7 +15,7 @@ export interface HistoryPoint {
 interface VendorRef {
   id: string; // offering id
   vendorName: string;
-  price: number; // current price — the series' final point, at "now"
+  price: number; // current price
 }
 
 interface Props {
@@ -22,23 +23,14 @@ interface Props {
   history: HistoryPoint[];
 }
 
-// Distinct line colors (hue-spread oklch, consistent with the site palette).
-const LINE_COLORS = [
-  'oklch(0.55 0.14 230)', // blue
-  'oklch(0.55 0.17 145)', // green
-  'oklch(0.6 0.16 60)',   // amber
-  'oklch(0.55 0.18 300)', // purple
-  'oklch(0.58 0.17 20)',  // red
-];
-
-const MAX_SERIES = 5;
-
 export default function PriceHistoryChart({ offerings, history }: Props) {
-  const now = Date.now();
+  // Nothing to chart yet (new site / no recorded changes): render nothing. The section appears
+  // organically once scrapes start recording changes.
+  if (history.length === 0 || offerings.length === 0) return null;
 
-  // Build one step series per offering: recorded changes + the current price extended to today.
-  // Only offerings with at least one recorded change get a line (otherwise it's just a flat dot —
-  // noise, not history).
+  const now = Date.now();
+  const tMin = Math.min(...history.map((p) => new Date(p.observedAt).getTime()));
+
   const byOffering = new Map<string, HistoryPoint[]>();
   for (const p of history) {
     const arr = byOffering.get(p.offeringId) ?? [];
@@ -46,59 +38,104 @@ export default function PriceHistoryChart({ offerings, history }: Props) {
     byOffering.set(p.offeringId, arr);
   }
 
-  const series = offerings
-    .filter((o) => (byOffering.get(o.id)?.length ?? 0) >= 1)
-    .map((o) => ({
-      name: o.vendorName,
-      points: [
-        ...byOffering.get(o.id)!.map((p) => ({ t: new Date(p.observedAt).getTime(), price: p.price })),
-        { t: now, price: o.price },
-      ],
-    }))
-    // Most price movement first — those are the interesting lines when we cap at MAX_SERIES.
-    .sort((a, b) => b.points.length - a.points.length)
-    .slice(0, MAX_SERIES);
+  // One step series per vendor, all starting at tMin and extended to "now" at the current price.
+  // PriceHistory records CHANGES only: a vendor with no recorded change is treated as flat at its
+  // current price for the whole window, and a vendor whose first recorded change happens after
+  // tMin has that price backfilled to tMin too — we don't track "vendor first listed" separately,
+  // so the true pre-change price is unknown and the closest known value is the least-bad estimate.
+  // Every series is defined over [tMin, now] on purpose, so low/high can be computed at any time.
+  const series = offerings.map((o) => {
+    const changes = (byOffering.get(o.id) ?? [])
+      .map((p) => ({ t: new Date(p.observedAt).getTime(), price: p.price }))
+      .sort((a, b) => a.t - b.t);
+    const points =
+      changes.length === 0
+        ? [{ t: tMin, price: o.price }]
+        : changes[0]!.t > tMin
+          ? [{ t: tMin, price: changes[0]!.price }, ...changes]
+          : changes;
+    return [...points, { t: now, price: o.price }];
+  });
 
-  // Nothing to chart yet (new site / stable prices): render nothing at all. The section appears
-  // organically once scrapes start recording changes.
-  if (series.length === 0) return null;
+  const allTimes = Array.from(new Set(series.flatMap((s) => s.map((p) => p.t)))).sort((a, b) => a - b);
+
+  // Carry-forward lookup: a vendor's price as of time t (last recorded point at or before t).
+  const priceAt = (points: { t: number; price: number }[], t: number) => {
+    let val = points[0]!.price;
+    for (const p of points) {
+      if (p.t > t) break;
+      val = p.price;
+    }
+    return val;
+  };
+
+  const low = allTimes.map((t) => Math.min(...series.map((s) => priceAt(s, t))));
+  const high = allTimes.map((t) => Math.max(...series.map((s) => priceAt(s, t))));
 
   // Chart geometry.
   const W = 640;
-  const H = 240;
+  const H = 220;
   const PAD = { top: 16, right: 16, bottom: 28, left: 52 };
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
-  const allPoints = series.flatMap((s) => s.points);
-  const tMin = Math.min(...allPoints.map((p) => p.t));
-  const tMax = now;
-  const pMinRaw = Math.min(...allPoints.map((p) => p.price));
-  const pMaxRaw = Math.max(...allPoints.map((p) => p.price));
-  // Pad the price range ~10% so lines don't hug the frame; guard the flat-range case.
+  const pMinRaw = Math.min(...low);
+  const pMaxRaw = Math.max(...high);
+  // Pad the price range ~10% so the band doesn't hug the frame; guard the flat-range case.
   const pad = Math.max((pMaxRaw - pMinRaw) * 0.1, pMaxRaw * 0.05, 1);
   const pMin = Math.max(0, pMinRaw - pad);
   const pMax = pMaxRaw + pad;
 
-  const x = (t: number) => PAD.left + (tMax === tMin ? plotW : ((t - tMin) / (tMax - tMin)) * plotW);
+  const x = (t: number) => PAD.left + (now === tMin ? plotW : ((t - tMin) / (now - tMin)) * plotW);
   const y = (price: number) => PAD.top + (1 - (price - pMin) / (pMax - pMin)) * plotH;
 
-  // Step path: horizontal to the next change's time, then vertical to the new price.
-  const stepPath = (pts: { t: number; price: number }[]) =>
-    pts
-      .map((p, i) => (i === 0 ? `M ${x(p.t).toFixed(1)} ${y(p.price).toFixed(1)}` : `H ${x(p.t).toFixed(1)} V ${y(p.price).toFixed(1)}`))
-      .join(' ');
+  // Step-boundary vertices, left to right: hold the old value up to the new time, then jump.
+  const stepVertices = (values: number[]): [number, number][] => {
+    const verts: [number, number][] = [];
+    allTimes.forEach((t, i) => {
+      const xi = x(t);
+      if (i === 0) {
+        verts.push([xi, y(values[i]!)]);
+      } else {
+        verts.push([xi, y(values[i - 1]!)]);
+        verts.push([xi, y(values[i]!)]);
+      }
+    });
+    return verts;
+  };
+
+  const toPath = (verts: [number, number][]) =>
+    `M ${verts.map(([px, py]) => `${px.toFixed(1)} ${py.toFixed(1)}`).join(' L ')}`;
+
+  const topVerts = stepVertices(high);
+  const bottomVerts = stepVertices(low);
+  // Fill polygon: trace the high band left-to-right, then the low band right-to-left, and close.
+  const bandPath = `${toPath(topVerts)} L ${[...bottomVerts]
+    .reverse()
+    .map(([px, py]) => `${px.toFixed(1)} ${py.toFixed(1)}`)
+    .join(' L ')} Z`;
 
   const fmtDate = (t: number) =>
     new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const gridPrices = [pMin, (pMin + pMax) / 2, pMax];
 
+  const todayLow = low[low.length - 1]!;
+  const todayHigh = high[high.length - 1]!;
+
   return (
     <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, border: '1.5px solid oklch(0.92 0.02 230)', padding: '16px 18px 12px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 230)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 10 }}>
-        Price History
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 230)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+          Price Range
+        </div>
+        <div style={{ fontSize: 12, color: 'oklch(0.5 0.04 230)' }}>
+          Today: <strong style={{ color: 'oklch(0.3 0.08 230)' }}>${todayLow.toFixed(2)}&ndash;${todayHigh.toFixed(2)}</strong>
+          {todayHigh > todayLow && (
+            <span style={{ color: 'oklch(0.62 0.03 230)' }}> &middot; ${(todayHigh - todayLow).toFixed(2)} spread</span>
+          )}
+        </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`Price history chart for ${series.length} ordering service(s)`}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`Price range across ${offerings.length} ordering service(s) over time`}>
         {/* horizontal gridlines + $ labels */}
         {gridPrices.map((p, i) => (
           <g key={i}>
@@ -109,7 +146,7 @@ export default function PriceHistoryChart({ offerings, history }: Props) {
           </g>
         ))}
         {/* x-axis date labels: start / middle / today */}
-        {[tMin, (tMin + tMax) / 2, tMax].map((t, i) => (
+        {[tMin, (tMin + now) / 2, now].map((t, i) => (
           <text
             key={i}
             x={x(t)}
@@ -121,29 +158,24 @@ export default function PriceHistoryChart({ offerings, history }: Props) {
             {i === 2 ? 'Today' : fmtDate(t)}
           </text>
         ))}
-        {/* one step line + end dot per vendor */}
-        {series.map((s, i) => {
-          const color = LINE_COLORS[i % LINE_COLORS.length]!;
-          const last = s.points[s.points.length - 1]!;
-          return (
-            <g key={s.name}>
-              <path d={stepPath(s.points)} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />
-              <circle cx={x(last.t)} cy={y(last.price)} r="3.5" fill={color} />
-            </g>
-          );
-        })}
+        {/* shaded low-high band + top/bottom boundary lines */}
+        <path d={bandPath} fill="oklch(0.58 0.14 230 / 0.16)" stroke="none" />
+        <path d={toPath(topVerts)} fill="none" stroke="oklch(0.55 0.16 20)" strokeWidth="1.75" strokeLinejoin="round" />
+        <path d={toPath(bottomVerts)} fill="none" stroke="oklch(0.55 0.15 145)" strokeWidth="1.75" strokeLinejoin="round" />
       </svg>
       {/* legend */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 8 }}>
-        {series.map((s, i) => (
-          <span key={s.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'oklch(0.42 0.03 230)' }}>
-            <span style={{ width: 14, height: 3, borderRadius: 2, background: LINE_COLORS[i % LINE_COLORS.length], display: 'inline-block' }} />
-            {s.name}
-          </span>
-        ))}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'oklch(0.42 0.03 230)' }}>
+          <span style={{ width: 14, height: 3, borderRadius: 2, background: 'oklch(0.55 0.16 20)', display: 'inline-block' }} />
+          Highest listed price
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'oklch(0.42 0.03 230)' }}>
+          <span style={{ width: 14, height: 3, borderRadius: 2, background: 'oklch(0.55 0.15 145)', display: 'inline-block' }} />
+          Lowest listed price
+        </span>
       </div>
       <p style={{ fontSize: 11, color: 'oklch(0.62 0.03 230)', marginTop: 8, lineHeight: 1.5 }}>
-        Lines show recorded price changes over the past year; flat segments mean the price held steady.
+        Shaded band shows the spread between the lowest and highest listed price across all vendors, over the past year.
       </p>
     </div>
   );

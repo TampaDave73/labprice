@@ -9,6 +9,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-07-19)
+- **Test page price chart redesigned.** Replaced the per-vendor line chart (unreadable/capped past
+  5 vendors) with a single shaded band showing the low-to-high price spread across all vendors over
+  the past year (`PriceHistoryChart.tsx`). Each vendor row in the price table now also shows its own
+  "checked N ago" freshness dot (green/amber/gray), not just the one aggregate line in the header.
+
 ### Fixed (2026-07-19, after the first overnight scrape)
 - **Worker image can now run browsers.** `Dockerfile.worker` moved to Debian (bookworm-slim) with
   Playwright Chromium baked in — Request A Test's stealth fetch crashed with "Executable doesn't

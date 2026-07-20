@@ -130,9 +130,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   overdue detection, pending change count, weekly error count. Scheduled-run failures also alert
   immediately (throttled 1/vendor/day). Needs `RESEND_API_KEY` on the worker; without it the email
   body is logged to the worker console instead (handy for local dry-runs).
-- **Price-history charts**: test detail pages chart the last 12 months of `PriceHistory` per vendor
-  (`apps/web/app/test/[slug]/PriceHistoryChart.tsx`, inline-SVG step chart). Appears automatically
-  once a test has ≥1 recorded price change.
+- **Price-range chart**: test detail pages chart the last 12 months of `PriceHistory` as a single
+  shaded low-high band across all vendors (`apps/web/app/test/[slug]/PriceHistoryChart.tsx`,
+  inline-SVG step chart) — not one line per vendor, which stopped being readable past a handful of
+  offerings. A vendor with no recorded change is treated as flat at its current price for the whole
+  window (PriceHistory records changes only; we don't track "vendor first listed"). Appears
+  automatically once a test has ≥1 recorded price change. Each vendor row in the price table also
+  gets its own freshness dot (green <7d / amber <30d / gray older) + "checked N ago" next to the
+  vendor name, in addition to the aggregate "Prices last checked" line in the page header.
 
 #### GoodLabs catalog scraper (the first live scraper)
 - **How it works**: GoodLabs (goodlabs.com) is a Next.js reseller with no price API and no stable

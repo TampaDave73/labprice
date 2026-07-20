@@ -53,6 +53,15 @@ function relativeTime(iso: string): string {
   return `${months} month${months === 1 ? '' : 's'} ago`;
 }
 
+// Per-row freshness dot color, keyed off days since last scrape: green while a scraper would still
+// consider this "recently checked", amber once it's aging, gray once it's old enough to be suspect.
+function freshnessColor(iso: string): string {
+  const days = (Date.now() - new Date(iso).getTime()) / 86_400_000;
+  if (days < 7) return 'oklch(0.62 0.15 145)'; // green — fresh
+  if (days < 30) return 'oklch(0.72 0.14 75)'; // amber — aging
+  return 'oklch(0.65 0.02 230)'; // gray — stale
+}
+
 const ACC_ICONS = {
   about: { path: 'M3 2h7l3 3v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM9 2v4h4M5 8h6M5 11h4', bg: 'oklch(0.93 0.05 230)', color: 'oklch(0.45 0.093 230)' },
   biomarkers: { path: 'M8 3v10M3 8h10', bg: 'oklch(0.93 0.05 180)', color: 'oklch(0.4 0.12 180)' },
@@ -339,6 +348,15 @@ export default function TestDetailClient({ test, offerings, priceHistory }: Prop
                     {isBest && (
                       <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
                         &#10003; Best Price
+                      </div>
+                    )}
+                    {row.priceUpdatedAt && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                        <span
+                          style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.priceUpdatedAt) }}
+                          aria-hidden="true"
+                        />
+                        <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 230)' }}>checked {relativeTime(row.priceUpdatedAt)}</span>
                       </div>
                     )}
                   </div>
