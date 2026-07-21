@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Removed (2026-07-21)
+- **Dormant engagement tables + a dead scraper-config column.** `SavedTest`/`PriceAlert`/
+  `Notification`/`AlertNotification` backed the Save / Price-Alert / dashboard features removed
+  2026-07-06; kept dormant since then per `.claude/CLAUDE.md`'s old gotcha #9. Checked prod first:
+  `saved_tests`/`notifications`/`alert_notifications` were completely empty and `price_alerts` had
+  exactly one row (a 2026-07-05 test alert on the site owner's own admin account, `targetPrice: $1` —
+  clearly leftover test data). Dropped all four tables + the `NotificationChannel` enum they used.
+  Also dropped `scrape_vendor_configs.schedule_cron` (dead since `frequencyDays` became the real
+  scheduling mechanism — zero code read it). Migration:
+  `docs/database/2026-07-21-drop-dormant-engagement-tables.sql` (already applied to prod).
+
 ### Fixed (2026-07-21, clustering pass 2 — same-vendor-duplicate audit)
 - Auditing the 163 clusters the duplicate-vendor warning flagged (added in the pass below) surfaced a
   more serious version of the same root cause: `nameTokens()`'s `length > 1` filter drops single-
@@ -20,7 +31,11 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   standalone capitalized letter in the name (case-sensitive, so incidental lowercase split artifacts
   like "w" from "w/" don't count) and for total/free/fasting/random/direct/calculated/A.M./P.M.
   qualifiers — same additive-only pattern as the specimen-type fix (a suffix only ever splits a merge,
-  never blocks one). Cut same-vendor-duplicate clusters from 163 to (re-verify after deploy).
+  never blocks one). Cut same-vendor-duplicate clusters from 163/403 rows to 133/320 rows. The
+  remainder is mostly blood/serum/plasma naming variance (e.g. "Arsenic, Blood" vs "Arsenic,
+  Serum/Plasma") deliberately left alone — likely the same test named differently more often than not,
+  ambiguous enough that a human call beats another heuristic — still safely caught by the duplicate-
+  vendor warning below, not silently merged.
 
 ### Fixed (2026-07-21, clustering + duplicate-vendor safety)
 - **Discovered clustering was merging genuinely different tests that share a core name but differ by

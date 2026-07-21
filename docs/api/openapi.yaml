@@ -1995,7 +1995,6 @@ components:
         engine: { type: string, enum: [PLAYWRIGHT, SELENIUM, HTTP] }
         baseUrl: { type: string, format: uri }
         selectors: { type: object }
-        scheduleCron: { type: string, nullable: true }
         isEnabled: { type: boolean }
         maxRetries: { type: integer }
         timeoutMs: { type: integer }
@@ -2007,7 +2006,6 @@ components:
         baseUrl: { type: string, format: uri }
         selectors: { type: object }
         authConfig: { type: object }
-        scheduleCron: { type: string }
         isEnabled: { type: boolean }
         maxRetries: { type: integer, minimum: 0, maximum: 10 }
         timeoutMs: { type: integer, minimum: 1000, maximum: 120000 }

@@ -101,11 +101,6 @@ enum JobTrigger {
   RETRY
 }
 
-enum NotificationChannel {
-  EMAIL
-  PUSH
-}
-
 enum ProxyType {
   DATACENTER
   RESIDENTIAL
@@ -134,13 +129,10 @@ model User {
 
   accounts        Account[]
   sessions        Session[]
-  priceAlerts     PriceAlert[]
   affiliateClicks AffiliateClick[]
   auditLogs       AuditLog[]
   searchLogs      SearchLog[]
   pageViews       PageView[]
-  savedTests      SavedTest[]
-  notifications   Notification[]
   reviewedChanges StagedPriceChange[] @relation("ChangeReviewer")
   systemSettings  SystemSetting[]     @relation("SettingUpdater")
   vendorSuggestions VendorSuggestion[]
@@ -248,8 +240,6 @@ model Test {
   offerings     Offering[]
   vendorProducts          VendorProduct[] @relation("VendorProductTest")
   suggestedVendorProducts VendorProduct[] @relation("VendorProductSuggestion")
-  savedByUsers  SavedTest[]
-  priceAlerts   PriceAlert[]
   scrapeResults ScrapeResult[]
   pageViews     PageView[]
   seoPages      SeoPage[]
@@ -361,7 +351,6 @@ model Vendor {
   scrapeConfig   ScrapeVendorConfig?
   scrapeJobs     ScrapeJob[]
   scrapeRuns     ScrapeRun[]
-  priceAlerts    PriceAlert[]
   vendorProducts VendorProduct[]
 
   @@index([isActive])
@@ -402,7 +391,6 @@ model Offering {
   stagedPriceChanges StagedPriceChange[]
   scrapeResults      ScrapeResult[]
   affiliateClicks    AffiliateClick[]
-  alertNotifications AlertNotification[]
   errorReports       ResultErrorReport[]
 
   @@unique([testId, vendorId])
@@ -495,7 +483,6 @@ model ScrapeVendorConfig {
   baseUrl      String?      @map("base_url")
   selectors    Json         @default("{}")
   authConfig   Json?        @map("auth_config")
-  scheduleCron String?      @map("schedule_cron")
   // How often the daily scheduler tick scrapes this vendor. 0 = manual only ("Scrape now").
   frequencyDays Int         @default(7) @map("frequency_days")
   isEnabled    Boolean      @default(true) @map("is_enabled")
@@ -638,80 +625,10 @@ model Proxy {
 }
 
 // ───────────────────────── Engagement ─────────────────────────
-
-model SavedTest {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  testId    String   @map("test_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, testId])
-  @@index([userId])
-  @@index([testId])
-  @@map("saved_tests")
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  message   String
-  link      String?
-  isRead    Boolean  @default(false) @map("is_read")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isRead])
-  @@index([createdAt])
-  @@map("notifications")
-}
-
-model PriceAlert {
-  id               String    @id @default(cuid())
-  userId           String    @map("user_id")
-  testId           String    @map("test_id")
-  vendorId         String?   @map("vendor_id")
-  targetPrice      Decimal?  @map("target_price") @db.Decimal(10, 2)
-  thresholdPercent Int?      @map("threshold_percent")
-  isActive         Boolean   @default(true) @map("is_active")
-  lastTriggeredAt  DateTime? @map("last_triggered_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  // CHECK constraint in ddl.sql: exactly one of target_price / threshold_percent must be non-null.
-  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  test          Test                @relation(fields: [testId], references: [id], onDelete: Cascade)
-  vendor        Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  notifications AlertNotification[]
-
-  @@index([userId])
-  @@index([testId])
-  @@index([vendorId])
-  @@map("price_alerts")
-}
-
-model AlertNotification {
-  id             String              @id @default(cuid())
-  alertId        String              @map("alert_id")
-  offeringId     String              @map("offering_id")
-  triggeredPrice Decimal             @map("triggered_price") @db.Decimal(10, 2)
-  sentAt         DateTime            @map("sent_at")
-  channel        NotificationChannel
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @updatedAt @map("updated_at")
-
-  alert    PriceAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
-  offering Offering   @relation(fields: [offeringId], references: [id], onDelete: Restrict)
-
-  @@index([alertId, sentAt(sort: Desc)])
-  @@index([offeringId])
-  @@map("alert_notifications")
-}
+// SavedTest/Notification/PriceAlert/AlertNotification (Save / Price-Alert / dashboard features)
+// were removed 2026-07-06 and the tables dropped 2026-07-21 (see docs/database/*.sql) — the
+// feature stayed off long enough with near-zero data that keeping the dormant tables around
+// stopped being worth the schema noise.
 
 /// Partitioned by RANGE(clicked_at) monthly — see ddl.sql.
 /// Uses BIGSERIAL PK for high-volume storage efficiency.

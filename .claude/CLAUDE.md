@@ -120,17 +120,12 @@ user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs th
    `git -c http.version=HTTP/1.1 push`. Git Credential Manager can also stall a push waiting on an
    auth popup; retrying (or backgrounding the push) usually clears it. Push after every commit unless
    told otherwise.
-9. **Dormant engagement models.** `SavedTest`, `PriceAlert`, `Notification`, `AlertNotification` are
-   still in `schema.prisma` but the **Save / Price-Alert / dashboard features were removed** (user
-   request, 2026-07-06). The tables are intentionally kept (dropping them is a destructive `db:push`
-   against custom `ddl.sql` constraints/partitions, and `lib/publish-change.ts` still writes them) —
-   don't wire new UI to them without checking with the user first.
-10. **Public writes go through `lib/rate-limit.ts`.** Any new *unauthenticated* POST (suggestion/report/
-    analytics style) must add the honeypot + per-IP `rateLimit()` like the existing ones, and the
-    public form should render the hidden `company` honeypot field (see `SuggestionModal`). CSP lives in
-    `middleware.ts` — it allows inline styles/scripts (public pages need them); tighten the other
-    directives, not those, or the site breaks. It also pre-allows `googletagmanager.com`/
-    `google-analytics.com` for the (currently inert) GA4 scaffold — harmless while unconfigured.
+9. **Public writes go through `lib/rate-limit.ts`.** Any new *unauthenticated* POST (suggestion/report/
+   analytics style) must add the honeypot + per-IP `rateLimit()` like the existing ones, and the
+   public form should render the hidden `company` honeypot field (see `SuggestionModal`). CSP lives in
+   `middleware.ts` — it allows inline styles/scripts (public pages need them); tighten the other
+   directives, not those, or the site breaks. It also pre-allows `googletagmanager.com`/
+   `google-analytics.com` for the (currently inert) GA4 scaffold — harmless while unconfigured.
 
 ## Verifying changes
 

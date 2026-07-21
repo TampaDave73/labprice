@@ -188,13 +188,6 @@ CREATE TABLE page_views_2026_08 PARTITION OF page_views
 ALTER TABLE offerings ADD CONSTRAINT offerings_price_nonneg
     CHECK (current_price IS NULL OR current_price >= 0);
 
--- price_alerts: exactly one of target_price or threshold_percent must be set
-ALTER TABLE price_alerts ADD CONSTRAINT price_alerts_one_trigger
-    CHECK (
-        (target_price IS NOT NULL AND threshold_percent IS NULL) OR
-        (target_price IS NULL AND threshold_percent IS NOT NULL)
-    );
-
 -- price_history: new_price must be non-negative
 ALTER TABLE price_history ADD CONSTRAINT price_history_new_price_nonneg
     CHECK (new_price >= 0);
