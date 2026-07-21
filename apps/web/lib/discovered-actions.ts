@@ -7,12 +7,27 @@ import { normalizeName, strongTokens } from '@labprice/scrapers/src/catalog/matc
 
 type Tx = Prisma.TransactionClient;
 
-/** Cross-vendor grouping key: shared lab code beats name; else sorted distinctive tokens. */
+// Alternate-specimen keywords that DO distinguish otherwise-identical test names (e.g. "Iodine,
+// Serum" vs "Iodine, Urine" are different tests with different reference ranges and prices — not the
+// same test named two ways). `strongTokens()` deliberately strips these as generic filler for the
+// broader test-matching pipeline (a canonical Test rarely spells out its specimen type, so stripping
+// keeps "Iodine" matching a vendor's "Iodine, Serum" listing) — that's the right call there, but wrong
+// for CLUSTERING raw, unknown vendor products, where it silently merged distinct tests (found live
+// 2026-07-21: an "Iodine Blood Test" cluster showed 9 vendors but 13 rows because 4 vendors each sell
+// both a serum and a urine variant, collapsed into one cluster key). Blood/serum/plasma/unspecified
+// stay the (unsuffixed) default bucket — only the less-common alternates get split out, so ambiguous
+// listings like "Iodine Test" still merge with the common case instead of fragmenting further.
+const ALT_SPECIMEN_RE = /\b(urine|saliva|stool|fecal|hair|sweat|capillary)\b/i;
+
+/** Cross-vendor grouping key: shared lab code beats name; else sorted distinctive tokens, split by
+ * alternate specimen type when the name calls one out (see ALT_SPECIMEN_RE above). */
 export function clusterKey(p: { questCode: string | null; labcorpCode: string | null; name: string; normalizedName: string }): string {
   if (p.questCode) return `q:${p.questCode}`;
   if (p.labcorpCode) return `l:${p.labcorpCode}`;
   const strong = [...strongTokens(p.name)].sort().join(' ');
-  return strong ? `n:${strong}` : `n:${p.normalizedName}`;
+  const base = strong ? `n:${strong}` : `n:${p.normalizedName}`;
+  const altSpecimen = p.name.match(ALT_SPECIMEN_RE)?.[1]?.toLowerCase();
+  return altSpecimen ? `${base}|${altSpecimen}` : base;
 }
 
 function median(nums: number[]): number | null {
@@ -71,20 +86,38 @@ type ProductForAttach = {
  * as a TestAlias, and creates/revives the Offering (the actual "listing" step — matching alone never
  * makes anything public). Shared by the single-cluster UI action and the bulk CSV import so both
  * paths do EXACTLY the same thing to the database.
+ *
+ * Offering is unique on (testId, vendorId), so if `products` contains two rows from the SAME vendor
+ * (a cluster that still mixes two distinct products despite the specimen-aware clusterKey — see that
+ * function's comment), only the first can ever get an offering. Rather than marking the second one
+ * MATCHED-but-orphaned (invisible, and misreported as "listed ✓" in the Matched tab, since that check
+ * only looks at whether *a* offering exists for the vendor+test pair, not whether it's *this* row's),
+ * it's left completely untouched — still UNMATCHED, back in the Discovered queue for the reviewer to
+ * route to the right test separately — and reported in `droppedDuplicates` so the caller can say so.
  */
 export async function attachProductsToTest(
   tx: Tx,
   targetTestId: string,
   products: ProductForAttach[],
   opts: { markMatched: boolean },
-): Promise<{ offeringsCreated: number; aliasesLearned: number }> {
+): Promise<{ offeringsCreated: number; aliasesLearned: number; droppedDuplicates: { vendorId: string; name: string }[] }> {
   const test = await tx.test.findUnique({ where: { id: targetTestId }, include: { aliases: true } });
   const known = new Set([normalizeName(test?.name ?? ''), ...(test?.aliases ?? []).map((a) => a.normalized)]);
 
   let offeringsCreated = 0;
   let aliasesLearned = 0;
+  const droppedDuplicates: { vendorId: string; name: string }[] = [];
+  const vendorsOfferedThisCall = new Set<string>();
 
   for (const p of products) {
+    if (vendorsOfferedThisCall.has(p.vendorId)) {
+      // Another row from this same vendor already claimed the one offering slot for this test in
+      // THIS call — leave this row untouched (no status change, no alias) and just report it.
+      droppedDuplicates.push({ vendorId: p.vendorId, name: p.name });
+      continue;
+    }
+    vendorsOfferedThisCall.add(p.vendorId);
+
     if (opts.markMatched) {
       await tx.vendorProduct.update({
         where: { id: p.id },
@@ -126,7 +159,7 @@ export async function attachProductsToTest(
     offeringsCreated++;
   }
 
-  return { offeringsCreated, aliasesLearned };
+  return { offeringsCreated, aliasesLearned, droppedDuplicates };
 }
 
 /** Creates a new Test + its category link. Slug uniqueness must already be validated by the caller. */

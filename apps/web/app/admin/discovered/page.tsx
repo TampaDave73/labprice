@@ -10,12 +10,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // Shape of /api/v1/admin/discovered/import's dry-run/apply summary (see that route for semantics).
 type ImportSummary = {
   ignore: { count: number };
-  attach: { testSlug: string; testName: string; count: number }[];
-  promote: { slug: string; name: string; category: string; count: number; questCode: string | null; labcorpCode: string | null }[];
+  attach: { testSlug: string; testName: string; count: number; duplicateVendorRows: number }[];
+  promote: { slug: string; name: string; category: string; count: number; questCode: string | null; labcorpCode: string | null; duplicateVendorRows: number }[];
   skipped: { line: number; vendorProductId: string; reason: string }[];
   errors: { line: number; message: string }[];
   newCategories: string[];
   offeringsWithoutPrice: number;
+  droppedDuplicates: { vendorId: string; name: string }[];
   applied: boolean;
 };
 
@@ -44,6 +45,7 @@ type Cluster = {
   questCode: string | null;
   labcorpCode: string | null;
   suggestedTest: { id: string; name: string } | null;
+  duplicateVendors: string[];
   products: ProductRow[];
 };
 
@@ -126,6 +128,9 @@ export default function DiscoveredPage() {
       if (result?.applied) {
         setImportPreview(null);
         setImportCsv(null);
+        setNotice(result.droppedDuplicates.length > 0
+          ? `Import applied. ${result.droppedDuplicates.length} product(s) skipped as same-vendor duplicates: ${result.droppedDuplicates.map((d) => d.name).join(', ')}.`
+          : 'Import applied.');
         await load();
       } else if (result) {
         setImportPreview(result); // apply was blocked (e.g. data drifted since preview) — show why
@@ -178,8 +183,15 @@ export default function DiscoveredPage() {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) setNotice(json.error?.message ?? 'Action failed.');
-      else { setNotice(doneMsg); await load(); }
+      if (!res.ok) {
+        setNotice(json.error?.message ?? 'Action failed.');
+      } else {
+        const dropped: { vendorId: string; name: string }[] = json.data?.droppedDuplicates ?? [];
+        setNotice(dropped.length > 0
+          ? `${doneMsg} ${dropped.length} product(s) skipped — their vendor already had an offering on this test from another row in the same action: ${dropped.map((d) => d.name).join(', ')}.`
+          : doneMsg);
+        await load();
+      }
     } finally {
       setBusy(false);
     }
@@ -321,6 +333,11 @@ export default function DiscoveredPage() {
                     {c.suggestedTest && (
                       <p className="mt-1 text-xs text-amber-700">Looks similar to your test “{c.suggestedTest.name}” — attach if it's the same thing.</p>
                     )}
+                    {c.duplicateVendors.length > 0 && (
+                      <p className="mt-1 text-xs text-amber-700" title="Promoting/attaching the whole cluster only creates one offering per vendor — the other product from these vendors would be silently skipped.">
+                        ⚠ {c.duplicateVendors.join(', ')} {c.duplicateVendors.length === 1 ? 'appears' : 'appear'} twice here — this cluster still mixes two different products. Check before promoting the whole thing.
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <button className="admin-btn text-sm" disabled={busy} onClick={() => openPromote(c)}>Promote to test</button>
@@ -424,12 +441,30 @@ export default function DiscoveredPage() {
               </p>
             )}
 
+            {(importPreview.promote.some((g) => g.duplicateVendorRows > 0) || importPreview.attach.some((g) => g.duplicateVendorRows > 0)) && (
+              <p className="mb-4 text-sm text-amber-700">
+                ⚠ Some groups route two rows from the same vendor to the same test — only the first will get an offering, the rest are skipped (marked ⚠ below).
+              </p>
+            )}
+
+            {importPreview.droppedDuplicates.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-1 text-sm font-semibold text-amber-700">Skipped as same-vendor duplicates</h3>
+                <ul className="space-y-1 text-xs text-amber-700">
+                  {importPreview.droppedDuplicates.map((d, i) => <li key={i}>{d.name}</li>)}
+                </ul>
+              </div>
+            )}
+
             {importPreview.promote.length > 0 && (
               <div className="mb-4">
                 <h3 className="mb-1 text-sm font-semibold text-brand-900">New tests</h3>
                 <ul className="space-y-1 text-sm text-brand-600">
                   {importPreview.promote.map((g) => (
-                    <li key={g.slug}>{g.name} <span className="text-brand-400">({g.category} · {g.count} vendor{g.count === 1 ? '' : 's'})</span></li>
+                    <li key={g.slug}>
+                      {g.name} <span className="text-brand-400">({g.category} · {g.count} vendor{g.count === 1 ? '' : 's'})</span>
+                      {g.duplicateVendorRows > 0 && <span className="text-amber-700"> ⚠ {g.duplicateVendorRows} same-vendor row{g.duplicateVendorRows === 1 ? '' : 's'} will be skipped</span>}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -440,7 +475,10 @@ export default function DiscoveredPage() {
                 <h3 className="mb-1 text-sm font-semibold text-brand-900">Attached to existing tests</h3>
                 <ul className="space-y-1 text-sm text-brand-600">
                   {importPreview.attach.map((g) => (
-                    <li key={g.testSlug}>{g.testName} <span className="text-brand-400">(+{g.count} vendor{g.count === 1 ? '' : 's'})</span></li>
+                    <li key={g.testSlug}>
+                      {g.testName} <span className="text-brand-400">(+{g.count} vendor{g.count === 1 ? '' : 's'})</span>
+                      {g.duplicateVendorRows > 0 && <span className="text-amber-700"> ⚠ {g.duplicateVendorRows} same-vendor row{g.duplicateVendorRows === 1 ? '' : 's'} will be skipped</span>}
+                    </li>
                   ))}
                 </ul>
               </div>

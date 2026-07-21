@@ -151,10 +151,26 @@ export async function POST(req: NextRequest) {
     .flatMap((g) => g.vendorProductIds)
     .filter((id) => productById.get(id)?.price == null).length;
 
+  // Same-vendor duplicates WITHIN a group: since Offering is unique on (testId, vendorId), only the
+  // first of two same-vendor rows routed to the same test would ever get an offering — the rest
+  // silently vanish (see attachProductsToTest's droppedDuplicates). Surfaced here so it shows in the
+  // dry-run preview, before anything is applied, not just in the apply response after the fact.
+  const duplicatesInGroup = (ids: string[]) => {
+    const seen = new Set<string>();
+    const dupes: string[] = [];
+    for (const id of ids) {
+      const vid = productById.get(id)?.vendorId;
+      if (!vid) continue;
+      if (seen.has(vid)) dupes.push(id);
+      else seen.add(vid);
+    }
+    return dupes.length;
+  };
+
   const summary = {
     ignore: { count: ignoreIds.length },
-    attach: [...attachGroups.values()].map((g) => ({ testSlug: tests.find((t) => t.id === g.testId)!.slug, testName: g.testName, count: g.vendorProductIds.length })),
-    promote: [...promoteGroups.values()].map((g) => ({ slug: g.slug, name: g.name, category: g.categoryName, count: g.vendorProductIds.length, questCode: g.questCode, labcorpCode: g.labcorpCode })),
+    attach: [...attachGroups.values()].map((g) => ({ testSlug: tests.find((t) => t.id === g.testId)!.slug, testName: g.testName, count: g.vendorProductIds.length, duplicateVendorRows: duplicatesInGroup(g.vendorProductIds) })),
+    promote: [...promoteGroups.values()].map((g) => ({ slug: g.slug, name: g.name, category: g.categoryName, count: g.vendorProductIds.length, questCode: g.questCode, labcorpCode: g.labcorpCode, duplicateVendorRows: duplicatesInGroup(g.vendorProductIds) })),
     skipped,
     errors,
     newCategories: [...newCategories],
@@ -164,9 +180,10 @@ export async function POST(req: NextRequest) {
 
   const totalPlanned = ignoreIds.length + attachGroups.size + promoteGroups.size;
   if (!apply || errors.length > 0 || totalPlanned === 0) {
-    return NextResponse.json({ data: summary }, { status: !apply || errors.length === 0 ? 200 : 422 });
+    return NextResponse.json({ data: { ...summary, droppedDuplicates: [] } }, { status: !apply || errors.length === 0 ? 200 : 422 });
   }
 
+  const droppedDuplicates: { vendorId: string; name: string }[] = [];
   await prisma.$transaction(async (tx) => {
     let nextOrder = Math.max(0, ...categories.map((c) => c.displayOrder)) + 1;
     for (const catName of newCategories) {
@@ -192,6 +209,7 @@ export async function POST(req: NextRequest) {
       const r = await attachProductsToTest(tx, testId, groupProducts, { markMatched: true });
       offeringsCreated += r.offeringsCreated;
       aliasesLearned += r.aliasesLearned;
+      droppedDuplicates.push(...r.droppedDuplicates);
     }
 
     for (const g of attachGroups.values()) {
@@ -199,6 +217,7 @@ export async function POST(req: NextRequest) {
       const r = await attachProductsToTest(tx, g.testId, groupProducts, { markMatched: true });
       offeringsCreated += r.offeringsCreated;
       aliasesLearned += r.aliasesLearned;
+      droppedDuplicates.push(...r.droppedDuplicates);
     }
 
     await tx.auditLog.create({
@@ -207,10 +226,10 @@ export async function POST(req: NextRequest) {
         action: 'discovered.csv_import',
         entityType: 'vendorProduct',
         entityId: 'bulk',
-        newValues: { ignored: ignoreIds.length, testsCreated, attachedToExisting: attachGroups.size, offeringsCreated, aliasesLearned },
+        newValues: { ignored: ignoreIds.length, testsCreated, attachedToExisting: attachGroups.size, offeringsCreated, aliasesLearned, droppedDuplicates },
       },
     });
   });
 
-  return NextResponse.json({ data: { ...summary, applied: true } });
+  return NextResponse.json({ data: { ...summary, applied: true, droppedDuplicates } });
 }

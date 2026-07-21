@@ -116,6 +116,14 @@ export async function GET(req: NextRequest) {
       const name = [...nameCounts.entries()].sort((a, b) => b[1] - a[1])[0]![0];
       const prices = products.map((p) => p.price).filter((p): p is Prisma.Decimal => p != null).map(Number).sort((a, b) => a - b);
       const suggested = products.map((p) => p.suggestedTest).find(Boolean) ?? null;
+      // A vendor appearing more than once means this cluster is still mixing two distinct products
+      // (a cheap, general-purpose signal independent of clusterKey's specimen-type heuristic) — a
+      // single vendor essentially never lists the exact same SKU twice. Promoting/attaching the whole
+      // cluster as-is would only create ONE offering for that vendor (unique on test+vendor), silently
+      // dropping the other — see attachProductsToTest's droppedDuplicates for the enforcement side.
+      const vendorNameCounts = new Map<string, number>();
+      for (const p of products) vendorNameCounts.set(p.vendor.name, (vendorNameCounts.get(p.vendor.name) ?? 0) + 1);
+      const duplicateVendors = [...vendorNameCounts.entries()].filter(([, n]) => n > 1).map(([name]) => name);
       return {
         key,
         name,
@@ -125,6 +133,7 @@ export async function GET(req: NextRequest) {
         questCode: products.map((p) => p.questCode).find(Boolean) ?? null,
         labcorpCode: products.map((p) => p.labcorpCode).find(Boolean) ?? null,
         suggestedTest: suggested,
+        duplicateVendors,
         products,
       };
     })
@@ -245,6 +254,7 @@ export async function POST(req: NextRequest) {
     // all share one target — group first, then attach each group (usually just one).
     let offeringsCreated = 0;
     let aliasesLearned = 0;
+    const droppedDuplicates: { vendorId: string; name: string }[] = [];
     const groups = new Map<string, typeof products>();
     for (const p of products) {
       const targetTestId = testId ?? p.testId;
@@ -256,6 +266,7 @@ export async function POST(req: NextRequest) {
       const result = await prisma.$transaction((tx) => attachProductsToTest(tx, targetTestId, withVendorSlug, { markMatched: action !== 'list' }));
       offeringsCreated += result.offeringsCreated;
       aliasesLearned += result.aliasesLearned;
+      droppedDuplicates.push(...result.droppedDuplicates);
     }
 
     if (action !== 'promote') {
@@ -265,12 +276,12 @@ export async function POST(req: NextRequest) {
           action: action === 'list' ? 'products_listed' : 'products_attached',
           entityType: 'test',
           entityId: testId ?? 'various',
-          newValues: { products: products.map((p) => `${p.vendor.name}: ${p.name}`), offeringsCreated, aliasesLearned },
+          newValues: { products: products.map((p) => `${p.vendor.name}: ${p.name}`), offeringsCreated, aliasesLearned, droppedDuplicates },
         },
       });
     }
 
-    return NextResponse.json({ data: { testId, offeringsCreated, aliasesLearned } });
+    return NextResponse.json({ data: { testId, offeringsCreated, aliasesLearned, droppedDuplicates } });
   }
 
   return NextResponse.json({ error: { code: 'validation_error', message: `Unknown action "${action}".` } }, { status: 400 });

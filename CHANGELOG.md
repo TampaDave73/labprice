@@ -9,7 +9,25 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
-### Fixed (2026-07-21)
+### Fixed (2026-07-21, clustering + duplicate-vendor safety)
+- **Discovered clustering was merging genuinely different tests that share a core name but differ by
+  specimen type** — found live reviewing the "Iodine Blood Test" cluster: header said 9 vendors, table
+  showed 13 rows, because 4 vendors each sell a serum AND a urine variant that both collapsed to the
+  same cluster key (`strongTokens()` treats "serum"/"urine"/"random" as generic filler, which is
+  correct for the broader test-matching pipeline but wrong for clustering raw unknown products).
+  `clusterKey()` (`apps/web/lib/discovered-actions.ts`) now splits out alternate-specimen listings
+  (urine/saliva/stool/hair/etc.) from the default (blood/serum/unspecified) bucket, so "Iodine, Serum"
+  and "Iodine, Urine" land in separate clusters instead of one.
+- **Same-vendor duplicates within a cluster silently dropped a product's price with zero trace.**
+  Offering is unique on (test, vendor), so promoting/attaching a cluster where one vendor has two rows
+  (the Iodine case above, before the clustering fix) only created an offering for whichever row
+  processed first — the second was marked MATCHED with no offering and misreported as "listed ✓" in
+  the Matched tab. `attachProductsToTest` now leaves a same-vendor duplicate completely untouched
+  (stays UNMATCHED, back in the queue) and returns it as `droppedDuplicates` instead. Surfaced end to
+  end: an amber warning on cluster cards listing which vendors repeat, a `duplicate_vendor_in_cluster`
+  CSV column, and a same-vendor-duplicate count in the CSV import dry-run preview.
+
+### Fixed (2026-07-21, perf)
 - **`/admin/discovered` hung indefinitely once real scrape volume hit it.** The "demand report"
   (zero-result searches that overlap an unmatched product) re-tokenized both sides of every name
   comparison from scratch on every call — fine when the table was empty, but O(searches × clusters ×
