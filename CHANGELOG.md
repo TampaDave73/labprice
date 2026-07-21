@@ -9,6 +9,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-21, clustering pass 2 — same-vendor-duplicate audit)
+- Auditing the 163 clusters the duplicate-vendor warning flagged (added in the pass below) surfaced a
+  more serious version of the same root cause: `nameTokens()`'s `length > 1` filter drops single-
+  character tokens entirely, so **"Hepatitis A Antibody" and "Hepatitis C Antibody" reduce to the same
+  token set and silently merge two different diseases into one cluster** — same for "Protein C
+  Antigen" vs. "Protein S Antigen". Also found the specimen-type fix below didn't cover draw-timing/
+  measurement-form qualifiers: "Glucose, Random" (different reference range from fasting/plasma
+  glucose) was still merging with "Glucose, Plasma". `clusterKey()` now also appends a suffix for any
+  standalone capitalized letter in the name (case-sensitive, so incidental lowercase split artifacts
+  like "w" from "w/" don't count) and for total/free/fasting/random/direct/calculated/A.M./P.M.
+  qualifiers — same additive-only pattern as the specimen-type fix (a suffix only ever splits a merge,
+  never blocks one). Cut same-vendor-duplicate clusters from 163 to (re-verify after deploy).
+
 ### Fixed (2026-07-21, clustering + duplicate-vendor safety)
 - **Discovered clustering was merging genuinely different tests that share a core name but differ by
   specimen type** — found live reviewing the "Iodine Blood Test" cluster: header said 9 vendors, table

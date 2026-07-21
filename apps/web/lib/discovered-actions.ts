@@ -7,27 +7,52 @@ import { normalizeName, strongTokens } from '@labprice/scrapers/src/catalog/matc
 
 type Tx = Prisma.TransactionClient;
 
-// Alternate-specimen keywords that DO distinguish otherwise-identical test names (e.g. "Iodine,
-// Serum" vs "Iodine, Urine" are different tests with different reference ranges and prices — not the
-// same test named two ways). `strongTokens()` deliberately strips these as generic filler for the
-// broader test-matching pipeline (a canonical Test rarely spells out its specimen type, so stripping
-// keeps "Iodine" matching a vendor's "Iodine, Serum" listing) — that's the right call there, but wrong
-// for CLUSTERING raw, unknown vendor products, where it silently merged distinct tests (found live
-// 2026-07-21: an "Iodine Blood Test" cluster showed 9 vendors but 13 rows because 4 vendors each sell
-// both a serum and a urine variant, collapsed into one cluster key). Blood/serum/plasma/unspecified
-// stay the (unsuffixed) default bucket — only the less-common alternates get split out, so ambiguous
-// listings like "Iodine Test" still merge with the common case instead of fragmenting further.
+// Words/patterns that DO distinguish otherwise-identical-looking test names, but that the broader
+// test-matching pipeline deliberately treats as generic filler (a canonical Test rarely spells out
+// specimen type or draw timing, so `strongTokens()` stripping them keeps "Iodine" matching a vendor's
+// "Iodine, Serum" listing — the right call there). Wrong for CLUSTERING raw, unknown vendor products,
+// where the same stripping silently merges genuinely different tests. `clusterKey` below re-appends
+// these as extra suffixes so the base (strongTokens) match still does the heavy lifting, but these
+// specific signals can still split a cluster apart. Additive-only by design: a suffix only ever
+// SPLITS an existing merge, never blocks one, so the worst case of a false positive here is an extra
+// small cluster to reconcile by hand, not a silent wrong merge.
+//
+//  - ALT_SPECIMEN: "Iodine, Serum" vs "Iodine, Urine" (found live 2026-07-21 — an "Iodine Blood Test"
+//    cluster showed 9 vendors but 13 rows, 4 vendors each selling both a serum and a urine variant).
+//    Blood/serum/plasma/unspecified stay the default bucket; only the less-common alternates split.
+//  - QUALIFIER: draw-timing/measurement-form words that change what's actually being measured —
+//    "Glucose, Random" (a different clinical test from fasting/plasma glucose, different reference
+//    range) or "Protein S Antigen, Total" vs "...Free" (bound vs. unbound protein — different assay).
+//  - SINGLE_LETTER: a lone capitalized letter is very often a disease/analyte SUBTYPE in lab naming —
+//    "Hepatitis A" vs "Hepatitis C", "Protein C" vs "Protein S" — and `nameTokens()`'s `length > 1`
+//    filter drops single-character tokens entirely, so both sides reduce to the same token set and
+//    silently merge two DIFFERENT DISEASES into one cluster (found live 2026-07-21, reviewing the
+//    163 clusters the same-vendor-duplicate warning flagged: "Hepatitis A Antibody, Total" and
+//    "Hepatitis C Antibody with Reflex" landed in one cluster). Matched against the ORIGINAL name
+//    (case-sensitive), not the lowercased tokens, since incidental lowercase artifacts (e.g. "w" from
+//    "w/") shouldn't count — real subtype letters are consistently capitalized in vendor naming.
 const ALT_SPECIMEN_RE = /\b(urine|saliva|stool|fecal|hair|sweat|capillary)\b/i;
+const QUALIFIER_RE = /\b(total|free|fasting|random|direct|calculated|a\.?m\.?|p\.?m\.?)\b/i;
+const SINGLE_LETTER_RE = /\b[A-Z]\b/g;
 
-/** Cross-vendor grouping key: shared lab code beats name; else sorted distinctive tokens, split by
- * alternate specimen type when the name calls one out (see ALT_SPECIMEN_RE above). */
+/** Cross-vendor grouping key: shared lab code beats name; else sorted distinctive tokens, with extra
+ * suffixes for signals `strongTokens()` treats as generic but that can distinguish real tests — see
+ * the comment above each pattern. */
 export function clusterKey(p: { questCode: string | null; labcorpCode: string | null; name: string; normalizedName: string }): string {
   if (p.questCode) return `q:${p.questCode}`;
   if (p.labcorpCode) return `l:${p.labcorpCode}`;
   const strong = [...strongTokens(p.name)].sort().join(' ');
   const base = strong ? `n:${strong}` : `n:${p.normalizedName}`;
+
+  const suffixes: string[] = [];
   const altSpecimen = p.name.match(ALT_SPECIMEN_RE)?.[1]?.toLowerCase();
-  return altSpecimen ? `${base}|${altSpecimen}` : base;
+  if (altSpecimen) suffixes.push(altSpecimen);
+  const qualifier = p.name.match(QUALIFIER_RE)?.[1]?.toLowerCase().replace(/\./g, '');
+  if (qualifier) suffixes.push(qualifier);
+  const letters = [...new Set([...p.name.matchAll(SINGLE_LETTER_RE)].map((m) => m[0]))].sort();
+  if (letters.length > 0) suffixes.push(letters.join(''));
+
+  return suffixes.length > 0 ? `${base}|${suffixes.sort().join('|')}` : base;
 }
 
 function median(nums: number[]): number | null {
