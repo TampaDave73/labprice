@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { nameMatches } from '@labprice/scrapers/src/catalog/matcher';
+import { nameTokens } from '@labprice/scrapers/src/catalog/matcher';
 import { attachProductsToTest, createPromotedTest, clusterKey } from '@/lib/discovered-actions';
 
 // The /admin/discovered review queue over the VendorProduct ingest layer.
@@ -139,9 +139,28 @@ export async function GET(req: NextRequest) {
     orderBy: { _count: { query: 'desc' } },
     take: 100,
   });
+  // `nameMatches` re-tokenizes both of its arguments (regex split + Set build) on every call — fine
+  // for a one-off comparison, but this loop is up to 100 searches × every cluster × every product in
+  // it, so a naive call here is O(searches × clusters × products) tokenizations. With ~6k clusters
+  // that's well over a million retokenizations and multi-second latency (found live 2026-07-21, once
+  // the first "scrape all" run put real volume through this for the first time). Tokenize each
+  // distinct string once and reuse the cached Set instead.
+  const tokenCache = new Map<string, Set<string>>();
+  const tokensOf = (s: string) => {
+    let t = tokenCache.get(s);
+    if (!t) { t = nameTokens(s); tokenCache.set(s, t); }
+    return t;
+  };
+  const isSubsetMatch = (a: Set<string>, b: Set<string>) => {
+    if (a.size === 0 || b.size === 0) return false;
+    const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+    for (const t of small) if (!large.has(t)) return false;
+    return true;
+  };
   const demand = zeroSearches
     .map((s) => {
-      const hits = clusters.filter((c) => nameMatches(s.query, c.name) || c.products.some((p) => nameMatches(s.query, p.name)));
+      const qTokens = tokensOf(s.query);
+      const hits = clusters.filter((c) => isSubsetMatch(qTokens, tokensOf(c.name)) || c.products.some((p) => isSubsetMatch(qTokens, tokensOf(p.name))));
       return { query: s.query, searches: s._count._all, clusterKeys: hits.slice(0, 3).map((h) => h.key), clusterNames: hits.slice(0, 3).map((h) => h.name) };
     })
     .filter((d) => d.clusterKeys.length > 0)

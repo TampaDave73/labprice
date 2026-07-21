@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-21)
+- **`/admin/discovered` hung indefinitely once real scrape volume hit it.** The "demand report"
+  (zero-result searches that overlap an unmatched product) re-tokenized both sides of every name
+  comparison from scratch on every call — fine when the table was empty, but O(searches × clusters ×
+  products) with ~6,000 real clusters meant well over a million redundant tokenizations per page load.
+  Found live right after the first "Scrape all catalog vendors" run populated `VendorProduct` for the
+  first time. Fixed by tokenizing each distinct string once and reusing the cached token set
+  (`apps/web/app/api/v1/admin/discovered/route.ts`).
+
 ### Added (2026-07-21)
 - **Discovered CSV round-trip** — `Export CSV` / `Import CSV` on `/admin/discovered`, for working
   the review queue offline instead of clicking through clusters one at a time (built after the first
