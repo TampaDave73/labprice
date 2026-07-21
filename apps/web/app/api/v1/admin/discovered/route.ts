@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { normalizeName, strongTokens, nameMatches } from '@labprice/scrapers/src/catalog/matcher';
+import { nameMatches } from '@labprice/scrapers/src/catalog/matcher';
+import { attachProductsToTest, createPromotedTest, clusterKey } from '@/lib/discovered-actions';
 
 // The /admin/discovered review queue over the VendorProduct ingest layer.
 //
@@ -25,14 +26,6 @@ async function requireAdmin() {
   const session = await auth();
   if (!session?.user || !['ADMIN', 'SUPER_ADMIN'].includes(session.user.role)) return null;
   return session;
-}
-
-/** Cross-vendor grouping key: shared lab code beats name; else sorted distinctive tokens. */
-function clusterKey(p: { questCode: string | null; labcorpCode: string | null; name: string; normalizedName: string }): string {
-  if (p.questCode) return `q:${p.questCode}`;
-  if (p.labcorpCode) return `l:${p.labcorpCode}`;
-  const strong = [...strongTokens(p.name)].sort().join(' ');
-  return strong ? `n:${strong}` : `n:${p.normalizedName}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -212,88 +205,38 @@ export async function POST(req: NextRequest) {
       if (existingSlug) {
         return NextResponse.json({ error: { code: 'validation_error', message: `Slug "${slug}" is already taken.` } }, { status: 400 });
       }
-      const created = await prisma.test.create({
-        data: {
-          name,
-          shortName: (typeof body.shortName === 'string' && body.shortName.trim()) || name,
-          slug,
-          categoryId,
-          questCode: (typeof body.questCode === 'string' && body.questCode.trim()) || null,
-          labcorpCode: (typeof body.labcorpCode === 'string' && body.labcorpCode.trim()) || null,
-        },
-      });
-      await prisma.testCategory.create({ data: { testId: created.id, categoryId } });
-      testId = created.id;
+      const { testId: created } = await prisma.$transaction((tx) =>
+        createPromotedTest(tx, {
+          name, slug, categoryId,
+          shortName: typeof body.shortName === 'string' ? body.shortName : undefined,
+          questCode: typeof body.questCode === 'string' ? body.questCode : undefined,
+          labcorpCode: typeof body.labcorpCode === 'string' ? body.labcorpCode : undefined,
+        }),
+      );
+      testId = created;
       await prisma.auditLog.create({
         data: {
-          actorId: session.user.id, action: 'test_promoted', entityType: 'test', entityId: created.id,
+          actorId: session.user.id, action: 'test_promoted', entityType: 'test', entityId: created,
           newValues: { name, slug, from: products.map((p) => `${p.vendor.name}: ${p.name}`) },
         },
       });
     }
 
-    // 'list' works on already-MATCHED rows: each product carries its own testId.
-    const test = testId ? await prisma.test.findUnique({ where: { id: testId }, include: { aliases: true } }) : null;
-    const aliasNormsByTest = new Map<string, Set<string>>();
+    // 'list' works on already-MATCHED rows: each product carries its own testId, so they may not
+    // all share one target — group first, then attach each group (usually just one).
     let offeringsCreated = 0;
     let aliasesLearned = 0;
-
+    const groups = new Map<string, typeof products>();
     for (const p of products) {
       const targetTestId = testId ?? p.testId;
       if (!targetTestId) continue; // 'list' on an unmatched row — nothing to do
-
-      // Mark matched (manual confirmation beats whatever the auto-matcher thought).
-      if (action !== 'list') {
-        await prisma.vendorProduct.update({
-          where: { id: p.id },
-          data: { status: 'MATCHED', testId: targetTestId, matchedBy: 'manual', suggestedTestId: null },
-        });
-      }
-
-      // Learn the vendor's naming as an alias when it differs from every name we already know.
-      if (!aliasNormsByTest.has(targetTestId)) {
-        const t = test?.id === targetTestId ? test : await prisma.test.findUnique({ where: { id: targetTestId }, include: { aliases: true } });
-        aliasNormsByTest.set(targetTestId, new Set([normalizeName(t?.name ?? ''), ...(t?.aliases ?? []).map((a) => a.normalized)]));
-      }
-      const known = aliasNormsByTest.get(targetTestId)!;
-      const norm = normalizeName(p.name);
-      if (norm && !known.has(norm)) {
-        await prisma.testAlias.create({ data: { testId: targetTestId, alias: p.name, normalized: norm, source: p.vendor.slug } });
-        known.add(norm);
-        aliasesLearned++;
-      }
-
-      // Create the offering (the "listing" step) unless one already exists for this test+vendor.
-      const existing = await prisma.offering.findUnique({
-        where: { testId_vendorId: { testId: targetTestId, vendorId: p.vendorId } },
-      });
-      if (existing) {
-        // Revive a soft-deleted/inactive link rather than erroring; fill gaps without clobbering.
-        if (existing.deletedAt || !existing.isActive || (!existing.externalUrl && p.url)) {
-          await prisma.offering.update({
-            where: { id: existing.id },
-            data: { deletedAt: null, isActive: true, ...(existing.externalUrl ? {} : { externalUrl: p.url }) },
-          });
-        }
-        continue;
-      }
-      const created = await prisma.offering.create({
-        data: {
-          testId: targetTestId,
-          vendorId: p.vendorId,
-          currentPrice: p.price,
-          priceUpdatedAt: p.price != null ? new Date() : null,
-          lastCheckedAt: p.price != null ? new Date() : null,
-          externalUrl: p.url,
-          labProvider: p.labProvider,
-        },
-      });
-      if (p.price != null) {
-        await prisma.priceHistory.create({
-          data: { offeringId: created.id, oldPrice: null, newPrice: p.price, observedAt: new Date(), source: 'SCRAPE' },
-        });
-      }
-      offeringsCreated++;
+      groups.set(targetTestId, [...(groups.get(targetTestId) ?? []), p]);
+    }
+    for (const [targetTestId, group] of groups) {
+      const withVendorSlug = group.map((p) => ({ ...p, vendorSlug: p.vendor.slug }));
+      const result = await prisma.$transaction((tx) => attachProductsToTest(tx, targetTestId, withVendorSlug, { markMatched: action !== 'list' }));
+      offeringsCreated += result.offeringsCreated;
+      aliasesLearned += result.aliasesLearned;
     }
 
     if (action !== 'promote') {

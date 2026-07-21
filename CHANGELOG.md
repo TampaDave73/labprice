@@ -9,6 +9,20 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-21)
+- **Discovered CSV round-trip** — `Export CSV` / `Import CSV` on `/admin/discovered`, for working
+  the review queue offline instead of clicking through clusters one at a time (built after the first
+  live "Scrape all catalog vendors" run landed ~7,200 unmatched products in one pass — a quarterly
+  catch-up volume the one-by-one UI wasn't designed for). One row per **vendor product**, not per
+  cluster, so a reviewer can split a cluster (attach 8 of 9 vendors, leave a price-outlier one for
+  later) — something the cluster-level UI buttons still can't do. Each row gets a computed
+  `confidence` (high/medium/low, based on shared Quest/LabCorp codes and price-outlier detection
+  against the cluster median) so a big file can be sorted/filtered instead of read row by row.
+  `GET/POST /api/v1/admin/discovered/export|import`; same dry-run-diff-then-apply contract as the
+  existing Tests CSV import. Refactored the promote/attach/list mutation logic out of the one-by-one
+  route into `apps/web/lib/discovered-actions.ts` so the bulk import path and the click-through UI
+  share one implementation.
+
 ### Fixed (2026-07-20)
 - **Admin-triggered scraping was completely broken in production.** `apps/web/lib/redis-options.ts`
   built its ioredis connection options from `REDIS_URL` but only kept `host`/`port`, dropping

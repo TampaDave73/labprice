@@ -83,6 +83,22 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   the same panel). Top of the page: **demand chips** — zero-result `SearchLog` queries that overlap
   an unmatched product name. `GET/POST /api/v1/admin/discovered` (actions: attach/promote/ignore/
   restore/list).
+- **Discovered CSV round-trip** — `Export CSV` / `Import CSV` on `/admin/discovered`, for the
+  quarterly catch-up pass across thousands of rows the one-by-one UI doesn't scale to
+  (`GET/POST /api/v1/admin/discovered/export|import`). Unlike the Tests round-trip, one row is one
+  **vendor product** (not a cluster) — a `cluster_id` column groups rows for reading, but decisions
+  are per-row, so a reviewer can attach 8 of a cluster's 9 vendors and leave a price-outlier 9th for
+  later, which the cluster-level UI buttons can't do. Each row carries a computed `confidence`
+  (high/medium/low — high = shares a Quest/LabCorp code with another vendor in the cluster; low = a
+  >2x/<0.5x price outlier vs. the cluster median) so a reviewer can sort/filter instead of eyeballing
+  every row. Fill in `decision` (ignore/attach/promote) + the matching columns
+  (`attach_test_slug`, or `new_test_name`+`new_test_category`+optional `new_test_slug` — rows
+  sharing a `new_test_slug` become one new test with one offering per vendor) and re-upload; same
+  dry-run-diff-then-apply contract as Tests import, transactional + audit-logged
+  (`discovered.csv_import`). A row whose product was already matched/ignored elsewhere since export
+  is reported under `skipped`, not treated as an error. The mutation logic (attach/promote) is
+  shared with the one-by-one UI via `apps/web/lib/discovered-actions.ts`, so both paths do exactly
+  the same thing to the database.
 - **Coverage** (`/admin/coverage`) — tests × vendors matrix: green price = live offering, amber dot
   = vendor sells it per the ingest layer but no offering exists, blank = not carried.
   `GET /api/v1/admin/coverage`.

@@ -5,7 +5,19 @@
 // click promotes a cluster to a new Test, attaches it to an existing one, or ignores it. Matching
 // alone never lists anything publicly — the Matched tab holds "matched, not yet listed" rows whose
 // offerings are created here deliberately.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// Shape of /api/v1/admin/discovered/import's dry-run/apply summary (see that route for semantics).
+type ImportSummary = {
+  ignore: { count: number };
+  attach: { testSlug: string; testName: string; count: number }[];
+  promote: { slug: string; name: string; category: string; count: number; questCode: string | null; labcorpCode: string | null }[];
+  skipped: { line: number; vendorProductId: string; reason: string }[];
+  errors: { line: number; message: string }[];
+  newCategories: string[];
+  offeringsWithoutPrice: number;
+  applied: boolean;
+};
 
 type ProductRow = {
   id: string;
@@ -66,6 +78,62 @@ export default function DiscoveredPage() {
   const [promoteFor, setPromoteFor] = useState<Cluster | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [promoteForm, setPromoteForm] = useState({ name: '', shortName: '', categoryId: '', questCode: '', labcorpCode: '' });
+
+  // Bulk CSV round-trip (the quarterly catch-up pass — see export/import route comments): pick file
+  // → dry-run preview (modal) → Apply. The csv text is held so Apply re-posts the exact file the
+  // preview was computed from.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importCsv, setImportCsv] = useState<string | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportSummary | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+
+  const postImport = async (csv: string, apply: boolean): Promise<ImportSummary | null> => {
+    const res = await fetch('/api/v1/admin/discovered/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ csv, apply }),
+    });
+    const json = await res.json();
+    if (!res.ok && !json.data) {
+      setImportError(json.error?.message ?? 'Import failed.');
+      return null;
+    }
+    return json.data as ImportSummary;
+  };
+
+  const onFilePicked = async (file: File) => {
+    setImportError(null);
+    setImportBusy(true);
+    try {
+      const text = await file.text();
+      const preview = await postImport(text, false);
+      if (preview) { setImportCsv(text); setImportPreview(preview); }
+    } catch {
+      setImportError('Could not read that file.');
+    } finally {
+      setImportBusy(false);
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  };
+
+  const applyImport = async () => {
+    if (!importCsv) return;
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const result = await postImport(importCsv, true);
+      if (result?.applied) {
+        setImportPreview(null);
+        setImportCsv(null);
+        await load();
+      } else if (result) {
+        setImportPreview(result); // apply was blocked (e.g. data drifted since preview) — show why
+      }
+    } finally {
+      setImportBusy(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -161,14 +229,38 @@ export default function DiscoveredPage() {
 
   return (
     <div>
-      <h1 className="admin-h1 mb-2">Discovered products</h1>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+        <h1 className="admin-h1">Discovered products</h1>
+        <div className="flex items-center gap-3">
+          <a href="/api/v1/admin/discovered/export" className="admin-btn" title="Download the review queue as CSV — one row per vendor product, with a computed confidence hint">
+            Export CSV
+          </a>
+          <button
+            className="admin-btn"
+            disabled={importBusy}
+            onClick={() => fileInput.current?.click()}
+            title="Upload an edited export — you'll see a preview of every change before anything is applied"
+          >
+            {importBusy && !importPreview ? 'Reading…' : 'Import CSV'}
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFilePicked(f); }}
+          />
+        </div>
+      </div>
       <p className="mb-6 max-w-3xl text-sm text-brand-400">
         Everything the catalog scrapers found that isn't a listed test yet. Promote a cluster to a new
         test, attach it to an existing one, or ignore it — confirmed names are learned as aliases, so
-        the same vendor naming matches automatically next crawl.
+        the same vendor naming matches automatically next crawl. For a big catch-up pass, Export CSV
+        and work offline instead of clicking through clusters one at a time.
       </p>
 
       {notice && <p className="mb-4 rounded-lg bg-brand-50 px-4 py-2 text-sm text-brand-700">{notice}</p>}
+      {importError && <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{importError}</p>}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (
@@ -295,6 +387,88 @@ export default function DiscoveredPage() {
             }
             return null; // panels: excluded by decision — display only
           })}
+        </div>
+      )}
+
+      {/* CSV import preview */}
+      {importPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !importBusy && setImportPreview(null)}>
+          <div className="admin-card max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="admin-h2 mb-1">Import preview</h2>
+            <p className="mb-4 text-sm text-brand-400">
+              {importPreview.promote.reduce((n, g) => n + g.count, 0)} → {importPreview.promote.length} new test{importPreview.promote.length === 1 ? '' : 's'}
+              {' · '}{importPreview.attach.reduce((n, g) => n + g.count, 0)} → {importPreview.attach.length} existing test{importPreview.attach.length === 1 ? '' : 's'}
+              {' · '}{importPreview.ignore.count} ignored
+              {importPreview.skipped.length > 0 && ` · ${importPreview.skipped.length} skipped (already decided elsewhere)`}
+              {importPreview.errors.length > 0 && <span className="font-medium text-red-600"> · {importPreview.errors.length} error{importPreview.errors.length === 1 ? '' : 's'}</span>}
+            </p>
+
+            {importPreview.errors.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-1 text-sm font-semibold text-red-700">Errors — fix the file and re-upload (nothing can be applied until these are gone)</h3>
+                <ul className="space-y-1 text-sm text-red-700">
+                  {importPreview.errors.map((e, i) => <li key={i}>Line {e.line}: {e.message}</li>)}
+                </ul>
+              </div>
+            )}
+
+            {importPreview.newCategories.length > 0 && (
+              <p className="mb-4 text-sm text-brand-600">
+                Will create {importPreview.newCategories.length} new categor{importPreview.newCategories.length === 1 ? 'y' : 'ies'}: {importPreview.newCategories.join(', ')}
+              </p>
+            )}
+
+            {importPreview.offeringsWithoutPrice > 0 && (
+              <p className="mb-4 text-sm text-amber-700">
+                {importPreview.offeringsWithoutPrice} offering(s) will be created without a price — that vendor's detail page wasn't fetched on the last crawl. Price fills in on the next scrape.
+              </p>
+            )}
+
+            {importPreview.promote.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-1 text-sm font-semibold text-brand-900">New tests</h3>
+                <ul className="space-y-1 text-sm text-brand-600">
+                  {importPreview.promote.map((g) => (
+                    <li key={g.slug}>{g.name} <span className="text-brand-400">({g.category} · {g.count} vendor{g.count === 1 ? '' : 's'})</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {importPreview.attach.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-1 text-sm font-semibold text-brand-900">Attached to existing tests</h3>
+                <ul className="space-y-1 text-sm text-brand-600">
+                  {importPreview.attach.map((g) => (
+                    <li key={g.testSlug}>{g.testName} <span className="text-brand-400">(+{g.count} vendor{g.count === 1 ? '' : 's'})</span></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {importPreview.skipped.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-1 text-sm font-semibold text-brand-900">Skipped</h3>
+                <ul className="space-y-1 text-xs text-brand-400">
+                  {importPreview.skipped.slice(0, 20).map((s, i) => <li key={i}>Line {s.line}: {s.reason}</li>)}
+                  {importPreview.skipped.length > 20 && <li>…and {importPreview.skipped.length - 20} more.</li>}
+                </ul>
+              </div>
+            )}
+
+            {importPreview.promote.length === 0 && importPreview.attach.length === 0 && importPreview.ignore.count === 0 && importPreview.errors.length === 0 && (
+              <p className="mb-4 text-sm text-brand-400">Nothing to apply — every row is blank, skipped, or already applied.</p>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button className="admin-btn" disabled={importBusy} onClick={() => setImportPreview(null)}>Cancel</button>
+              {(importPreview.promote.length > 0 || importPreview.attach.length > 0 || importPreview.ignore.count > 0) && importPreview.errors.length === 0 && (
+                <button className="admin-btn" disabled={importBusy} onClick={applyImport}>
+                  {importBusy ? 'Applying…' : 'Apply'}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
