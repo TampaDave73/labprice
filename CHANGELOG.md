@@ -9,6 +9,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-20)
+- **Admin-triggered scraping was completely broken in production.** `apps/web/lib/redis-options.ts`
+  built its ioredis connection options from `REDIS_URL` but only kept `host`/`port`, dropping
+  `username`/`password` — worked against local Redis (no auth) but hung indefinitely against
+  Railway's password-protected Redis (`NOAUTH Authentication required`, silently swallowed by the
+  BullMQ producer's retry loop). Affected both "Scrape Now" (single vendor) and "Scrape all catalog
+  vendors" — found live 2026-07-20 while verifying the tests-database redesign, since both routes
+  share this helper. Fixed by carrying over `username`/`password` from the URL, same as the
+  already-correct `apps/worker/src/redis.ts`.
+
 ### Added (2026-07-20, tests-database redesign — all 4 phases)
 
 > ⚠️ **Deploy note:** this ships two new tables (`vendor_products`, `test_aliases`) — run
