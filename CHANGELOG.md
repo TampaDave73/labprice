@@ -9,6 +9,22 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-21, GA4 not actually firing in prod)
+- **GA4 loaded but never tracked anything, after `NEXT_PUBLIC_GA_MEASUREMENT_ID` was set in Railway.**
+  Root cause: `next build` inlines `NEXT_PUBLIC_*` vars into the CLIENT bundle at build time, and that
+  build runs inside the Docker build step (`RUN pnpm build` in `Dockerfile`) — but Railway's dashboard
+  Variables are only injected into the running CONTAINER at deploy time, not into `docker build`
+  itself. Server-side rendering read the variable fine (Node always has live `process.env` access on
+  the server, regardless of the `NEXT_PUBLIC_` prefix), so `GoogleAnalytics.tsx`'s script tag loaded
+  correctly and the SSR preload hint showed the right ID — but the CLIENT bundle had baked in
+  `undefined`, so on hydration the component's own `!id` check bailed and `window.dataLayer` never
+  got created. Fixed with `ARG NEXT_PUBLIC_GA_MEASUREMENT_ID` + `ENV` in the Dockerfile's builder
+  stage, which Railway auto-populates from the service Variable of the same name for Dockerfile
+  builds. Verified locally (`next build && next start` with the var set reproduces working tracking;
+  reproducing the bug requires simulating "var absent at build, present at runtime" the way Railway's
+  Dockerfile path actually behaves). Any future client-side `NEXT_PUBLIC_*` var needs the same
+  ARG/ENV pair — noted in the Dockerfile comment.
+
 ### Fixed (2026-07-21, dev experience)
 - **`@prisma/client` "can't be external" Turbopack warning on `pnpm dev`** — a classic pnpm-monorepo
   phantom dependency: `@prisma/client` was only a transitive dependency of `apps/web` (via

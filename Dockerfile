@@ -20,6 +20,15 @@ FROM base AS builder
 COPY --from=deps /app/ ./
 COPY . .
 RUN pnpm --filter @labprice/database exec prisma generate
+# NEXT_PUBLIC_* vars used in CLIENT code get inlined into the bundle by `next build`, which runs in
+# THIS Docker build step — Railway's dashboard Variables are only injected into the running
+# container at deploy time, not into `docker build`, so without this ARG the client bundle silently
+# bakes in `undefined` (found live 2026-07-21: NEXT_PUBLIC_GA_MEASUREMENT_ID was set in Railway, GA's
+# script tag loaded fine — server-rendered, so it read the live runtime env var correctly — but the
+# CLIENT never called gtag()/populated dataLayer, since ITS build baked in `undefined` and bailed).
+# Any FUTURE NEXT_PUBLIC_* var read in a 'use client' component needs the same ARG + ENV pair here.
+ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
+ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 RUN pnpm build
 
 # Stage 4a: worker
