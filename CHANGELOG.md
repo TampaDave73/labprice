@@ -9,6 +9,22 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-21, GA4 custom events)
+- **GA4 event instrumentation**, now that tracking is confirmed live. `lib/gtag.ts` exposes a
+  `trackEvent()` helper (no-ops without GA configured). New events: explicit `page_view` on every
+  client-side route change (`GoogleAnalytics.tsx` — gtag's automatic SPA detection doesn't reliably
+  follow the App Router's History API usage, so this is fired manually instead of trusted); `search`
+  with the real result count (`SearchResultsTracker`, mounted on `/search`); `search_suggestion_click`
+  (autocomplete pick vs. a typed query, `SearchBar`); `vendor_click` (the "Order" link — the site's
+  actual conversion event — with test/vendor/price, `TestDetailClient`); and
+  `suggestion_modal_opened`/`suggestion_submitted` on all three `SuggestionModal` forms (vendor
+  suggestion, test suggestion, result-error report), which makes form-abandonment visible in GA4 for
+  the first time — our own DB only ever recorded successful submits. None of this duplicates
+  PageView/SearchLog/AffiliateClick's job; it gives GA4 the same signals with session/device/geo
+  attached, which those tables were never built to capture. `/admin/analytics` now links out to
+  Google Analytics for that data rather than embedding it (an honest "not here yet" — pulling GA4's
+  own reports back into this page needs the GA4 Data API + a service account, still just a TODO).
+
 ### Fixed (2026-07-21, GA4 not actually firing in prod)
 - **GA4 loaded but never tracked anything, after `NEXT_PUBLIC_GA_MEASUREMENT_ID` was set in Railway.**
   Root cause: `next build` inlines `NEXT_PUBLIC_*` vars into the CLIENT bundle at build time, and that

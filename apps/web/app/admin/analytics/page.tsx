@@ -26,6 +26,7 @@ type AnalyticsData = {
 };
 
 const DAY_OPTIONS = [7, 30, 90];
+const GA_CONFIGURED = !!process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
@@ -74,6 +75,25 @@ export default function AnalyticsPage() {
           ))}
         </div>
       </div>
+
+      {/* GA4 callout — honest about what's NOT here yet: everything below is our own DB (PageView/
+          SearchLog/AffiliateClick), which was never built to capture session/device/geo or funnel
+          drop-off (opened a suggestion form but didn't submit, used a search suggestion vs typed a
+          full query). GA4 now tracks those as custom events (search, search_suggestion_click,
+          vendor_click, suggestion_modal_opened, suggestion_submitted — see SKILLS.md), but pulling
+          that data back INTO this page needs the GA4 Data API + a service account, which isn't wired
+          up yet — for now, this is a link out, not an embed. */}
+      {GA_CONFIGURED && (
+        <div className="admin-card mb-6 flex items-center justify-between gap-4 p-4">
+          <p className="text-sm text-brand-600">
+            Session/device/geo and funnel drop-off (search suggestions used, forms opened but not
+            submitted) are tracked in Google Analytics now — not shown on this page yet.
+          </p>
+          <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="admin-btn shrink-0 text-sm">
+            Open Google Analytics ↗
+          </a>
+        </div>
+      )}
 
       {error ? (
         <p className="text-red-600">Couldn&apos;t load analytics — check the server logs and reload.</p>

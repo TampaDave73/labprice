@@ -9,6 +9,7 @@ import { logSearch } from '@/lib/services/analytics-service';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import TestCard from '../components/TestCard';
+import SearchResultsTracker from '../components/SearchResultsTracker';
 
 interface Props {
   searchParams: Promise<{ q?: string }>;
@@ -57,6 +58,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+      {term && <SearchResultsTracker query={term} resultCount={cards.length} />}
       <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 py-10">
         <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_230)] mb-6">

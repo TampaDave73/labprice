@@ -6,11 +6,26 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useRef } from 'react';
 import Script from 'next/script';
 
 export default function GoogleAnalytics() {
   const id = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const pathname = usePathname();
+
+  // gtag's automatic SPA page_view detection (History API listening) is unreliable with the App
+  // Router's client-side navigation, so fire an explicit page_view on every route change instead of
+  // trusting it — the initial load is already covered by the `gtag('config', ...)` call below.
+  // Deliberately NOT using useSearchParams() here (it'd need a Suspense boundary at the root layout,
+  // which we don't have) — losing the query string on SPA-navigation page_views is an acceptable
+  // trade-off next to that blast radius.
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (!id || pathname?.startsWith('/admin')) return;
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    window.gtag?.('event', 'page_view', { page_path: pathname });
+  }, [id, pathname]);
+
   // Never track admin usage — it's internal staff traffic, not the visitor behavior GA is for, and
   // would otherwise pollute every report with our own logins/clicks.
   if (!id || pathname?.startsWith('/admin')) return null;

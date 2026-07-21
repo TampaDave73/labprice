@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import SuggestionModal from '../../components/SuggestionModal';
+import { trackEvent } from '../../../lib/gtag';
 
 interface Offering {
   id: string;
@@ -395,6 +396,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                       href={`/api/v1/go/${row.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => trackEvent('vendor_click', { test_name: test.name, vendor_name: row.vendorName, price: row.price })}
                       style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.087 230)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 230)' }}
                     >
                       Order

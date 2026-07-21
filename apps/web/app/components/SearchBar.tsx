@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { trackEvent } from '@/lib/gtag';
 
 interface Suggestion {
   name: string;
@@ -48,13 +49,16 @@ export default function SearchBar() {
   };
 
   const navigate = (slug: string) => {
+    trackEvent('search_suggestion_click', { search_term: query.trim(), test_slug: slug });
     setOpen(false);
     setQuery('');
     router.push(`/test/${slug}`);
   };
 
   // Enter / the Compare button go to the full results page (unless the user arrow-selected a
-  // specific suggestion, which deep-links straight to that test).
+  // specific suggestion, which deep-links straight to that test). The `search` GA4 event fires from
+  // the results page itself (SearchResultsTracker), not here — that's the one place that knows the
+  // actual result count, and it also covers direct/bookmarked /search?q= visits this button never sees.
   const goToResults = () => {
     const q = query.trim();
     if (!q) return;

@@ -5,6 +5,7 @@
 // and shows a thanks state; nothing here writes to the live catalog — every endpoint behind it is a
 // triage queue reviewed at /admin/suggestions.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { trackEvent } from '../../lib/gtag';
 
 export interface ModalField {
   name: string;
@@ -47,6 +48,12 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 5,
 };
 
+// Stable event label derived from the endpoint rather than a new required prop on every call site —
+// e.g. '/api/v1/suggestions/vendor' -> 'vendor', '/api/v1/reports/result-error' -> 'result-error'.
+function formTypeOf(endpoint: string): string {
+  return endpoint.split('/').filter(Boolean).pop() ?? endpoint;
+}
+
 export default function SuggestionModal({ open, onClose, title, intro, endpoint, fields, extra, submitLabel = 'Submit' }: Props) {
   const [state, setState] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -57,6 +64,9 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
   // not escape to the page behind the modal). Reset to a fresh form on every open.
   useEffect(() => {
     if (!open) return;
+    // Funnel entry — pairs with the 'suggestion_submitted' event below so drop-off (opened but never
+    // submitted) is visible in GA4, which our own DB (only ever sees successful submits) can't show.
+    trackEvent('suggestion_modal_opened', { form_type: formTypeOf(endpoint) });
     setState('idle');
     setErrorMsg(null);
     const onKey = (e: KeyboardEvent) => {
@@ -88,7 +98,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose]);
+  }, [open, onClose, endpoint]);
 
   if (!open) return null;
 
@@ -107,6 +117,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error?.message ?? 'Submission failed');
       }
+      trackEvent('suggestion_submitted', { form_type: formTypeOf(endpoint) });
       setState('done');
     } catch (err) {
       setState('error');

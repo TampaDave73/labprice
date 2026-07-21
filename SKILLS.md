@@ -159,8 +159,23 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   by the event/click routes — not a client-supplied id, so it also covers the `/api/v1/go/[id]`
   affiliate redirect (a plain navigation, no client JS in the loop). `PageViewTracker` is mounted on
   the homepage, category pages, and test pages; add it to more pages the same way for more coverage.
-  Separately, **GA4** (`GoogleAnalytics.tsx`) is scaffolded but inert until
-  `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set — never fires on `/admin/*`.
+  Separately, **GA4** (`GoogleAnalytics.tsx`) fires once `NEXT_PUBLIC_GA_MEASUREMENT_ID` is set (never
+  on `/admin/*`) — set live 2026-07-21. **Important Docker gotcha**: `NEXT_PUBLIC_*` vars get inlined
+  into the client bundle by `next build`, which runs *inside* `docker build` — Railway's dashboard
+  Variables only reach the *running container*, not the build step. Any client-side `NEXT_PUBLIC_*`
+  var needs a matching `ARG`+`ENV` pair in `Dockerfile`'s builder stage (already done for the GA4 id)
+  or it silently bakes in `undefined` while still looking fine server-side (SSR has live `process.env`
+  access regardless of the prefix, so the symptom is "the script tag loads, nothing ever tracks").
+  GA4 is a *supplement* to the tables above, not a replacement — `trackEvent()` (`lib/gtag.ts`, no-ops
+  if GA is unconfigured) fires custom events for things those tables don't capture: `search` (with
+  real result count, from `SearchResultsTracker` on `/search`), `search_suggestion_click` (autocomplete
+  pick vs. typed query, from `SearchBar`), `vendor_click` (the "Order" link, mirrors `AffiliateClick`
+  but with GA4's session/device/geo attached, from `TestDetailClient`), and
+  `suggestion_modal_opened`/`suggestion_submitted` (funnel drop-off on the 3 `SuggestionModal` forms —
+  our DB only ever sees successful submits, so "opened but abandoned" was previously invisible).
+  `/admin/analytics` links out to `analytics.google.com` for this session/funnel data rather than
+  embedding it — pulling GA4's own reports back into this page needs the GA4 Data API + a service
+  account, not yet wired up (see CLAUDE.md TODO).
 - **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions
   plus test-page **result error reports**, unified into one sortable table (not per-type cards) with
   status tabs (Pending/Reviewed/Dismissed/All — Dismissed is filtered OUT of the default Pending view,
