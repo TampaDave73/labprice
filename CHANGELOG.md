@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-21, dev experience)
+- **`@prisma/client` "can't be external" Turbopack warning on `pnpm dev`** — a classic pnpm-monorepo
+  phantom dependency: `@prisma/client` was only a transitive dependency of `apps/web` (via
+  `@labprice/database`), so Next's default `serverExternalPackages` externalization couldn't resolve
+  it from `apps/web`'s own `node_modules`. Added `@prisma/client` as a direct dependency of
+  `apps/web` instead of touching `next.config.ts` (a `serverExternalPackages` config change was tried
+  before and conflicts with `transpilePackages` including `@labprice/database` — see the comment
+  there). Verified: warning gone from `next dev --turbopack`; `next build` output unchanged.
+
 ### Removed (2026-07-21)
 - **Dormant engagement tables + a dead scraper-config column.** `SavedTest`/`PriceAlert`/
   `Notification`/`AlertNotification` backed the Save / Price-Alert / dashboard features removed

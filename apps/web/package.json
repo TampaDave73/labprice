@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.110.0",
     "@auth/prisma-adapter": "^2.8.0",
     "@labprice/database": "workspace:*",
+    "@prisma/client": "^6.9.0",
     "@labprice/scrapers": "workspace:*",
     "@labprice/shared": "workspace:*",
     "@labprice/ui": "workspace:*",

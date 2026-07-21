@@ -143,7 +143,13 @@ admin session cookie.
       `scrape-discover`/`scrape-execute` workers now run continuously; admin "Scrape now" + requeue-on-add
       process end-to-end when the worker is running (`pnpm dev:worker`). Verified: enqueue → worker
       crawls GoodLabs → stages, 0 ECONNABORTED.
-- [ ] Clean up the benign `@prisma/client` "can't be external" Turbopack warnings before prod build.
+- [x] **Fixed the `@prisma/client` "can't be external" Turbopack warning** (`pnpm dev`). Root cause:
+      classic pnpm-monorepo phantom dependency — `@prisma/client` was only transitive (via
+      `@labprice/database`), so Next's default `serverExternalPackages` externalization couldn't
+      resolve it from `apps/web`'s own `node_modules`. Fixed by adding `@prisma/client` as a direct
+      dependency of `apps/web` (not a `next.config.ts` change — that was tried before and conflicts
+      with `transpilePackages` including `@labprice/database`, per the comment there). Verified: warning
+      gone from `next dev --turbopack`, `next build` output unchanged.
 - [x] Setup/deployment guide — see `docs/08-deployment.md`.
 - [ ] **Pull GA4's own reports into `/admin/analytics`** (sessions/geo/device/funnels — beyond what our
       own SearchLog/PageView/AffiliateClick tables track). Needs a GA4 property + a service account
