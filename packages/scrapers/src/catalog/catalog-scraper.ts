@@ -3,7 +3,7 @@
 // against fixtures and the engine choice (HTTP vs browser) stays a caller concern.
 
 import { goodlabsAdapter } from './adapters';
-import { matchTestToProducts, nameMatches } from './matcher';
+import { matchTestToProducts, nameMatches, testNames } from './matcher';
 import type { CatalogAdapter, CatalogEntry, CatalogProduct, MatchOptions, MatchResult, TestKey } from './types';
 
 export interface CatalogScrapeConfig {
@@ -84,12 +84,27 @@ export async function buildCatalogIndex(
   cfg: CatalogScrapeConfig,
   candidateTests?: TestKey[],
 ): Promise<CatalogProduct[]> {
+  return (await buildCatalogIndexDetailed(deps, cfg, candidateTests)).products;
+}
+
+/**
+ * Like `buildCatalogIndex`, but also returns the FULL catalog listing (`entries`) — every product
+ * the vendor sells, not just the narrowed/detail-fetched subset. The ingest layer (VendorProduct)
+ * persists all of them, so nothing the crawl saw is discarded even on a narrow run. For API vendors
+ * the products ARE the full catalog, so entries is derived from them.
+ */
+export async function buildCatalogIndexDetailed(
+  deps: FetchDeps,
+  cfg: CatalogScrapeConfig,
+  candidateTests?: TestKey[],
+): Promise<{ products: CatalogProduct[]; entries: CatalogEntry[] }> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
 
   // API vendors (Dirt Cheap Labs): one fetch returns the whole priced catalog — no per-product pages,
   // and no name-narrowing (matching is by code, so we keep every product).
   if (adapter.fetchAll) {
-    return adapter.fetchAll(deps, cfg);
+    const products = await adapter.fetchAll(deps, cfg);
+    return { products, entries: products.map((p) => ({ name: p.name, slug: p.slug, url: p.url })) };
   }
 
   const entries = await fetchCatalogEntries(deps, cfg);
@@ -97,9 +112,10 @@ export async function buildCatalogIndex(
 
   let selected = entries;
   if (candidateTests && candidateTests.length > 0) {
-    // Candidate = an entry whose name is a token-subset match of a linked test (same logic as the
-    // name-match tier). Tighter than "shares any token", so we don't fetch every "…Panel" page.
-    selected = entries.filter((e) => candidateTests.some((t) => nameMatches(t.name, e.name)));
+    // Candidate = an entry whose name is a token-subset match of a linked test's name OR a confirmed
+    // alias (same logic as the name-match tier). Tighter than "shares any token", so we don't fetch
+    // every "…Panel" page.
+    selected = entries.filter((e) => candidateTests.some((t) => testNames(t).some((n) => nameMatches(n, e.name))));
     deps.onLog?.(`narrowed to ${selected.length}/${entries.length} candidate product page(s)`);
   }
 
@@ -117,7 +133,7 @@ export async function buildCatalogIndex(
     if (i < selected.length - 1 && delay > 0) await sleep(delay);
   }
   deps.onLog?.(`indexed ${products.length}/${selected.length} product page(s)`);
-  return products;
+  return { products, entries };
 }
 
 /** Match each of our tests against an already-built product index. */
@@ -135,11 +151,11 @@ export async function discover(
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
   opts: { narrow?: boolean } = {},
-): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[] }> {
+): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[]; entries: CatalogEntry[] }> {
   const narrow = opts.narrow ?? true;
-  const products = await buildCatalogIndex(deps, cfg, narrow ? tests : undefined);
+  const { products, entries } = await buildCatalogIndexDetailed(deps, cfg, narrow ? tests : undefined);
   const matches = matchOfferings(tests, products, cfg.matchOptions);
-  return { products, matches };
+  return { products, matches, entries };
 }
 
 /** Default HTTP fetcher: plain GET with a browser-ish UA and a timeout. No JS execution needed. */

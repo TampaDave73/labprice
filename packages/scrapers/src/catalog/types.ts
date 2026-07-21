@@ -82,6 +82,13 @@ export interface TestKey {
   name: string;
   questCode?: string | null;
   labcorpCode?: string | null;
+  /**
+   * Confirmed alternate names (TestAlias rows — learned from admin-confirmed vendor matches or the
+   * tests CSV). The name tier and catalog narrowing treat each alias like the test's own name, so a
+   * vendor that calls "Vitamin D, 25-Hydroxy" something else still narrows/matches once its naming
+   * has been confirmed once.
+   */
+  aliases?: string[];
 }
 
 export interface MatchOptions {

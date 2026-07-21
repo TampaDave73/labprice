@@ -4,23 +4,10 @@ import { auth } from '@/lib/auth';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { isCatalogMode } from '@/lib/catalog-mode';
+import { redisConnectionOptions } from '@/lib/redis-options';
 import { runVendorDiscovery, publishStagedChange, adapterNeedsBrowser } from '@labprice/scrapers/src/catalog/persist';
 
 type Params = { params: Promise<{ id: string }> };
-
-// `localhost` intermittently resolves to IPv6 (::1) on Windows, which this Docker Desktop setup's port
-// forwarding doesn't reliably answer on — connections "succeed" (TCP connects) then reset on the first
-// real read/write (ECONNRESET storm, found live 2026-07-04). Same fix as `apps/worker/src/redis.ts`
-// (127.0.0.1, not localhost) — duplicated here rather than shared since it's two lines and the two
-// packages don't otherwise share a redis util.
-function redisConnectionOptions() {
-  const url = new URL(process.env.REDIS_URL ?? 'redis://127.0.0.1:6379');
-  return {
-    host: url.hostname === 'localhost' ? '127.0.0.1' : url.hostname,
-    port: Number(url.port) || 6379,
-    maxRetriesPerRequest: null as null,
-  };
-}
 
 // Manually trigger a scrape for one vendor: enqueue a scrape:execute job per
 // active offering. The worker process (apps/worker) + Redis must be running to

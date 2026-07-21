@@ -243,8 +243,11 @@ model Test {
   category      Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   categories    TestCategory[]
   codes         TestCode[]
+  aliases       TestAlias[]
   biomarkers    TestBiomarker[]
   offerings     Offering[]
+  vendorProducts          VendorProduct[] @relation("VendorProductTest")
+  suggestedVendorProducts VendorProduct[] @relation("VendorProductSuggestion")
   savedByUsers  SavedTest[]
   priceAlerts   PriceAlert[]
   scrapeResults ScrapeResult[]
@@ -301,6 +304,26 @@ model TestBiomarker {
   @@map("test_biomarkers")
 }
 
+/// Alternate names for a test, learned from confirmed vendor matches (each vendor names the same
+/// test differently) or edited via the tests CSV. `normalized` (lowercased, punctuation-stripped)
+/// is the matching key: an exact normalized-alias hit is strong enough to AUTO-link a vendor
+/// product; anything fuzzier only ever produces a review suggestion.
+model TestAlias {
+  id         String   @id @default(cuid())
+  testId     String   @map("test_id")
+  alias      String
+  normalized String
+  /// Where this alias came from: a vendor slug (learned on confirm), 'csv', or 'manual'.
+  source     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@unique([testId, normalized])
+  @@index([normalized])
+  @@map("test_aliases")
+}
+
 /// Many-to-many: additional categories a test belongs to (beyond its primary `Test.categoryId`).
 model TestCategory {
   testId     String   @map("test_id")
@@ -334,11 +357,12 @@ model Vendor {
   createdAt            DateTime   @default(now()) @map("created_at")
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
-  offerings    Offering[]
-  scrapeConfig ScrapeVendorConfig?
-  scrapeJobs   ScrapeJob[]
-  scrapeRuns   ScrapeRun[]
-  priceAlerts  PriceAlert[]
+  offerings      Offering[]
+  scrapeConfig   ScrapeVendorConfig?
+  scrapeJobs     ScrapeJob[]
+  scrapeRuns     ScrapeRun[]
+  priceAlerts    PriceAlert[]
+  vendorProducts VendorProduct[]
 
   @@index([isActive])
   @@map("vendors")
@@ -386,6 +410,60 @@ model Offering {
   @@index([vendorId])
   @@index([priceUpdatedAt])
   @@map("offerings")
+}
+
+enum VendorProductStatus {
+  UNMATCHED
+  MATCHED
+  IGNORED
+}
+
+/// The RAW ingest layer: every product every catalog crawl finds, kept forever (nothing discarded).
+/// Canonical Tests/Offerings are curated ON TOP of this — a product only feeds public prices once
+/// it's MATCHED to a Test (auto on exact code/alias, or by admin review at /admin/discovered).
+/// Page-based vendors' narrow crawls only fetch detail pages for name-candidates, so many rows are
+/// name+URL only (price/codes null) until a fuller crawl or a match brings detail in.
+model VendorProduct {
+  id             String              @id @default(cuid())
+  vendorId       String              @map("vendor_id")
+  /// Adapter slug — the stable per-vendor product key the crawlers already dedupe on.
+  slug           String
+  name           String
+  /// Lowercased/punctuation-stripped name — the grouping + exact-alias matching key.
+  normalizedName String              @map("normalized_name")
+  url            String?
+  /// Cheapest non-panel provider price observed on the last crawl that fetched detail.
+  price          Decimal?            @db.Decimal(10, 2)
+  labProvider    String?             @map("lab_provider")
+  questCode      String?             @map("quest_code")
+  labcorpCode    String?             @map("labcorp_code")
+  /// Vendor-flagged bundle, or (detail not fetched) name-heuristic. Panels are excluded from
+  /// matching/clustering by product decision 2026-07-20 — no two vendors sell the same panel.
+  isPanel        Boolean             @default(false) @map("is_panel")
+  status         VendorProductStatus @default(UNMATCHED)
+  /// Set when MATCHED. Matching a product does NOT create the offering by itself — listing is a
+  /// separate deliberate step (review UI), so nothing unreviewed reaches public prices.
+  testId         String?             @map("test_id")
+  /// 'quest-code' | 'labcorp-code' | 'exact-name' | 'alias' | 'offering' | 'manual'
+  matchedBy      String?             @map("matched_by")
+  /// Fuzzy candidate (token-overlap) — a suggestion for review, never auto-applied (strict mode).
+  suggestedTestId String?            @map("suggested_test_id")
+  firstSeenAt    DateTime            @default(now()) @map("first_seen_at")
+  lastSeenAt     DateTime            @default(now()) @map("last_seen_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  vendor        Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  test          Test?  @relation("VendorProductTest", fields: [testId], references: [id], onDelete: SetNull)
+  suggestedTest Test?  @relation("VendorProductSuggestion", fields: [suggestedTestId], references: [id], onDelete: SetNull)
+
+  @@unique([vendorId, slug])
+  @@index([status, isPanel])
+  @@index([normalizedName])
+  @@index([questCode])
+  @@index([labcorpCode])
+  @@index([testId])
+  @@map("vendor_products")
 }
 
 /// Append-only, partitioned by RANGE(observed_at) monthly — see ddl.sql.

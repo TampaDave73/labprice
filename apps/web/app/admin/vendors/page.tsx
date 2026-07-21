@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 type TrustLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -26,11 +27,39 @@ const TRUST_BADGE: Record<TrustLevel, string> = {
 };
 
 export default function VendorsListPage() {
+  // ?sort=trust&dir=asc deep-links from the dashboard's attention cards (low trust / failures first).
+  const sp = useSearchParams();
+  const initialSort = sp.get('sort');
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [sort, setSort] = useState<SortKey>('name');
-  const [dir, setDir] = useState<'asc' | 'desc'>('asc');
+  const [sort, setSort] = useState<SortKey>(
+    initialSort && ['name', 'trust', 'offerings', 'active'].includes(initialSort) ? (initialSort as SortKey) : 'name',
+  );
+  const [dir, setDir] = useState<'asc' | 'desc'>(sp.get('dir') === 'desc' ? 'desc' : 'asc');
+  // Bulk "scrape all catalog vendors" trigger state — null until clicked, then a result/error line.
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+
+  const scrapeAll = async () => {
+    if (!confirm('Queue a catalog scrape for every active catalog-mode vendor?')) return;
+    setBulkBusy(true);
+    setBulkMsg(null);
+    try {
+      const res = await fetch('/api/v1/admin/vendors/scrape-all', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) {
+        setBulkMsg(json.error?.message ?? 'Bulk scrape failed to queue.');
+      } else {
+        const { queued, vendors: names } = json.data as { queued: number; vendors: string[] };
+        setBulkMsg(`Queued ${queued} vendor scrape${queued === 1 ? '' : 's'} (${names.join(', ')}) — the worker processes them in the background.`);
+      }
+    } catch {
+      setBulkMsg('Bulk scrape failed to queue — is the site reachable?');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -54,10 +83,17 @@ export default function VendorsListPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="admin-h1">Vendors</h1>
-        <Link href="/admin/vendors/new" className="admin-btn">Add Vendor</Link>
+        <div className="flex items-center gap-3">
+          <button onClick={scrapeAll} disabled={bulkBusy} className="admin-btn" title="Queue a catalog discovery scrape for every active catalog-mode vendor">
+            {bulkBusy ? 'Queueing…' : 'Scrape all catalog vendors'}
+          </button>
+          <Link href="/admin/vendors/new" className="admin-btn">Add Vendor</Link>
+        </div>
       </div>
+
+      {bulkMsg && <p className="mb-4 rounded-lg bg-brand-50 px-4 py-2 text-sm text-brand-700">{bulkMsg}</p>}
 
       <input type="text" placeholder="Search vendors..." value={search} onChange={(e) => setSearch(e.target.value)}
         className="admin-input mb-4 max-w-sm" />

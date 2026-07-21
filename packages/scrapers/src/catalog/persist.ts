@@ -16,8 +16,8 @@ import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel }
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
 import { getAdapter } from './adapters';
 import { JASONHEALTH_ALGOLIA_HEADERS } from './jasonhealth-parser';
-import { matchTestToProducts } from './matcher';
-import type { CatalogProduct, MatchTier, TestKey } from './types';
+import { matchTestToProducts, nameMatches, normalizeName, sharesStrongToken, testNames } from './matcher';
+import type { CatalogEntry, CatalogProduct, MatchTier, TestKey } from './types';
 
 const Decimal = Prisma.Decimal;
 
@@ -187,7 +187,11 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       deletedAt: null,
       ...(opts.offeringIds ? { id: { in: opts.offeringIds } } : {}),
     },
-    include: { test: { select: { id: true, name: true, questCode: true, labcorpCode: true } } },
+    include: {
+      test: {
+        select: { id: true, name: true, questCode: true, labcorpCode: true, aliases: { select: { alias: true } } },
+      },
+    },
   });
   log(`${offerings.length} active offering(s) to price`);
 
@@ -196,6 +200,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     name: o.test.name,
     questCode: o.test.questCode,
     labcorpCode: o.test.labcorpCode,
+    aliases: o.test.aliases.map((a) => a.alias),
   }));
   const testToOffering = new Map(offerings.map((o) => [o.test.id, o]));
 
@@ -214,10 +219,12 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   const started = Date.now();
   let matches: OfferingMatch[];
   let catalogProducts: CatalogProduct[] = [];
+  let catalogEntries: CatalogEntry[] = [];
   try {
     const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
     matches = result.matches;
     catalogProducts = result.products;
+    catalogEntries = result.entries;
     // A real catalog is never empty — 0 products means the crawl was silently blocked (an
     // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
     // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
@@ -338,8 +345,184 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   });
   await prisma.scrapeJob.update({ where: { id: job.id }, data: { status: 'COMPLETED', completedAt: new Date() } });
 
+  // Ingest layer: persist EVERYTHING this crawl saw (not just what priced our offerings) into
+  // VendorProduct. Non-fatal on purpose — a failed ingest must not turn a successful pricing run
+  // into a failed one (it would wrongly ding vendor trust).
+  try {
+    const ingested = await ingestVendorProducts(opts.vendorId, catalogEntries, catalogProducts, matches);
+    log(`ingest: ${ingested.upserted} product(s) recorded, ${ingested.autoMatched} auto-matched`);
+  } catch (e) {
+    log(`ingest failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
+  }
+
   log(`done: ${summary.matched} matched, ${summary.ambiguous} ambiguous, ${summary.unmatched} unmatched, ${summary.staged} staged`);
   return summary;
+}
+
+// Name-only heuristic for entries whose detail page wasn't fetched (narrow crawls): vendors' own
+// isPanel flag is authoritative when we have it; otherwise a bundle-ish word in the name is the
+// best available signal. Panels are excluded from matching/clustering (decision 2026-07-20).
+const PANEL_NAME_RE = /\b(panel|profile|package|bundle|check\s?-?up|checkup|kit)\b/i;
+
+/**
+ * Persist every product this crawl saw into the VendorProduct ingest layer, and auto-match the
+ * unmatched ones under STRICT rules: an exact Quest/LabCorp code hit (guarded by a shared
+ * distinctive name token, same as pricing) or an exact normalized name/alias hit auto-links;
+ * anything fuzzier only sets `suggestedTestId` for the /admin/discovered review queue.
+ * Admin decisions are never overwritten: rows already MATCHED or IGNORED only get freshness/detail
+ * updates. Matching a product here does NOT create an offering — listing is a review-UI action.
+ */
+async function ingestVendorProducts(
+  vendorId: string,
+  entries: CatalogEntry[],
+  products: CatalogProduct[],
+  matches: OfferingMatch[],
+): Promise<{ upserted: number; autoMatched: number }> {
+  type Detail = {
+    name: string;
+    url: string | null;
+    price: number | null;
+    labProvider: string | null;
+    questCode: string | null;
+    labcorpCode: string | null;
+    isPanel: boolean;
+    hasDetail: boolean;
+  };
+
+  // Merge full product detail over listing entries (a slug can appear in both; detail wins).
+  const bySlug = new Map<string, Detail>();
+  for (const e of entries) {
+    bySlug.set(e.slug, {
+      name: e.name, url: e.url || null, price: null, labProvider: null,
+      questCode: null, labcorpCode: null, isPanel: PANEL_NAME_RE.test(e.name), hasDetail: false,
+    });
+  }
+  for (const p of products) {
+    const nonPanel = p.providers.filter((pr) => !pr.isPanel);
+    const cheapest = [...nonPanel].filter((pr) => pr.price != null).sort((a, b) => a.price! - b.price!)[0];
+    const codeOf = (lab: string) => p.providers.find((pr) => pr.labProvider === lab)?.labTestIDs[0] ?? null;
+    bySlug.set(p.slug, {
+      name: p.name,
+      url: p.url || null,
+      price: cheapest?.price ?? null,
+      labProvider: cheapest?.labProvider ?? null,
+      questCode: codeOf('quest'),
+      labcorpCode: codeOf('labcorp'),
+      // A product whose every provider is a bundle is a panel; a mixed product is orderable singly.
+      isPanel: p.providers.length > 0 && p.providers.every((pr) => pr.isPanel),
+      hasDetail: true,
+    });
+  }
+  if (bySlug.size === 0) return { upserted: 0, autoMatched: 0 };
+
+  // Products that priced one of our offerings this run are matched by definition (the offering IS
+  // the confirmed vendor↔test relationship). Resolved via sourceUrl → slug — but ONLY when a URL
+  // uniquely identifies a product. API vendors (Dirt Cheap Labs) give every product the SAME url
+  // (`/alacarte`), so a URL→slug map would collapse to one arbitrary slug and misattribute every
+  // offering match to it (found in review: "hs-CRP" mislabelled as Ferritin). For those vendors
+  // the strict code/name auto-match below already matches the same products correctly, so skipping
+  // the ambiguous URL attribution loses nothing but the (redundant) 'offering' label.
+  const slugsByUrl = new Map<string, string[]>();
+  for (const p of products) if (p.url) slugsByUrl.set(p.url, [...(slugsByUrl.get(p.url) ?? []), p.slug]);
+  const offeringMatchBySlug = new Map<string, string>(); // slug → testId
+  for (const m of matches) {
+    if (m.result.status === 'matched' && m.result.sourceUrl) {
+      const slugs = slugsByUrl.get(m.result.sourceUrl);
+      if (slugs && slugs.length === 1) offeringMatchBySlug.set(slugs[0]!, m.test.id);
+    }
+  }
+
+  // Canonical tests + aliases, indexed for strict auto-match and fuzzy suggestion.
+  const allTests = await prisma.test.findMany({
+    where: { deletedAt: null },
+    select: { id: true, name: true, questCode: true, labcorpCode: true, aliases: { select: { alias: true } } },
+  });
+  const keys: TestKey[] = allTests.map((t) => ({
+    id: t.id, name: t.name, questCode: t.questCode, labcorpCode: t.labcorpCode, aliases: t.aliases.map((a) => a.alias),
+  }));
+  const byQuest = new Map<string, TestKey[]>();
+  const byLabcorp = new Map<string, TestKey[]>();
+  const byNorm = new Map<string, { id: string; via: 'exact-name' | 'alias' }>();
+  for (const t of keys) {
+    if (t.questCode) byQuest.set(t.questCode, [...(byQuest.get(t.questCode) ?? []), t]);
+    if (t.labcorpCode) byLabcorp.set(t.labcorpCode, [...(byLabcorp.get(t.labcorpCode) ?? []), t]);
+    const norm = normalizeName(t.name);
+    if (norm && !byNorm.has(norm)) byNorm.set(norm, { id: t.id, via: 'exact-name' });
+    for (const a of t.aliases ?? []) {
+      const na = normalizeName(a);
+      if (na && !byNorm.has(na)) byNorm.set(na, { id: t.id, via: 'alias' });
+    }
+  }
+
+  const autoMatch = (d: Detail): { testId: string; matchedBy: string } | { suggestedTestId: string } | null => {
+    if (d.isPanel) return null; // panels never match or suggest (product decision)
+    // 1. Exact code, guarded by a shared distinctive token (codes can be stale/wrong — same guard
+    //    the pricing matcher uses). Ambiguous code (2+ plausible tests) → no auto-link.
+    for (const [code, map, label] of [
+      [d.questCode, byQuest, 'quest-code'],
+      [d.labcorpCode, byLabcorp, 'labcorp-code'],
+    ] as const) {
+      if (!code) continue;
+      const hits = (map.get(code) ?? []).filter((t) => testNames(t).some((n) => sharesStrongToken(n, d.name)));
+      if (hits.length === 1) return { testId: hits[0]!.id, matchedBy: label };
+    }
+    // 2. Exact normalized name/alias.
+    const norm = byNorm.get(normalizeName(d.name));
+    if (norm) return { testId: norm.id, matchedBy: norm.via };
+    // 3. Fuzzy (token subset + distinctive token) → suggestion only, strict mode.
+    const fuzzy = keys.find((t) => testNames(t).some((n) => nameMatches(n, d.name) && sharesStrongToken(n, d.name)));
+    return fuzzy ? { suggestedTestId: fuzzy.id } : null;
+  };
+
+  const existing = await prisma.vendorProduct.findMany({
+    where: { vendorId, slug: { in: [...bySlug.keys()] } },
+    select: { id: true, slug: true, status: true },
+  });
+  const existingBySlug = new Map(existing.map((r) => [r.slug, r]));
+
+  const now = new Date();
+  let upserted = 0;
+  let autoMatched = 0;
+  const ops: Prisma.PrismaPromise<unknown>[] = [];
+
+  for (const [slug, d] of bySlug) {
+    const offeringTestId = offeringMatchBySlug.get(slug);
+    const prior = existingBySlug.get(slug);
+    // Only UNMATCHED (or new) rows get (re)matched — MATCHED/IGNORED are admin-owned state.
+    const decideMatch = () => {
+      if (offeringTestId) return { status: 'MATCHED' as const, testId: offeringTestId, matchedBy: 'offering', suggestedTestId: null };
+      const m = autoMatch(d);
+      if (m && 'testId' in m) { autoMatched++; return { status: 'MATCHED' as const, testId: m.testId, matchedBy: m.matchedBy, suggestedTestId: null }; }
+      return { status: 'UNMATCHED' as const, testId: null, matchedBy: null, suggestedTestId: m && 'suggestedTestId' in m ? m.suggestedTestId : null };
+    };
+
+    // Detail-less rows (narrow crawl skipped the page) must not null out previously-seen detail.
+    const detailFields = d.hasDetail
+      ? { price: d.price != null ? new Decimal(d.price) : null, labProvider: d.labProvider, questCode: d.questCode, labcorpCode: d.labcorpCode, isPanel: d.isPanel }
+      : {};
+
+    if (!prior) {
+      const match = decideMatch();
+      ops.push(prisma.vendorProduct.create({
+        data: {
+          vendorId, slug, name: d.name, normalizedName: normalizeName(d.name), url: d.url,
+          ...(d.hasDetail ? detailFields : { isPanel: d.isPanel }),
+          ...match, firstSeenAt: now, lastSeenAt: now,
+        },
+      }));
+    } else {
+      const match = prior.status === 'UNMATCHED' ? decideMatch() : {};
+      ops.push(prisma.vendorProduct.update({
+        where: { id: prior.id },
+        data: { name: d.name, normalizedName: normalizeName(d.name), url: d.url, ...detailFields, ...match, lastSeenAt: now },
+      }));
+    }
+    upserted++;
+  }
+
+  // Chunked so a 1,200-product vendor doesn't build one giant transaction.
+  for (let i = 0; i < ops.length; i += 100) await prisma.$transaction(ops.slice(i, i + 100));
+  return { upserted, autoMatched };
 }
 
 /**

@@ -9,6 +9,68 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-20, tests-database redesign — all 4 phases)
+
+> ⚠️ **Deploy note:** this ships two new tables (`vendor_products`, `test_aliases`) — run
+> `prisma db push` against the prod DB before/with this deploy.
+
+- **Ingest-everything layer (`VendorProduct`).** Every product every catalog crawl sees is now
+  upserted into `vendor_products` (name, url, price, Quest/LabCorp codes, panel flag, first/last
+  seen) instead of being discarded when it doesn't match a listed test. Page-vendor narrow crawls
+  record name+URL-only rows (detail fills in when fetched); API vendors record full detail for the
+  whole catalog. Ingest is non-fatal to the pricing run and idempotent (unique on vendor+slug).
+  Verified offline against the captured Dirt Cheap Labs fixtures: 305 products recorded, re-run
+  produces zero duplicates.
+- **Strict auto-matching + learned aliases (`TestAlias`).** Unmatched products auto-link to a
+  canonical test ONLY on exact evidence: a Quest/LabCorp code hit (guarded by a shared distinctive
+  name token) or an exact normalized name/alias match; anything fuzzier only sets a review
+  suggestion (per product decision 2026-07-20). Confirming a match (attach/promote/list) stores the
+  vendor's raw name as a `TestAlias`, and aliases feed BOTH future auto-matching and the existing
+  pricing pipeline (name tier + catalog narrowing treat aliases as the test's own name) — confirm
+  once, matches forever. **Panels are excluded** from matching/clustering entirely (no two vendors
+  sell the same panel); they're still ingested and visible under a Panels tab.
+- **/admin/discovered — the review queue.** Unmatched products grouped into cross-vendor clusters
+  (by shared code, else distinctive name tokens), most-vendors-first. Per cluster: **Promote to
+  test** (creates the test + offerings with observed prices, codes prefilled), **Attach to
+  existing** (test picker; creates offerings + learns aliases), **Ignore** (reversible). A
+  "Matched, not listed" tab holds auto-matched products whose offerings don't exist yet — matching
+  never publishes by itself; listing is the deliberate one-click step (`List` / `List all`).
+  Includes the **demand report**: zero-result site searches that overlap an unmatched vendor
+  product ("people search for it AND vendors sell it"). New APIs:
+  `GET/POST /api/v1/admin/discovered`. Dashboard gains a fifth attention card (Discovered products).
+- **/admin/coverage — the tests × vendors matrix.** Green = listed with price; amber dot = the
+  ingest layer knows the vendor sells it but no offering exists (deep link to Discovered); blank =
+  not carried. `GET /api/v1/admin/coverage`.
+- **Tests CSV round-trip.** `Export CSV` on /admin/tests downloads the canonical layer (id, name,
+  short_name, slug, quest/labcorp codes, pipe-separated categories + aliases, is_popular — no
+  prices on purpose: identity is sheet-owned, prices are scraper-owned). `Import CSV` re-uploads it
+  through a **dry-run diff preview** (new / field-level changes / unchanged / errors / categories
+  to be created) — nothing applies until confirmed, errors block the whole file, applies run in one
+  transaction and are audit-logged (`tests.csv_import`). Blank id = create; categories/aliases
+  columns are full-set replace; unknown categories are created. `GET /api/v1/admin/tests/export`,
+  `POST /api/v1/admin/tests/import`. Verified end-to-end locally (export → edit → dry-run → apply →
+  re-scrape auto-matched the newly imported test by name).
+
+### Added (2026-07-20, ops-audit S-tier)
+- **Dashboard "Needs attention" row** (`/admin`). Four cards — pending price changes, low-trust
+  vendors, scrape failures (7d), pending suggestions — each showing the count of work waiting
+  (amber when >0, green at zero) and deep-linking to the filtered view. Low-trust/failure cards
+  list the vendor names inline. The Change Queue (`?status=`), Suggestions (`?status=`), and
+  Vendors (`?sort=&dir=`) pages now read initial filter state from the URL to make those deep
+  links work. Old KPI tiles (tests/vendors/offerings) kept below; "Pending Changes" moved into
+  the attention row.
+- **"Scrape all catalog vendors" button** on `/admin/vendors`
+  (`POST /api/v1/admin/vendors/scrape-all`): queues a `scrape-discover` job for every active
+  catalog-mode vendor in one click, replacing per-vendor Scrape Now × 15 (or the hand-written SSH
+  script from the Dirt Cheap Labs re-check). Runs entirely via the worker — nothing inline. The
+  web app's ad-hoc Redis producer options were factored into `apps/web/lib/redis-options.ts`
+  (was duplicated inline in the single-vendor scrape route).
+- **Searchable Audit Log** (`/admin/audit`, in the sidebar): action / entity type / actor
+  (incl. "System" for scraper writes) / date-range filters + 50-row pagination over `AuditLog`
+  via `GET /api/v1/admin/audit`; entity ids are batch-resolved into names ("Vitamin D at
+  Walk-In Lab"). The dashboard's row-humanizing logic moved to the shared
+  `apps/web/lib/audit-describe.ts`; its Recent Activity feed now links "View all →" here.
+
 ### Added (2026-07-20)
 - **Admin Analytics overhauled** (`/admin/analytics`). Was 3 KPI totals + 5 tables with no sense of
   trend; now: each KPI tile carries a 12ish-point sparkline, a new "Traffic over time" line chart

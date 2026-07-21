@@ -65,7 +65,39 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   object/form-action locked down; inline styles+scripts allowed because public pages need them).
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
-- **Dashboard** — KPI counts + recent audit activity.
+- **Dashboard** — a "Needs attention" row (pending price changes, low-trust vendors, scrape failures
+  last 7 days, pending suggestions — each card counts waiting work and deep-links to the filtered
+  view: `/admin/changes?status=PENDING`, `/admin/vendors?sort=trust&dir=asc`,
+  `/admin/suggestions?status=PENDING`; the Change Queue/Suggestions/Vendors pages read those params
+  as initial filter state), then KPI counts + recent audit activity (linking to the full Audit Log).
+  Zero counts render green so "all clear" is explicit.
+- **Discovered** (`/admin/discovered`) — the review queue over the **VendorProduct ingest layer**
+  (see "Ingest layer" under the scrape pipeline). Unmatched, non-panel products clustered across
+  vendors (shared Quest/LabCorp code, else distinctive name tokens). Actions per cluster: **Promote
+  to test** (creates Test + TestCategory + offerings with observed prices), **Attach to existing**
+  (creates offerings), **Ignore** (reversible; Ignored tab restores). Attach/promote/list all
+  **learn aliases**: a confirmed product name that differs from the test's known names becomes a
+  `TestAlias` (source = vendor slug). "Matched, not listed" tab = auto-matched products with no
+  offering yet — `List`/`List all` creates them (matching NEVER auto-publishes an offering). Panels
+  tab is display-only (panels excluded from matching by decision 2026-07-20 — no two vendors sell
+  the same panel). Top of the page: **demand chips** — zero-result `SearchLog` queries that overlap
+  an unmatched product name. `GET/POST /api/v1/admin/discovered` (actions: attach/promote/ignore/
+  restore/list).
+- **Coverage** (`/admin/coverage`) — tests × vendors matrix: green price = live offering, amber dot
+  = vendor sells it per the ingest layer but no offering exists, blank = not carried.
+  `GET /api/v1/admin/coverage`.
+- **Tests CSV round-trip** — `Export CSV` / `Import CSV` buttons on /admin/tests
+  (`GET /api/v1/admin/tests/export`, `POST /api/v1/admin/tests/import`). Identity fields only
+  (id-anchored; name, short_name, slug, codes, categories|pipes, aliases|pipes, is_popular) —
+  **no prices by design** (sheet owns identity, scrapers own prices). Import is always previewed
+  (dry-run diff → confirm), errors block the whole file, applies are transactional + audit-logged.
+  Blank id = create new; categories/aliases are full-set replace; unknown categories get created.
+  CSV helpers in `apps/web/lib/csv.ts` (BOM, quoted fields — Excel-safe).
+- **Audit Log** (`/admin/audit`) — the searchable audit trail: filter by action / entity type /
+  actor (incl. "System" for scraper writes) / date range, 50-row pages, via
+  `GET /api/v1/admin/audit`. Rows are humanized by the shared `lib/audit-describe.ts` (also used by
+  the dashboard feed); the API batch-resolves offering/test/vendor entity ids into names and returns
+  the filter vocabularies (distinct actions/types/actors) for the dropdowns.
 - **Tests** — list (sortable, search) + editor: name/codes/copy fields, **Categories multi-select
   (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete.
   - **✨ Auto-fill** (next to the name): `POST /api/v1/admin/tests/lookup` fills short name, slug,
@@ -78,7 +110,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     `/api/v1/admin/tests/[id]/vendors`; attaching a catalog vendor auto-scrapes the price inline.
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
-- **Vendors** — list (sortable incl. by trust) + **Add Vendor**; editor has: details, **Trust
+- **Vendors** — list (sortable incl. by trust) + **Add Vendor** + **Scrape all catalog vendors**
+  (one click queues a `scrape-discover` job for every active catalog-mode vendor via
+  `POST /api/v1/admin/vendors/scrape-all` — all via the worker, nothing inline: 15 sequential
+  catalog crawls in one request would time out; per-URL vendors are excluded on purpose); editor has: details, **Trust
   Override + Scraper Health panel**, **Recent Runs** (last 15 `ScrapeRun`s with status/trigger/
   duration/found-updated counts + any `ScrapeError` messages inline — `GET
   /api/v1/admin/vendors/[id]/runs` — the live insight into scraping failures, so an admin doesn't need
@@ -121,6 +156,18 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 ### Scrape pipeline (`apps/worker`, `@labprice/scrapers`)
 - Queues (BullMQ, hyphenated names): `scrape-schedule` → `scrape-execute` → `scrape-publish`, plus
   `scrape-discover` for catalog-mode vendors.
+- **Ingest layer (`VendorProduct`, 2026-07-20)**: every catalog crawl now ALSO upserts everything it
+  saw into `vendor_products` (`ingestVendorProducts` in `persist.ts`, called at the end of
+  `runVendorDiscovery`; non-fatal + idempotent on `[vendorId, slug]`). `discover()` returns
+  `entries` (the full listing) alongside `products` — page vendors' narrow crawls record name+URL
+  rows for unfetched pages (detail fields are never nulled by a detail-less crawl). Auto-match is
+  STRICT: exact code hit guarded by `sharesStrongToken`, or exact `normalizeName` equality against
+  test names + aliases → `status=MATCHED` (no offering created!); token-subset fuzzy →
+  `suggestedTestId` only. Rows already MATCHED/IGNORED are admin-owned — the ingest only refreshes
+  their detail/lastSeenAt. Aliases (`TestAlias`) feed pricing too: `TestKey.aliases` is consulted by
+  the name tier and by catalog narrowing, so confirming a vendor's odd naming once makes that test
+  price automatically on later crawls (verified: CSV-imported test auto-matched by exact name on the
+  next fixture run).
 - Two scrape strategies:
   - **Per-URL** (`scrape-execute.ts`): each offering stores a product `externalUrl`; the engine fetches
     it and reads the price via the vendor's CSS selectors. Original path; for vendors with stable
@@ -369,9 +416,10 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   `ioredis` connection "succeeds" (TCP connects) then resets on the first real read/write, over and over,
   looking exactly like a Redis outage even though `redis-cli PING` and Postgres both work fine at the
   same time. `apps/worker/src/redis.ts` already normalizes `localhost` → `127.0.0.1` for the worker's own
-  connections; `apps/web/.../vendors/[id]/scrape/route.ts` needed the identical fix for its own ad-hoc
-  `new IORedis(...)` calls (found live 2026-07-04 debugging the queued-scrape fix above — don't add a raw
-  `new IORedis('redis://localhost:6379')` anywhere in this codebase again).
+  connections; the web app's ad-hoc producers (single-vendor scrape route, bulk scrape-all route) get
+  the same fix from `apps/web/lib/redis-options.ts` (found live 2026-07-04 debugging the queued-scrape
+  fix above — in web code, always build connections from that helper; never a raw
+  `new IORedis('redis://localhost:6379')`).
 - **Paginated catalogs**: `CatalogAdapter.nextCatalogPage(html, currentUrl)` (optional) returns the next
   listing page's URL, or `null` on the last page; `fetchCatalogEntries` loops on it (100-page safety
   cap) before narrowing. Single-page adapters (GoodLabs, OYL) just omit it — no behavior change. Adds

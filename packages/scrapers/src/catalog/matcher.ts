@@ -146,8 +146,17 @@ function tierMatches(
     return (anyProvider || provider.labProvider === 'labcorp') && !!test.labcorpCode && provider.labTestIDs.includes(test.labcorpCode);
   }
   // name: token-subset match AND a shared distinctive token (so "Vitamin B12" ≠ "Vitamin A, Serum").
-  const subset = nameMatches(test.name, product.name) || nameMatches(test.name, provider.name);
-  return subset && (sharesStrongToken(test.name, product.name) || sharesStrongToken(test.name, provider.name));
+  // Confirmed aliases count as the test's own name — each candidate name is tried independently.
+  for (const candidate of testNames(test)) {
+    const subset = nameMatches(candidate, product.name) || nameMatches(candidate, provider.name);
+    if (subset && (sharesStrongToken(candidate, product.name) || sharesStrongToken(candidate, provider.name))) return true;
+  }
+  return false;
+}
+
+/** The test's own name plus its confirmed aliases — every name the matcher treats as "this test". */
+export function testNames(test: TestKey): string[] {
+  return [test.name, ...(test.aliases ?? [])];
 }
 
 function matched(tier: MatchTier, best: Flat, candidates: MatchCandidate[], alt?: Flat): MatchResult {
@@ -175,6 +184,16 @@ function toCandidate(f: Flat): MatchCandidate {
     isPanel: f.provider.isPanel,
     url: f.product.url,
   };
+}
+
+/**
+ * Order-preserving light normalization for EXACT name/alias equality (TestAlias.normalized,
+ * VendorProduct.normalizedName): lowercase, punctuation → space, collapse whitespace. Deliberately
+ * NOT token-based — token sets drop 1-char tokens ("Vitamin D" would degenerate to just "vitamin"),
+ * which is fine for overlap heuristics but far too lossy for an equality key.
+ */
+export function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
 /** Normalize a test name to significant tokens (lowercase, punctuation-stripped, stopwords removed). */
