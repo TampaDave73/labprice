@@ -416,13 +416,19 @@ async function ingestVendorProducts(
   if (bySlug.size === 0) return { upserted: 0, autoMatched: 0 };
 
   // Products that priced one of our offerings this run are matched by definition (the offering IS
-  // the confirmed vendor↔test relationship). Resolved via sourceUrl → slug.
-  const slugByUrl = new Map(products.map((p) => [p.url, p.slug]));
+  // the confirmed vendor↔test relationship). Resolved via sourceUrl → slug — but ONLY when a URL
+  // uniquely identifies a product. API vendors (Dirt Cheap Labs) give every product the SAME url
+  // (`/alacarte`), so a URL→slug map would collapse to one arbitrary slug and misattribute every
+  // offering match to it (found in review: "hs-CRP" mislabelled as Ferritin). For those vendors
+  // the strict code/name auto-match below already matches the same products correctly, so skipping
+  // the ambiguous URL attribution loses nothing but the (redundant) 'offering' label.
+  const slugsByUrl = new Map<string, string[]>();
+  for (const p of products) if (p.url) slugsByUrl.set(p.url, [...(slugsByUrl.get(p.url) ?? []), p.slug]);
   const offeringMatchBySlug = new Map<string, string>(); // slug → testId
   for (const m of matches) {
     if (m.result.status === 'matched' && m.result.sourceUrl) {
-      const slug = slugByUrl.get(m.result.sourceUrl);
-      if (slug) offeringMatchBySlug.set(slug, m.test.id);
+      const slugs = slugsByUrl.get(m.result.sourceUrl);
+      if (slugs && slugs.length === 1) offeringMatchBySlug.set(slugs[0]!, m.test.id);
     }
   }
 
