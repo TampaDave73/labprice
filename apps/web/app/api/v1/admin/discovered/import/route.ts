@@ -14,10 +14,13 @@ import { attachProductsToTest, createPromotedTest } from '@/lib/discovered-actio
 //   (blank)  → skip — leave for a future pass, not an error.
 //   ignore   → same as the one-by-one "Ignore" button.
 //   attach   → requires attach_test_slug (must match an existing, non-deleted test).
-//   promote  → requires new_test_name + new_test_category. new_test_slug is optional (derived from
-//              the name when blank) and is the GROUPING key: every row sharing a slug becomes one
-//              new test with one offering per vendor — that's how a 9-vendor cluster becomes one
-//              test in a single import instead of nine.
+//   promote  → requires new_test_name + new_test_category. new_test_category accepts a comma-
+//              separated list ("Hormones, Metabolic") — same many-to-many categories every other
+//              test can have; Test.categoryId is just the derived display pointer (lowest
+//              displayOrder among them), same rule as the regular admin Test editor. new_test_slug
+//              is optional (derived from the name when blank) and is the GROUPING key: every row
+//              sharing a slug becomes one new test with one offering per vendor — that's how a
+//              9-vendor cluster becomes one test in a single import instead of nine.
 //
 // A row whose VendorProduct drifted out of UNMATCHED since the CSV was exported (someone else
 // already matched/ignored it in the UI) is reported under `skipped`, not `errors` — that's expected
@@ -74,10 +77,27 @@ async function parseWorkbook(buffer: ArrayBuffer): Promise<{ header: string[]; r
 
 type AttachGroup = { testId: string; testName: string; lines: number[]; vendorProductIds: string[] };
 type PromoteGroup = {
-  slug: string; name: string; categoryName: string;
+  slug: string; name: string; categoryNames: string[];
   questCode: string | null; labcorpCode: string | null;
   lines: number[]; vendorProductIds: string[];
 };
+
+/** new_test_category supports a comma-separated list ("Hormones, Metabolic") — same many-to-many
+ * categories every other test in the catalog can have. Trims each name and drops case-insensitive
+ * duplicates within the cell (keeping the first casing seen). */
+function parseCategoryNames(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of raw.split(',')) {
+    const name = part.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  return out;
+}
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -129,7 +149,7 @@ export async function POST(req: NextRequest) {
   const ignoreIds: string[] = [];
   const attachGroups = new Map<string, AttachGroup>();
   const promoteGroups = new Map<string, PromoteGroup>();
-  const newCategories = new Set<string>();
+  const newCategories = new Map<string, string>(); // lowercase name -> original casing, deduped across rows
 
   records.forEach((rec, i) => {
     const line = i + 2;
@@ -167,17 +187,23 @@ export async function POST(req: NextRequest) {
 
     if (decision === 'promote') {
       const name = (rec.new_test_name ?? '').trim();
-      const categoryName = (rec.new_test_category ?? '').trim();
-      if (!name || !categoryName) { errors.push({ line, message: 'promote requires new_test_name and new_test_category.' }); return; }
+      const categoryNames = parseCategoryNames(rec.new_test_category ?? '');
+      if (!name || categoryNames.length === 0) { errors.push({ line, message: 'promote requires new_test_name and new_test_category.' }); return; }
       const slug = (rec.new_test_slug ?? '').trim() || slugify(name);
       if (!slug) { errors.push({ line, message: 'new_test_name produced an empty slug.' }); return; }
       const existingOwner = testBySlug.get(slug);
       if (existingOwner) { errors.push({ line, message: `Slug "${slug}" already belongs to the existing test "${existingOwner.name}".` }); return; }
-      if (!categoryByName.has(categoryName.toLowerCase())) newCategories.add(categoryName);
+      for (const catName of categoryNames) {
+        if (!categoryByName.has(catName.toLowerCase()) && !newCategories.has(catName.toLowerCase())) {
+          newCategories.set(catName.toLowerCase(), catName);
+        }
+      }
 
+      const categoryKey = categoryNames.map((c) => c.toLowerCase()).sort().join('|');
       const g = promoteGroups.get(slug);
       if (g) {
-        if (g.name !== name || g.categoryName.toLowerCase() !== categoryName.toLowerCase()) {
+        const gKey = g.categoryNames.map((c) => c.toLowerCase()).sort().join('|');
+        if (g.name !== name || gKey !== categoryKey) {
           errors.push({ line, message: `Row conflicts with an earlier row also using new_test_slug "${slug}" (different name/category) — give it a distinct new_test_slug.` });
           return;
         }
@@ -187,7 +213,7 @@ export async function POST(req: NextRequest) {
         g.labcorpCode = g.labcorpCode ?? (rec.labcorp_code || null);
       } else {
         promoteGroups.set(slug, {
-          slug, name, categoryName, lines: [line], vendorProductIds: [vpId],
+          slug, name, categoryNames, lines: [line], vendorProductIds: [vpId],
           questCode: rec.quest_code || null, labcorpCode: rec.labcorp_code || null,
         });
       }
@@ -220,10 +246,10 @@ export async function POST(req: NextRequest) {
   const summary = {
     ignore: { count: ignoreIds.length },
     attach: [...attachGroups.values()].map((g) => ({ testSlug: tests.find((t) => t.id === g.testId)!.slug, testName: g.testName, count: g.vendorProductIds.length, duplicateVendorRows: duplicatesInGroup(g.vendorProductIds) })),
-    promote: [...promoteGroups.values()].map((g) => ({ slug: g.slug, name: g.name, category: g.categoryName, count: g.vendorProductIds.length, questCode: g.questCode, labcorpCode: g.labcorpCode, duplicateVendorRows: duplicatesInGroup(g.vendorProductIds) })),
+    promote: [...promoteGroups.values()].map((g) => ({ slug: g.slug, name: g.name, categories: g.categoryNames, count: g.vendorProductIds.length, questCode: g.questCode, labcorpCode: g.labcorpCode, duplicateVendorRows: duplicatesInGroup(g.vendorProductIds) })),
     skipped,
     errors,
-    newCategories: [...newCategories],
+    newCategories: [...newCategories.values()],
     offeringsWithoutPrice,
     applied: false,
   };
@@ -236,7 +262,7 @@ export async function POST(req: NextRequest) {
   const droppedDuplicates: { vendorId: string; name: string }[] = [];
   await prisma.$transaction(async (tx) => {
     let nextOrder = Math.max(0, ...categories.map((c) => c.displayOrder)) + 1;
-    for (const catName of newCategories) {
+    for (const catName of newCategories.values()) {
       const created = await tx.category.create({ data: { name: catName, slug: slugify(catName), displayOrder: nextOrder++ } });
       categoryByName.set(catName.toLowerCase(), { id: created.id, name: created.name, displayOrder: created.displayOrder });
     }
@@ -250,9 +276,9 @@ export async function POST(req: NextRequest) {
     let testsCreated = 0;
 
     for (const g of promoteGroups.values()) {
-      const category = categoryByName.get(g.categoryName.toLowerCase())!;
+      const categoryIds = g.categoryNames.map((n) => categoryByName.get(n.toLowerCase())!.id);
       const { testId } = await createPromotedTest(tx, {
-        name: g.name, slug: g.slug, categoryId: category.id, questCode: g.questCode, labcorpCode: g.labcorpCode,
+        name: g.name, slug: g.slug, categoryIds, questCode: g.questCode, labcorpCode: g.labcorpCode,
       });
       testsCreated++;
       const groupProducts = g.vendorProductIds.map((id) => productById.get(id)!);

@@ -96,7 +96,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   with that slug; blank → usually promote) — so a reviewer can sort/filter instead of eyeballing every
   row. Fill in `decision` (ignore/attach/promote, dropdown-enabled) + the matching columns
   (`attach_test_slug`, or `new_test_name`+`new_test_category`+optional `new_test_slug` — rows
-  sharing a `new_test_slug` become one new test with one offering per vendor) and re-upload; same
+  sharing a `new_test_slug` become one new test with one offering per vendor). `new_test_category`
+  accepts a comma-separated list (`"Hormones, Metabolic"`) — same many-to-many categories any test
+  can have; `Test.categoryId` ends up the derived display pointer (lowest `displayOrder` among the
+  given ones), same rule as the regular admin Test editor. Each name is resolved independently
+  (existing matched case-insensitively, unrecognized ones auto-created), so mixing a real category
+  with a new one in the same cell is fine. Re-upload; same
   dry-run-diff-then-apply contract as Tests import, transactional + audit-logged
   (`discovered.csv_import`). A row whose product was already matched/ignored elsewhere since export
   is reported under `skipped`, not treated as an error. The mutation logic (attach/promote) is

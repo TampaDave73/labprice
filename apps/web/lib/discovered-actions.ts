@@ -187,21 +187,26 @@ export async function attachProductsToTest(
   return { offeringsCreated, aliasesLearned, droppedDuplicates };
 }
 
-/** Creates a new Test + its category link. Slug uniqueness must already be validated by the caller. */
+/** Creates a new Test + its category link(s). Slug uniqueness must already be validated by the
+ * caller. `categoryIds` may hold more than one — same many-to-many rule as the regular admin Test
+ * editor: `Test.categoryId` is kept only as a derived "display" pointer (the given category with the
+ * lowest `displayOrder`), real membership is the `TestCategory` rows created for every id. */
 export async function createPromotedTest(
   tx: Tx,
-  fields: { name: string; shortName?: string; slug: string; categoryId: string; questCode?: string | null; labcorpCode?: string | null },
+  fields: { name: string; shortName?: string; slug: string; categoryIds: string[]; questCode?: string | null; labcorpCode?: string | null },
 ): Promise<{ testId: string }> {
+  const cats = await tx.category.findMany({ where: { id: { in: fields.categoryIds } }, select: { id: true, displayOrder: true } });
+  const displayCategoryId = [...cats].sort((a, b) => a.displayOrder - b.displayOrder)[0]!.id;
   const created = await tx.test.create({
     data: {
       name: fields.name,
       shortName: fields.shortName?.trim() || fields.name,
       slug: fields.slug,
-      categoryId: fields.categoryId,
+      categoryId: displayCategoryId,
       questCode: fields.questCode?.trim() || null,
       labcorpCode: fields.labcorpCode?.trim() || null,
     },
   });
-  await tx.testCategory.create({ data: { testId: created.id, categoryId: fields.categoryId } });
+  await tx.testCategory.createMany({ data: fields.categoryIds.map((categoryId) => ({ testId: created.id, categoryId })), skipDuplicates: true });
   return { testId: created.id };
 }

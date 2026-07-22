@@ -35,7 +35,7 @@ const COLUMNS = [
   { key: 'attach_test_slug', header: 'attach_test_slug', width: 22, note: "decision=attach only: the EXISTING test's slug to link this vendor to." },
   { key: 'new_test_name', header: 'new_test_name', width: 26, note: 'decision=promote only: name for the new test. Give every row of the same new test the SAME name to merge them into one test.' },
   { key: 'new_test_slug', header: 'new_test_slug', width: 22, note: 'decision=promote only, optional: leave blank to derive it from new_test_name.' },
-  { key: 'new_test_category', header: 'new_test_category', width: 20, note: "decision=promote only. Pick from the dropdown or type a new one — unrecognized names are created automatically on Apply." },
+  { key: 'new_test_category', header: 'new_test_category', width: 20, note: "decision=promote only. Pick from the dropdown or type a new one — unrecognized names are created automatically on Apply. Put a test in more than one category by separating names with a comma, e.g. \"Hormones, Metabolic\"." },
 ] as const;
 
 const TEXT_FORMAT_COLUMNS = new Set(['quest_code', 'labcorp_code']);
@@ -85,6 +85,7 @@ function addInstructionsSheet(workbook: ExcelJS.Workbook) {
 
   heading('Categories');
   body("new_test_category (promote only) has a dropdown on the Discovered sheet, sourced from the 'Categories' sheet — pick an existing one, or just type a name that isn't in the list. Either way, on Apply: a recognized name is used as-is; an unrecognized name is created as a brand new category automatically. No separate step needed.");
+  body('A test can belong to more than one category — separate names with a comma in the same cell, e.g. "Hormones, Metabolic". Each name is resolved independently (existing ones matched, new ones created); the test shows up under all of them.');
 
   heading('confidence and duplicate_vendor_in_cluster');
   body('confidence=high: this row shares a Quest/LabCorp code with another vendor in its cluster — strong evidence it\'s the same test. confidence=low: this row\'s price is a big outlier vs. the cluster — double check before deciding.\n\nduplicate_vendor_in_cluster=yes: this vendor has 2 rows in the same cluster (usually because the cluster still mixes two different products). Decide those rows separately — don\'t route both to the same test, or the second one\'s price is silently skipped (Offering only allows one price per vendor per test).');

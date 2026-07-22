@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
       }
       const { testId: created } = await prisma.$transaction((tx) =>
         createPromotedTest(tx, {
-          name, slug, categoryId,
+          name, slug, categoryIds: [categoryId],
           shortName: typeof body.shortName === 'string' ? body.shortName : undefined,
           questCode: typeof body.questCode === 'string' ? body.questCode : undefined,
           labcorpCode: typeof body.labcorpCode === 'string' ? body.labcorpCode : undefined,

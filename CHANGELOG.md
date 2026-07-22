@@ -9,6 +9,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-22, Discovered import: multi-category promote)
+- **`new_test_category` on the Discovered Excel import now correctly supports a comma-separated
+  list** (e.g. `"Hormones, Metabolic"`) — previously the whole cell was treated as one literal
+  category name, so a multi-category entry never matched an existing category and would have
+  silently created one bogus category named e.g. "Hormones, Metabolic" instead of linking the new
+  test to both real categories. Each name in the list is now resolved independently (existing
+  matched case-insensitively, unrecognized ones auto-created, same as before for a single name), and
+  `createPromotedTest` (`lib/discovered-actions.ts`, shared by both the bulk import and the one-by-one
+  admin UI's Promote button) now takes `categoryIds: string[]` and creates a `TestCategory` row per
+  id, deriving `Test.categoryId` as the lowest-`displayOrder` one among them — the same
+  many-to-many/display-pointer rule every other test in the catalog already follows. Verified
+  end-to-end against a seeded local row (existing + auto-created category, correct display pointer).
+
 ### Changed (2026-07-22, site-wide rebrand)
 - **New brand identity implemented everywhere** (public pages + admin panel), pixel-matched to a
   design handoff: navy `#0f2647`, blue `#1656e8`, green `#1a9e5c`, red `#e0293e`.

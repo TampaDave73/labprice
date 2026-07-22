@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 type ImportSummary = {
   ignore: { count: number };
   attach: { testSlug: string; testName: string; count: number; duplicateVendorRows: number }[];
-  promote: { slug: string; name: string; category: string; count: number; questCode: string | null; labcorpCode: string | null; duplicateVendorRows: number }[];
+  promote: { slug: string; name: string; categories: string[]; count: number; questCode: string | null; labcorpCode: string | null; duplicateVendorRows: number }[];
   skipped: { line: number; vendorProductId: string; reason: string }[];
   errors: { line: number; message: string }[];
   newCategories: string[];
@@ -461,7 +461,7 @@ export default function DiscoveredPage() {
                 <ul className="space-y-1 text-sm text-brand-600">
                   {importPreview.promote.map((g) => (
                     <li key={g.slug}>
-                      {g.name} <span className="text-brand-400">({g.category} · {g.count} vendor{g.count === 1 ? '' : 's'})</span>
+                      {g.name} <span className="text-brand-400">({g.categories.join(', ')} · {g.count} vendor{g.count === 1 ? '' : 's'})</span>
                       {g.duplicateVendorRows > 0 && <span className="text-amber-700"> ⚠ {g.duplicateVendorRows} same-vendor row{g.duplicateVendorRows === 1 ? '' : 's'} will be skipped</span>}
                     </li>
                   ))}
