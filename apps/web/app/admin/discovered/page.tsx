@@ -244,7 +244,7 @@ export default function DiscoveredPage() {
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <h1 className="admin-h1">Discovered products</h1>
         <div className="flex items-center gap-3">
-          <a href="/api/v1/admin/discovered/export" className="admin-btn" title="Download the review queue as CSV — one row per vendor product, with a computed confidence hint">
+          <a href="/api/v1/admin/discovered/export" className="admin-btn" title="Download the review queue as CSV — one row per vendor product, with column-by-column instructions baked into the first few rows (safe to leave in or delete)">
             Export CSV
           </a>
           <button

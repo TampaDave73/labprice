@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-22, self-documenting Discovered CSV)
+- **The Discovered CSV export now explains itself**, since the column meanings — especially when to
+  `attach` vs. `promote` — weren't obvious from the sheet alone. A block of instruction rows is
+  prepended to every export: what each column means, a plain-language attach-vs-promote decision
+  rule, how the category auto-create works, and what the confidence/duplicate-vendor flags mean.
+  These rows have `decision` left blank, which the importer already treats as "skip, not an error"
+  for any row — so they're inert whether the reviewer deletes them or leaves them in.
+  Also added two new columns: `suggested_test_name`/`suggested_test_slug`, the auto-matcher's fuzzy
+  (never auto-applied) candidate — this is the actual answer to "does this test already exist,"
+  i.e. the real signal for attach-vs-promote, not just prose about it.
+
 ### Added (2026-07-21, GA4 custom events)
 - **GA4 event instrumentation**, now that tracking is confirmed live. `lib/gtag.ts` exposes a
   `trackEvent()` helper (no-ops without GA configured). New events: explicit `page_view` on every

@@ -98,7 +98,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   (`discovered.csv_import`). A row whose product was already matched/ignored elsewhere since export
   is reported under `skipped`, not treated as an error. The mutation logic (attach/promote) is
   shared with the one-by-one UI via `apps/web/lib/discovered-actions.ts`, so both paths do exactly
-  the same thing to the database.
+  the same thing to the database. Each row also carries `suggested_test_name`/`suggested_test_slug`
+  — the auto-matcher's fuzzy (never auto-applied) candidate, surfaced as the key signal for the
+  attach-vs-promote call: filled in usually means attach with that slug, blank usually means promote.
+  The export itself is self-documenting: an inert instruction block (blank `decision`, so it's always
+  skipped on import — same rule as any other undecided row) is prepended explaining every column and
+  the attach/promote distinction, so the file doesn't depend on anyone having read this doc first.
 - **Coverage** (`/admin/coverage`) — tests × vendors matrix: green price = live offering, amber dot
   = vendor sells it per the ingest layer but no offering exists, blank = not carried.
   `GET /api/v1/admin/coverage`.
