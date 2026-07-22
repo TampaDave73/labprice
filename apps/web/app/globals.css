@@ -2,31 +2,41 @@
 
 @theme {
   --font-sans: "DM Sans", system-ui, sans-serif;
-  /* Brand: a clean, lighter blue (hue 230) — replaces the old dark blue/purple (hue 280) that
-     read as heavy and hard to read at high chroma. Lower chroma throughout keeps it legible. */
-  --color-brand-50: oklch(0.98 0.01 230);
-  --color-brand-100: oklch(0.95 0.02 230);
-  --color-brand-200: oklch(0.9 0.04 230);
-  --color-brand-300: oklch(0.82 0.06 230);
-  --color-brand-400: oklch(0.68 0.1 230);
-  --color-brand-500: oklch(0.56 0.14 230);
-  --color-brand-600: oklch(0.49 0.14 232);
-  --color-brand-700: oklch(0.4 0.11 232);
-  --color-brand-800: oklch(0.3 0.08 230);
-  --color-brand-900: oklch(0.24 0.06 228);
-  /* Accent: teal/emerald — used for highlights, "best price" badges, and CTAs that need to stand
-     out from brand blue (e.g. savings callouts). */
-  --color-accent-50: oklch(0.96 0.03 165);
-  --color-accent-100: oklch(0.92 0.06 165);
-  --color-accent-200: oklch(0.85 0.09 165);
-  --color-accent-300: oklch(0.75 0.11 165);
-  --color-accent-400: oklch(0.63 0.13 165);
-  --color-accent-500: oklch(0.55 0.14 165);
-  --color-accent-600: oklch(0.47 0.13 165);
-  --color-accent-700: oklch(0.38 0.11 165);
-  --color-success-50: oklch(0.97 0.05 145);
-  --color-success-500: oklch(0.72 0.18 145);
-  --color-success-700: oklch(0.38 0.17 145);
+  /* Bridges next/font's self-hosted Poppins (loaded + scoped as --font-poppins in layout.tsx) in —
+     used by <Logo/> only, not site-wide body copy. */
+  --font-brand: var(--font-poppins), "Poppins", "DM Sans", system-ui, sans-serif;
+  /* Brand refresh (2026-07-22): navy/royal-blue identity from the logo design handoff — replaces
+     the old lighter sky-blue (hue 230). brand-500 and brand-900 are the two EXACT brand hex values
+     (#1656e8 blue, #0f2647 navy) converted to oklch; every other step is an interpolated tint/shade
+     on the same ~hue 260 to keep a smooth, coherent ramp (see design_handoff_logo_branding for the
+     source hex values — quote them directly wherever CSS accepts a literal hex instead of a ramp
+     step, e.g. the logo mark itself). */
+  --color-brand-50: oklch(0.98 0.015 260);
+  --color-brand-100: oklch(0.94 0.03 260);
+  --color-brand-200: oklch(0.88 0.06 260);
+  --color-brand-300: oklch(0.78 0.1 261);
+  --color-brand-400: oklch(0.64 0.16 262);
+  --color-brand-500: oklch(0.516 0.229 263); /* #1656e8 */
+  --color-brand-600: oklch(0.44 0.19 262);
+  --color-brand-700: oklch(0.36 0.14 260);
+  --color-brand-800: oklch(0.3 0.1 259);
+  --color-brand-900: oklch(0.27 0.068 258); /* #0f2647 */
+  /* Accent: green (hue ~155, from the logo's "$" mark, #1a9e5c) — used for highlights, "best
+     price" badges, and CTAs that need to stand out from brand blue (e.g. savings callouts). */
+  --color-accent-50: oklch(0.96 0.03 155);
+  --color-accent-100: oklch(0.92 0.06 155);
+  --color-accent-200: oklch(0.85 0.09 155);
+  --color-accent-300: oklch(0.75 0.11 155);
+  --color-accent-400: oklch(0.68 0.13 155);
+  --color-accent-500: oklch(0.617 0.146 155); /* #1a9e5c */
+  --color-accent-600: oklch(0.5 0.14 155);
+  --color-accent-700: oklch(0.4 0.12 155);
+  --color-success-50: oklch(0.96 0.03 155);
+  --color-success-500: oklch(0.617 0.146 155); /* #1a9e5c */
+  --color-success-700: oklch(0.4 0.12 155);
+  /* Red — the logo's "blood" red, #e0293e. Only used where the brand mark itself needs it (the
+     logo's blood fill) plus admin danger actions, which already lived in the same red family. */
+  --color-brand-red: oklch(0.589 0.215 22); /* #e0293e */
   --radius-card: 14px;
   --radius-pill: 20px;
   --radius-btn: 10px;
@@ -41,7 +51,7 @@
 }
 
 ::placeholder {
-  color: oklch(0.6 0.03 230 / 0.5);
+  color: oklch(0.6 0.02 260 / 0.5);
 }
 
 ::-webkit-scrollbar {
@@ -49,7 +59,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: oklch(0.55 0.12 230 / 0.25);
+  background: oklch(0.5 0.15 262 / 0.25);
   border-radius: 3px;
 }
 
@@ -60,18 +70,18 @@
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.4px;
-  color: oklch(0.22 0.03 230);
+  color: #0f2647;
 }
 .admin-h2 {
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.2px;
-  color: oklch(0.22 0.03 230);
+  color: #0f2647;
 }
 .admin-card {
   background: #fff;
   border-radius: 14px;
-  border: 1.5px solid oklch(0.92 0.02 230);
+  border: 1.5px solid oklch(0.92 0.02 260);
 }
 .admin-btn {
   display: inline-flex;
@@ -87,34 +97,34 @@
   cursor: pointer;
   text-decoration: none;
   transition: filter 0.15s, background 0.15s, box-shadow 0.15s;
-  background: linear-gradient(135deg, oklch(0.56 0.14 230), oklch(0.49 0.14 232));
+  background: linear-gradient(135deg, #1656e8, oklch(0.44 0.19 262));
   color: #fff;
 }
 .admin-btn:hover { filter: brightness(1.07); }
 .admin-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
 .admin-btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 8px; gap: 5px; }
-.admin-btn-success { background: oklch(0.52 0.17 145); }
-.admin-btn-danger { background: oklch(0.55 0.2 25); }
+.admin-btn-success { background: oklch(0.5 0.15 155); }
+.admin-btn-danger { background: #e0293e; }
 .admin-btn-ghost {
   background: #fff;
-  color: oklch(0.42 0.1 230);
-  border: 1.5px solid oklch(0.84 0.03 230);
+  color: oklch(0.42 0.1 261);
+  border: 1.5px solid oklch(0.84 0.03 260);
 }
-.admin-btn-ghost:hover { filter: none; background: oklch(0.97 0.02 230); }
+.admin-btn-ghost:hover { filter: none; background: oklch(0.97 0.02 260); }
 .admin-input {
   width: 100%;
   border-radius: 10px;
-  border: 1.5px solid oklch(0.9 0.02 230);
+  border: 1.5px solid oklch(0.9 0.02 260);
   padding: 9px 14px;
   font-size: 14px;
-  color: oklch(0.22 0.03 230);
+  color: #0f2647;
   background: #fff;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .admin-input:focus {
-  border-color: oklch(0.56 0.14 230);
-  box-shadow: 0 0 0 3px oklch(0.56 0.14 230 / 0.18);
+  border-color: #1656e8;
+  box-shadow: 0 0 0 3px oklch(0.516 0.229 263 / 0.18);
 }
 .admin-input-inline { width: auto; padding: 6px 10px; font-size: 13px; }
 

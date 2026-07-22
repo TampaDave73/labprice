@@ -108,8 +108,8 @@ export default function SearchBar() {
         }}
       >
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
-          <circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.075 230)" strokeWidth="1.8" />
-          <path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.075 230)" strokeWidth="1.8" strokeLinecap="round" />
+          <circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.075 260)" strokeWidth="1.8" />
+          <path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.075 260)" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
         <input
           value={query}
@@ -124,14 +124,14 @@ export default function SearchBar() {
             background: 'transparent',
             fontSize: 16,
             padding: '11px 14px',
-            color: 'oklch(0.18 0.04 230)',
+            color: 'oklch(0.18 0.04 260)',
           }}
         />
         <button
           onClick={goToResults}
           style={{
             flexShrink: 0,
-            background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
+            background: 'linear-gradient(135deg, oklch(0.58 0.136 260), oklch(0.49 0.14 262))',
             color: '#fff',
             border: 'none',
             borderRadius: 10,
@@ -168,22 +168,22 @@ export default function SearchBar() {
               style={{
                 padding: '12px 18px',
                 cursor: 'pointer',
-                borderBottom: '1px solid oklch(0.95 0.01 230)',
+                borderBottom: '1px solid oklch(0.95 0.01 260)',
                 transition: 'background 150ms',
-                background: i === activeIdx ? 'oklch(0.97 0.03 230)' : undefined,
+                background: i === activeIdx ? 'oklch(0.97 0.03 260)' : undefined,
               }}
               onMouseEnter={() => setActiveIdx(i)}
             >
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.18 0.04 230)' }}>{sug.name}</div>
-                <div style={{ fontSize: 11, color: 'oklch(0.58 0.05 230)', marginTop: 2 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.18 0.04 260)' }}>{sug.name}</div>
+                <div style={{ fontSize: 11, color: 'oklch(0.58 0.05 260)', marginTop: 2 }}>
                   {sug.questCode ? `Quest ${sug.questCode}` : ''}
                   {sug.questCode && sug.labcorpCode ? ' · ' : ''}
                   {sug.labcorpCode ? `LabCorp ${sug.labcorpCode}` : ''}
                 </div>
               </div>
               {sug.minPrice != null && (
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'oklch(0.4 0.17 145)' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'oklch(0.4 0.17 155)' }}>
                   from ${Math.round(sug.minPrice)}
                 </div>
               )}

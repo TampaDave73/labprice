@@ -3,7 +3,7 @@
 // a run of `- ` lines = bullet list; anything else = paragraph. Matches the old hardcoded styling.
 import { Fragment } from 'react';
 
-const H2_STYLE: React.CSSProperties = { color: 'oklch(0.2 0.04 230)' };
+const H2_STYLE: React.CSSProperties = { color: 'oklch(0.2 0.04 260)' };
 
 export default function StaticPageBody({ body }: { body: string }) {
   const blocks = body.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { DM_Sans } from 'next/font/google';
+import { DM_Sans, Poppins } from 'next/font/google';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import './globals.css';
 
@@ -9,10 +9,21 @@ const dmSans = DM_Sans({
   display: 'swap',
 });
 
+// Brand wordmark font (2026-07-22 branding handoff) — self-hosted via next/font, scoped to
+// `--font-poppins` and bridged into globals.css's `--font-brand` custom property so `<Logo/>` (and
+// only the logo, deliberately — body copy stays DM Sans) picks it up without an extra Google Fonts
+// network request.
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#0081b6',
+  themeColor: '#0f2647',
 };
 
 export const metadata: Metadata = {
@@ -44,8 +55,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body
-        className={`${dmSans.className} min-h-screen antialiased`}
-        style={{ background: 'oklch(0.985 0.005 230)' }}
+        className={`${dmSans.className} ${poppins.variable} min-h-screen antialiased`}
+        style={{ background: 'oklch(0.985 0.005 260)' }}
       >
         <GoogleAnalytics />
         {children}

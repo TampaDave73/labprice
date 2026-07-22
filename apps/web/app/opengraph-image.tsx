@@ -1,6 +1,9 @@
 // Dynamically-generated social share card (og:image / twitter:image). Next serves this for every
 // page that doesn't provide its own, so links to the site render a branded preview instead of the
 // blank/missing static PNG the metadata used to point at. Generated at the edge — no binary asset.
+// Icon geometry/colors match the 2026-07-22 branding handoff (same shape as app/icon.svg and
+// components/Logo.tsx's <LogoIcon/>) — Satori (ImageResponse's renderer) supports plain SVG shapes
+// inline, so this is the same paths, not a re-approximation.
 import { ImageResponse } from 'next/og';
 
 export const alt = 'LabTestCompare — Compare Blood Test Prices';
@@ -18,27 +21,25 @@ export default function OpengraphImage() {
           flexDirection: 'column',
           justifyContent: 'center',
           padding: '80px',
-          background: 'linear-gradient(135deg, #0a2540 0%, #0081b6 100%)',
+          background: '#0f2647',
           color: '#fff',
           fontFamily: 'sans-serif',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 32 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 18,
-              background: 'rgba(255,255,255,0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 40,
-            }}
-          >
-            🩸
+        <div style={{ display: 'flex', alignItems: 'center', gap: 24, marginBottom: 36 }}>
+          <svg width="84" height="84" viewBox="0 0 100 100" fill="none">
+            <path d="M35 12 L35 58 Q35 82 50 82 Q65 82 65 58 L65 12" stroke="#fff" strokeWidth="6" fill="none" strokeLinecap="round" />
+            <line x1="30" y1="12" x2="70" y2="12" stroke="#fff" strokeWidth="6" strokeLinecap="round" />
+            <path d="M39 40 L39 58 Q39 74 50 74 Q56 74 59 66 L59 40 Z" fill="#e0293e" />
+            <circle cx="63" cy="62" r="20" fill="#0f2647" stroke="#fff" strokeWidth="6.5" />
+            <line x1="77" y1="76" x2="91" y2="90" stroke="#fff" strokeWidth="8" strokeLinecap="round" />
+            <text x="63" y="70" fontSize="22" fontWeight="700" fill="#1a9e5c" textAnchor="middle">$</text>
+          </svg>
+          <div style={{ display: 'flex', fontSize: 48, fontWeight: 800, letterSpacing: '-1.5px' }}>
+            <span style={{ color: '#fff' }}>LabTest</span>
+            <span style={{ color: '#1656e8' }}>Compare</span>
+            <span style={{ color: '#fff' }}>.com</span>
           </div>
-          <div style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-1px' }}>LabTestCompare</div>
         </div>
         <div style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.1, letterSpacing: '-2px', maxWidth: 900 }}>
           Compare blood test prices

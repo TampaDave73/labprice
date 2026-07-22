@@ -31,7 +31,7 @@ function Chevron({ open }: { open: boolean }) {
       height="16"
       viewBox="0 0 14 14"
       fill="none"
-      stroke="oklch(0.5 0.04 230)"
+      stroke="oklch(0.5 0.04 260)"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -54,7 +54,7 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
             key={v.id}
             style={{
               background: '#fff',
-              border: '1.5px solid oklch(0.92 0.02 230)',
+              border: '1.5px solid oklch(0.92 0.02 260)',
               borderRadius: 14,
               overflow: 'hidden',
             }}
@@ -84,16 +84,16 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={v.logoUrl} alt={v.name} style={{ height: 28, maxWidth: 120, objectFit: 'contain', flexShrink: 0 }} />
                 ) : (
-                  <div style={{ fontSize: 17, fontWeight: 700, color: 'oklch(0.2 0.04 230)' }}>{v.name}</div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: 'oklch(0.2 0.04 260)' }}>{v.name}</div>
                 )}
                 <div className="flex-1" />
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>
+                  <div style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>
                     {v.testCount} {v.testCount === 1 ? 'test' : 'tests'}
                     {v.minPrice != null && <> · from ${v.minPrice.toFixed(2)}</>}
                   </div>
                   {v.membershipNote && (
-                    <div style={{ fontSize: 12, color: 'oklch(0.5 0.13 165)', marginTop: 2 }}>{v.membershipNote}</div>
+                    <div style={{ fontSize: 12, color: 'oklch(0.5 0.13 155)', marginTop: 2 }}>{v.membershipNote}</div>
                   )}
                 </div>
                 <Chevron open={open} />
@@ -103,7 +103,7 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
                   href={v.websiteUrl}
                   target="_blank"
                   rel="noreferrer"
-                  style={{ fontSize: 13, color: 'oklch(0.5 0.14 230)', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
+                  style={{ fontSize: 13, color: 'oklch(0.5 0.14 260)', fontWeight: 600, textDecoration: 'none', flexShrink: 0 }}
                 >
                   Visit site ↗
                 </a>
@@ -111,19 +111,19 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
             </div>
 
             {open && (
-              <div style={{ borderTop: '1px solid oklch(0.94 0.01 230)' }}>
+              <div style={{ borderTop: '1px solid oklch(0.94 0.01 260)' }}>
                 {v.tests.length === 0 ? (
-                  <p style={{ padding: '16px 22px', fontSize: 13, color: 'oklch(0.55 0.04 230)' }}>
+                  <p style={{ padding: '16px 22px', fontSize: 13, color: 'oklch(0.55 0.04 260)' }}>
                     No priced tests on file for this vendor yet.
                   </p>
                 ) : (
                   <table className="w-full" style={{ fontSize: 14 }}>
                     <thead>
-                      <tr style={{ background: 'oklch(0.97 0.01 230)' }}>
-                        <th style={{ textAlign: 'left', padding: '9px 22px', fontSize: 11, fontWeight: 700, color: 'oklch(0.5 0.04 230)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <tr style={{ background: 'oklch(0.97 0.01 260)' }}>
+                        <th style={{ textAlign: 'left', padding: '9px 22px', fontSize: 11, fontWeight: 700, color: 'oklch(0.5 0.04 260)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Test
                         </th>
-                        <th style={{ textAlign: 'right', padding: '9px 22px', fontSize: 11, fontWeight: 700, color: 'oklch(0.5 0.04 230)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ textAlign: 'right', padding: '9px 22px', fontSize: 11, fontWeight: 700, color: 'oklch(0.5 0.04 260)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Price
                         </th>
                         <th style={{ width: 100 }} />
@@ -131,16 +131,16 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
                     </thead>
                     <tbody>
                       {v.tests.map((t) => (
-                        <tr key={t.offeringId} style={{ borderTop: '1px solid oklch(0.95 0.01 230)' }}>
+                        <tr key={t.offeringId} style={{ borderTop: '1px solid oklch(0.95 0.01 260)' }}>
                           <td style={{ padding: '10px 22px' }}>
-                            <a href={`/test/${t.testSlug}`} style={{ color: 'oklch(0.22 0.04 230)', textDecoration: 'none', fontWeight: 500 }}>
+                            <a href={`/test/${t.testSlug}`} style={{ color: 'oklch(0.22 0.04 260)', textDecoration: 'none', fontWeight: 500 }}>
                               {t.testName}
                             </a>
                           </td>
-                          <td style={{ padding: '10px 22px', textAlign: 'right', fontWeight: 700, color: 'oklch(0.22 0.04 230)' }}>
+                          <td style={{ padding: '10px 22px', textAlign: 'right', fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>
                             ${t.price.toFixed(2)}
                             {t.memberPrice != null && (
-                              <span style={{ fontWeight: 500, color: 'oklch(0.5 0.13 165)', marginLeft: 6 }}>
+                              <span style={{ fontWeight: 500, color: 'oklch(0.5 0.13 155)', marginLeft: 6 }}>
                                 (${t.memberPrice.toFixed(2)} member)
                               </span>
                             )}
@@ -154,7 +154,7 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
                                 fontSize: 12,
                                 fontWeight: 600,
                                 color: '#fff',
-                                background: 'oklch(0.56 0.14 230)',
+                                background: 'oklch(0.56 0.14 260)',
                                 padding: '5px 12px',
                                 borderRadius: 7,
                                 textDecoration: 'none',

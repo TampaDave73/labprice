@@ -63,24 +63,24 @@ export default async function CategoryPage({ params }: Props) {
     });
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <PageViewTracker />
       <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 py-10">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_230)] mb-6">
-          <Link href="/" className="hover:text-[oklch(0.35_0.04_230)] no-underline text-inherit">
+        <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_260)] mb-6">
+          <Link href="/" className="hover:text-[oklch(0.35_0.04_260)] no-underline text-inherit">
             Home
           </Link>
           <span>/</span>
-          <span className="text-[oklch(0.3_0.04_230)] font-medium">{category.name}</span>
+          <span className="text-[oklch(0.3_0.04_260)] font-medium">{category.name}</span>
         </nav>
 
         {/* Header */}
-        <h1 className="text-[32px] font-bold text-[oklch(0.18_0.04_230)] tracking-[-0.5px] mb-2">
+        <h1 className="text-[32px] font-bold text-[oklch(0.18_0.04_260)] tracking-[-0.5px] mb-2">
           {category.name}
         </h1>
-        <p className="text-[oklch(0.5_0.04_230)] mb-8">
+        <p className="text-[oklch(0.5_0.04_260)] mb-8">
           Compare prices for {tests.length} {category.name.toLowerCase()} test{tests.length !== 1 ? 's' : ''} across ordering services.
         </p>
 
@@ -98,7 +98,7 @@ export default async function CategoryPage({ params }: Props) {
             ))}
           </div>
         ) : (
-          <p className="text-[oklch(0.5_0.04_230)] text-center py-12">
+          <p className="text-[oklch(0.5_0.04_260)] text-center py-12">
             No tests available in this category yet.
           </p>
         )}

@@ -57,26 +57,26 @@ export default async function SearchPage({ searchParams }: Props) {
   if (term) logSearch({ query: term, resultsCount: cards.length });
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       {term && <SearchResultsTracker query={term} resultCount={cards.length} />}
       <Navbar />
       <div className="max-w-[1240px] mx-auto px-6 py-10">
-        <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_230)] mb-6">
-          <Link href="/" className="hover:text-[oklch(0.35_0.04_230)] no-underline text-inherit">
+        <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_260)] mb-6">
+          <Link href="/" className="hover:text-[oklch(0.35_0.04_260)] no-underline text-inherit">
             Home
           </Link>
           <span>/</span>
-          <span className="text-[oklch(0.3_0.04_230)] font-medium">Search</span>
+          <span className="text-[oklch(0.3_0.04_260)] font-medium">Search</span>
         </nav>
 
-        <h1 className="text-[32px] font-bold text-[oklch(0.18_0.04_230)] tracking-[-0.5px] mb-2">
+        <h1 className="text-[32px] font-bold text-[oklch(0.18_0.04_260)] tracking-[-0.5px] mb-2">
           {term ? <>Results for &ldquo;{term}&rdquo;</> : 'Search'}
         </h1>
 
         {!term ? (
-          <p className="text-[oklch(0.5_0.04_230)] mb-8">Type a test name in the search bar to compare prices.</p>
+          <p className="text-[oklch(0.5_0.04_260)] mb-8">Type a test name in the search bar to compare prices.</p>
         ) : (
-          <p className="text-[oklch(0.5_0.04_230)] mb-8">
+          <p className="text-[oklch(0.5_0.04_260)] mb-8">
             {cards.length} {cards.length === 1 ? 'test' : 'tests'} matched.
           </p>
         )}
@@ -89,10 +89,10 @@ export default async function SearchPage({ searchParams }: Props) {
           </div>
         ) : term ? (
           <div className="text-center py-12">
-            <p className="text-[oklch(0.5_0.04_230)] mb-2">No tests matched &ldquo;{term}&rdquo;.</p>
-            <p className="text-[13px] text-[oklch(0.6_0.04_230)]">
+            <p className="text-[oklch(0.5_0.04_260)] mb-2">No tests matched &ldquo;{term}&rdquo;.</p>
+            <p className="text-[13px] text-[oklch(0.6_0.04_260)]">
               Try a different spelling, or{' '}
-              <Link href="/" className="underline text-[oklch(0.45_0.09_230)]">
+              <Link href="/" className="underline text-[oklch(0.45_0.09_260)]">
                 browse tests by category
               </Link>
               .

@@ -18,14 +18,14 @@ interface SessionUser {
 const linkStyle: React.CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
-  color: 'oklch(0.35 0.05 230)',
+  color: 'oklch(0.35 0.05 260)',
   marginRight: 24,
   textDecoration: 'none',
 };
 
 const pillStyle: React.CSSProperties = {
   padding: '8px 20px',
-  background: 'linear-gradient(135deg, oklch(0.58 0.136 230), oklch(0.49 0.14 232))',
+  background: 'linear-gradient(135deg, oklch(0.58 0.136 260), oklch(0.49 0.14 262))',
   color: '#fff',
   borderRadius: 20,
   fontSize: 14,
@@ -72,7 +72,7 @@ export default function NavAuth() {
         </Link>
       )}
       <span
-        style={{ fontSize: 13, fontWeight: 500, color: 'oklch(0.45 0.04 230)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+        style={{ fontSize: 13, fontWeight: 500, color: 'oklch(0.45 0.04 260)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         title={user.email ?? undefined}
       >
         {user.name || user.email}

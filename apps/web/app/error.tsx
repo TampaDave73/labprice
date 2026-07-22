@@ -15,7 +15,7 @@ export default function ErrorPage({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '0 24px',
-        background: 'oklch(0.985 0.005 230)',
+        background: 'oklch(0.985 0.005 260)',
       }}
     >
       <div style={{ textAlign: 'center', maxWidth: 400 }}>
@@ -35,10 +35,10 @@ export default function ErrorPage({
         >
           !
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'oklch(0.18 0.04 230)', marginBottom: 12 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, color: 'oklch(0.18 0.04 260)', marginBottom: 12 }}>
           Something went wrong
         </h1>
-        <p style={{ color: 'oklch(0.5 0.04 230)', marginBottom: 32, lineHeight: 1.6 }}>
+        <p style={{ color: 'oklch(0.5 0.04 260)', marginBottom: 32, lineHeight: 1.6 }}>
           We hit an unexpected error. Please try again, and if the problem persists, contact support.
         </p>
         <button
@@ -51,7 +51,7 @@ export default function ErrorPage({
             cursor: 'pointer',
             border: 'none',
             fontSize: 15,
-            background: 'oklch(0.49 0.14 232)',
+            background: 'oklch(0.49 0.14 262)',
           }}
         >
           Try again

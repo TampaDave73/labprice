@@ -68,13 +68,13 @@ export default async function OrderServicesPage() {
   const vendors = await getVendors();
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <Navbar />
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px 80px' }}>
-        <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.6px', color: 'oklch(0.2 0.04 230)', marginBottom: 10 }}>
+        <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.6px', color: 'oklch(0.2 0.04 260)', marginBottom: 10 }}>
           Order Services
         </h1>
-        <p style={{ fontSize: 16, color: 'oklch(0.45 0.04 230)', lineHeight: 1.6, maxWidth: 640, marginBottom: 36 }}>
+        <p style={{ fontSize: 16, color: 'oklch(0.45 0.04 260)', lineHeight: 1.6, maxWidth: 640, marginBottom: 36 }}>
           Every ordering service we track prices from. Expand one to see every test it carries and its
           current self-pay price.
         </p>

@@ -301,11 +301,22 @@ a ready token to paste into `document.cookie` in the preview browser.
 - **Public pages → inline `style={{}}`** (Tailwind arbitrary oklch/px values are unreliable here).
 - **Admin → `.admin-*` classes** in `apps/web/app/globals.css` (`admin-btn`, `-card`, `-input`,
   `-h1/2`, badges). Don't hand-roll arbitrary-value utilities.
-- **Brand color = hue 230 (blue), accent = hue 165 (teal)** — `@theme` tokens `--color-brand-*` /
-  `--color-accent-*` in `globals.css` drive admin `bg-brand-500` etc.; public pages hardcode the same
-  hue inline (`oklch(L C 230)`). Was hue 280 (dark blue/purple) until a 2026-07 pass lightened/
-  desaturated it sitewide for readability — if you're adding new inline colors, match hue 230 (or 165
-  for an accent), not 280.
+- **Brand palette (2026-07-22 rebrand, pixel-matched to a design handoff):** navy `#0f2647`
+  (`oklch(... 258-263)`, brand-900), blue `#1656e8` (`oklch(0.516 0.229 263)`, brand-500), green
+  `#1a9e5c` (`oklch(0.617 0.146 155)`, accent/success-500), red `#e0293e` (`--color-brand-red`,
+  `oklch(0.589 0.215 22)`). `@theme` tokens `--color-brand-*`/`--color-accent-*` in `globals.css`
+  drive admin `bg-brand-500` etc.; public pages hardcode the same hues inline
+  (`oklch(L C 258-263)` blue, `oklch(L C 155)` green). If you're adding new inline colors, match one
+  of these hues, not the old 228-232/145/165 family (or the even-older 280 before that). A handful of
+  *other* hues (155/180/220/260/300) are used deliberately for category-badge/accordion-icon variety
+  and are not brand colors — don't "fix" those.
+- **Logo**: shared `LogoIcon`/`Logo` component at `apps/web/app/components/Logo.tsx` (test tube +
+  magnifying glass + $ mark, `variant: 'light'|'dark'` for on-white vs. on-navy). Used in `Navbar`,
+  `Footer`, `AdminSidebar`. Favicon/app-icon (`app/icon.svg`, `app/apple-icon.png`,
+  `public/icon-512.png`) and the OG image (`opengraph-image.tsx`) are generated from the same mark —
+  regenerate the PNGs via `apps/web/scripts/generate-brand-icons.ts` (needs `sharp`) if the mark ever
+  changes. Logo wordmark font is Poppins (`--font-poppins`, wired in `layout.tsx`); body copy is
+  intentionally still DM Sans/system-ui — that scope split was deliberate, not an oversight.
 
 ### Category model (many-to-many, no "primary")
 - Membership lives in `TestCategory`. `Test.categoryId` is a **derived display pointer** (lowest

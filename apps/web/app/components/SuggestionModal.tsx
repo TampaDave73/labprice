@@ -32,9 +32,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',
   borderRadius: 8,
-  border: '1.5px solid oklch(0.88 0.02 230)',
+  border: '1.5px solid oklch(0.88 0.02 260)',
   background: '#fff',
-  color: 'oklch(0.2 0.04 230)',
+  color: 'oklch(0.2 0.04 260)',
   fontSize: 14,
   outline: 'none',
   fontFamily: 'inherit',
@@ -44,7 +44,7 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
   fontSize: 12,
   fontWeight: 600,
-  color: 'oklch(0.45 0.04 230)',
+  color: 'oklch(0.45 0.04 260)',
   marginBottom: 5,
 };
 
@@ -135,26 +135,26 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
         position: 'fixed',
         inset: 0,
         zIndex: 1000,
-        background: 'oklch(0.15 0.03 230 / 0.55)',
+        background: 'oklch(0.15 0.03 260 / 0.55)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
       }}
     >
-      <div ref={dialogRef} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: '24px 26px 26px', boxShadow: '0 20px 60px oklch(0.15 0.03 230 / 0.35)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div ref={dialogRef} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, padding: '24px 26px 26px', boxShadow: '0 20px 60px oklch(0.15 0.03 260 / 0.35)', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: intro ? 6 : 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'oklch(0.2 0.04 230)', margin: 0 }}>{title}</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'oklch(0.2 0.04 260)', margin: 0 }}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'oklch(0.55 0.04 230)', fontSize: 18, lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'oklch(0.55 0.04 260)', fontSize: 18, lineHeight: 1 }}
           >
             ✕
           </button>
         </div>
-        {intro && <p style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)', lineHeight: 1.55, margin: '0 0 16px' }}>{intro}</p>}
+        {intro && <p style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)', lineHeight: 1.55, margin: '0 0 16px' }}>{intro}</p>}
 
         {state === 'done' ? (
           <div>
@@ -164,7 +164,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'oklch(0.56 0.14 230)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '9px 16px', borderRadius: 8, border: 'none', background: 'oklch(0.56 0.14 260)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
             >
               Close
             </button>
@@ -237,7 +237,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
                     padding: '10px 18px',
                     borderRadius: 8,
                     border: 'none',
-                    background: 'oklch(0.56 0.14 230)',
+                    background: 'oklch(0.56 0.14 260)',
                     color: '#fff',
                     fontSize: 14,
                     fontWeight: 600,
@@ -250,7 +250,7 @@ export default function SuggestionModal({ open, onClose, title, intro, endpoint,
                 <button
                   type="button"
                   onClick={onClose}
-                  style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid oklch(0.88 0.02 230)', background: '#fff', color: 'oklch(0.45 0.04 230)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
+                  style={{ padding: '10px 16px', borderRadius: 8, border: '1.5px solid oklch(0.88 0.02 260)', background: '#fff', color: 'oklch(0.45 0.04 260)', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>

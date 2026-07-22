@@ -85,7 +85,7 @@ export default async function TestDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 230)' }}>
+    <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

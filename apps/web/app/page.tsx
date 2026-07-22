@@ -111,21 +111,21 @@ export default async function Home() {
   const { categories, popularTests, allTests, testCount, vendorCount } = await getHomeData();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 230)' }}>
+    <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 260)' }}>
       <PageViewTracker />
       <Navbar />
 
       {/* Hero */}
       <div
         style={{
-          background: 'linear-gradient(155deg, oklch(0.96 0.02 230) 0%, oklch(0.93 0.03 225) 55%, oklch(0.95 0.025 200) 100%)',
+          background: 'linear-gradient(155deg, oklch(0.96 0.02 260) 0%, oklch(0.93 0.03 225) 55%, oklch(0.95 0.025 200) 100%)',
           padding: '90px 24px 110px',
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 55% at 50% -5%, oklch(0.56 0.087 230 / 0.1), transparent)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 55% at 50% -5%, oklch(0.56 0.087 260 / 0.1), transparent)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', maxWidth: 700, margin: '0 auto', animation: 'fadeUp 0.6s ease' }}>
           <div
             style={{
@@ -133,23 +133,23 @@ export default async function Home() {
               alignItems: 'center',
               gap: 8,
               background: '#fff',
-              border: '1px solid oklch(0.85 0.04 230)',
+              border: '1px solid oklch(0.85 0.04 260)',
               borderRadius: 20,
               padding: '5px 14px',
               marginBottom: 26,
             }}
           >
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'oklch(0.6 0.15 145)', flexShrink: 0, display: 'inline-block' }} />
-            <span style={{ fontSize: 13, color: 'oklch(0.4 0.06 230)', fontWeight: 500 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'oklch(0.6 0.15 155)', flexShrink: 0, display: 'inline-block' }} />
+            <span style={{ fontSize: 13, color: 'oklch(0.4 0.06 260)', fontWeight: 500 }}>
               Live prices from {vendorCount} ordering services
             </span>
           </div>
-          <h1 style={{ fontSize: 54, fontWeight: 700, color: 'oklch(0.2 0.04 230)', lineHeight: 1.1, letterSpacing: '-1.8px', marginBottom: 18 }}>
+          <h1 style={{ fontSize: 54, fontWeight: 700, color: 'oklch(0.2 0.04 260)', lineHeight: 1.1, letterSpacing: '-1.8px', marginBottom: 18 }}>
             Compare blood test prices
             <br />
             <span
               style={{
-                background: 'linear-gradient(90deg, oklch(0.52 0.14 230), oklch(0.52 0.14 165))',
+                background: 'linear-gradient(90deg, oklch(0.52 0.14 260), oklch(0.52 0.14 155))',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -158,7 +158,7 @@ export default async function Home() {
               instantly
             </span>
           </h1>
-          <p style={{ fontSize: 18, color: 'oklch(0.45 0.04 230)', marginBottom: 44, lineHeight: 1.55 }}>
+          <p style={{ fontSize: 18, color: 'oklch(0.45 0.04 260)', marginBottom: 44, lineHeight: 1.55 }}>
             Stop overpaying for lab tests. Search by test name or Quest/LabCorp test number.
           </p>
 
@@ -166,7 +166,7 @@ export default async function Home() {
 
           {/* Popular chips */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 22 }}>
-            <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 230)' }}>Popular:</span>
+            <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 260)' }}>Popular:</span>
             {popularTests.map((t) => (
               <a
                 key={t.slug}
@@ -174,10 +174,10 @@ export default async function Home() {
                 style={{
                   padding: '6px 15px',
                   background: '#fff',
-                  border: '1px solid oklch(0.85 0.04 230)',
+                  border: '1px solid oklch(0.85 0.04 260)',
                   borderRadius: 20,
                   fontSize: 13,
-                  color: 'oklch(0.4 0.07 230)',
+                  color: 'oklch(0.4 0.07 260)',
                   fontWeight: 500,
                   cursor: 'pointer',
                   textDecoration: 'none',
@@ -191,26 +191,26 @@ export default async function Home() {
       </div>
 
       {/* Stats bar */}
-      <div style={{ background: 'oklch(0.95 0.02 230)', borderTop: '1px solid oklch(0.9 0.02 230)', borderBottom: '1px solid oklch(0.9 0.02 230)', padding: '14px 24px' }}>
+      <div style={{ background: 'oklch(0.95 0.02 260)', borderTop: '1px solid oklch(0.9 0.02 260)', borderBottom: '1px solid oklch(0.9 0.02 260)', padding: '14px 24px' }}>
         <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 230)' }}>{vendorCount}</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>Ordering Services</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>{vendorCount}</span>
+            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Ordering Services</span>
           </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 230)' }} />
+          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 230)' }}>{testCount}</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>Common Tests</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>{testCount}</span>
+            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Common Tests</span>
           </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 230)' }} />
+          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.45 0.16 145)' }}>Up to 70%</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>Savings vs retail</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.45 0.16 155)' }}>Up to 70%</span>
+            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Savings vs retail</span>
           </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 230)' }} />
+          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 230)' }}>No</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 230)' }}>Insurance required</span>
+            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>No</span>
+            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Insurance required</span>
           </div>
         </div>
       </div>
@@ -219,7 +219,7 @@ export default async function Home() {
       <div style={{ maxWidth: 1240, margin: '0 auto', padding: '56px 24px 80px' }}>
         {/* Popular Tests */}
         <div style={{ marginBottom: 52 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', color: 'oklch(0.18 0.04 230)', marginBottom: 18 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', color: 'oklch(0.18 0.04 260)', marginBottom: 18 }}>
             Popular Tests
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>

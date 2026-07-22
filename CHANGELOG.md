@@ -9,6 +9,27 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-07-22, site-wide rebrand)
+- **New brand identity implemented everywhere** (public pages + admin panel), pixel-matched to a
+  design handoff: navy `#0f2647`, blue `#1656e8`, green `#1a9e5c`, red `#e0293e`.
+  - `globals.css` `@theme` brand/accent ramps re-anchored to the new hex values (both the Tailwind
+    utility classes and the hand-written `.admin-*` classes derive from these).
+  - Every hardcoded `oklch(...)` color literal across `apps/web/app` (~230 occurrences, 23 files,
+    including the Tailwind-bracket `oklch(L_C_H)` form) hue-shifted from the old palette (blue
+    228-232, green 145/165) to the new one (blue 258-262, green 155) — lightness/chroma untouched, so
+    only the hue moved. The handful of remaining "off-brand" hues (155/180/220/260/300 used for
+    category-badge and accordion-icon variety) are intentional and were left alone.
+  - New shared `Logo`/`LogoIcon` component (`app/components/Logo.tsx`) — test tube + magnifying glass
+    + $ mark — replacing the old inline SVG wordmark in `Navbar`, `Footer`, and `AdminSidebar`.
+  - New favicon (`app/icon.svg`), Next.js-convention `apple-icon.png` (180×180) and a 512×512 PWA icon
+    (`public/icon-512.png`), generated from the same mark via a new `sharp`-based script
+    (`scripts/generate-brand-icons.ts`). `opengraph-image.tsx` rewritten to match (navy background,
+    inline SVG mark, new wordmark colors) instead of the old emoji+gradient version.
+  - Poppins (`next/font/google`) wired in for the logo wordmark only, via a `--font-poppins` CSS
+    variable — body copy is intentionally untouched (still DM Sans/system-ui); this was a scope call
+    since the brief only specified logo/colors/favicon, not full typography.
+  - `viewport.themeColor` and the body background updated to match.
+
 ### Changed (2026-07-22, Discovered round-trip: CSV → Excel)
 - **Replaced the Discovered CSV export/import with a real `.xlsx` workbook** (`exceljs`, new
   dependency in `apps/web`). Three things plain CSV genuinely couldn't do:
