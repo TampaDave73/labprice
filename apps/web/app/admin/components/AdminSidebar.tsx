@@ -165,9 +165,9 @@ export default function AdminSidebar() {
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-brand-900 text-white">
-      <div className="flex items-center gap-3 px-6 py-5">
-        <Logo variant="dark" iconSize={26} wordmarkSize={15} />
-        <span className="rounded bg-white/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-5 py-5">
+        <Logo variant="dark" iconSize={22} wordmarkSize={13} />
+        <span className="shrink-0 whitespace-nowrap rounded bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
           Admin
         </span>
       </div>
