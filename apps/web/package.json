@@ -19,6 +19,7 @@
     "@labprice/ui": "workspace:*",
     "bullmq": "^5.34.0",
     "clsx": "^2.1.0",
+    "exceljs": "^4.4.0",
     "ioredis": "^5.4.0",
     "next": "^15.3.0",
     "next-auth": "^5.0.0-beta.28",

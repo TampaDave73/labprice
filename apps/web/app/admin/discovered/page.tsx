@@ -81,21 +81,20 @@ export default function DiscoveredPage() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [promoteForm, setPromoteForm] = useState({ name: '', shortName: '', categoryId: '', questCode: '', labcorpCode: '' });
 
-  // Bulk CSV round-trip (the quarterly catch-up pass — see export/import route comments): pick file
-  // → dry-run preview (modal) → Apply. The csv text is held so Apply re-posts the exact file the
-  // preview was computed from.
+  // Bulk Excel round-trip (the quarterly catch-up pass — see export/import route comments): pick file
+  // → dry-run preview (modal) → Apply. The File is held so Apply re-posts the exact file the preview
+  // was computed from.
   const fileInput = useRef<HTMLInputElement>(null);
-  const [importCsv, setImportCsv] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportSummary | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
 
-  const postImport = async (csv: string, apply: boolean): Promise<ImportSummary | null> => {
-    const res = await fetch('/api/v1/admin/discovered/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ csv, apply }),
-    });
+  const postImport = async (file: File, apply: boolean): Promise<ImportSummary | null> => {
+    const formData = new FormData();
+    formData.set('file', file);
+    formData.set('apply', String(apply));
+    const res = await fetch('/api/v1/admin/discovered/import', { method: 'POST', body: formData });
     const json = await res.json();
     if (!res.ok && !json.data) {
       setImportError(json.error?.message ?? 'Import failed.');
@@ -108,9 +107,8 @@ export default function DiscoveredPage() {
     setImportError(null);
     setImportBusy(true);
     try {
-      const text = await file.text();
-      const preview = await postImport(text, false);
-      if (preview) { setImportCsv(text); setImportPreview(preview); }
+      const preview = await postImport(file, false);
+      if (preview) { setImportFile(file); setImportPreview(preview); }
     } catch {
       setImportError('Could not read that file.');
     } finally {
@@ -120,14 +118,14 @@ export default function DiscoveredPage() {
   };
 
   const applyImport = async () => {
-    if (!importCsv) return;
+    if (!importFile) return;
     setImportBusy(true);
     setImportError(null);
     try {
-      const result = await postImport(importCsv, true);
+      const result = await postImport(importFile, true);
       if (result?.applied) {
         setImportPreview(null);
-        setImportCsv(null);
+        setImportFile(null);
         setNotice(result.droppedDuplicates.length > 0
           ? `Import applied. ${result.droppedDuplicates.length} product(s) skipped as same-vendor duplicates: ${result.droppedDuplicates.map((d) => d.name).join(', ')}.`
           : 'Import applied.');
@@ -244,8 +242,8 @@ export default function DiscoveredPage() {
       <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
         <h1 className="admin-h1">Discovered products</h1>
         <div className="flex items-center gap-3">
-          <a href="/api/v1/admin/discovered/export" className="admin-btn" title="Download the review queue as CSV — one row per vendor product, with column-by-column instructions baked into the first few rows (safe to leave in or delete)">
-            Export CSV
+          <a href="/api/v1/admin/discovered/export" className="admin-btn" title="Download the review queue as an Excel workbook — a 'How it works' sheet, a Categories reference sheet, and the data (one row per vendor product) with a category dropdown and header tooltips">
+            Export Excel
           </a>
           <button
             className="admin-btn"
@@ -253,12 +251,12 @@ export default function DiscoveredPage() {
             onClick={() => fileInput.current?.click()}
             title="Upload an edited export — you'll see a preview of every change before anything is applied"
           >
-            {importBusy && !importPreview ? 'Reading…' : 'Import CSV'}
+            {importBusy && !importPreview ? 'Reading…' : 'Import Excel'}
           </button>
           <input
             ref={fileInput}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onFilePicked(f); }}
           />
@@ -267,8 +265,9 @@ export default function DiscoveredPage() {
       <p className="mb-6 max-w-3xl text-sm text-brand-400">
         Everything the catalog scrapers found that isn't a listed test yet. Promote a cluster to a new
         test, attach it to an existing one, or ignore it — confirmed names are learned as aliases, so
-        the same vendor naming matches automatically next crawl. For a big catch-up pass, Export CSV
-        and work offline instead of clicking through clusters one at a time.
+        the same vendor naming matches automatically next crawl. For a big catch-up pass, Export Excel
+        and work offline instead of clicking through clusters one at a time — the file explains itself
+        (a "How it works" sheet, header tooltips, and a category dropdown).
       </p>
 
       {notice && <p className="mb-4 rounded-lg bg-brand-50 px-4 py-2 text-sm text-brand-700">{notice}</p>}

@@ -9,6 +9,22 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-07-22, Discovered round-trip: CSV → Excel)
+- **Replaced the Discovered CSV export/import with a real `.xlsx` workbook** (`exceljs`, new
+  dependency in `apps/web`). Three things plain CSV genuinely couldn't do:
+  1. `quest_code`/`labcorp_code` columns are TEXT-number-formatted so Excel can't silently strip a
+     leading zero off a lab code — a real correctness risk with CSV, not just a display nuisance.
+  2. `new_test_category` gets a real Excel dropdown, sourced from a new **Categories** reference
+     sheet listing every existing category — still allows typing a name that isn't on the list
+     (that's exactly the "create a new category" path, unchanged: created automatically on Apply).
+  3. A dedicated **How it works** sheet (with a worked example) plus a real Excel cell note (hover
+     tooltip) on every column header, replacing the inert instruction-rows-in-the-data-sheet
+     workaround from the CSV version.
+  `decision` also got a dropdown (ignore/attach/promote). Upload changed from a JSON `{csv: string}`
+  body to `multipart/form-data` (`file` + `apply`) — a real binary file now, not text pasted into
+  JSON. Everything downstream of parsing (validation, grouping, dry-run/apply) is unchanged; only how
+  the file is produced and read changed.
+
 ### Added (2026-07-22, self-documenting Discovered CSV)
 - **The Discovered CSV export now explains itself**, since the column meanings — especially when to
   `attach` vs. `promote` — weren't obvious from the sheet alone. A block of instruction rows is
