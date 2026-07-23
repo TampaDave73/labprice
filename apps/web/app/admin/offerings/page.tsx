@@ -27,19 +27,32 @@ export default function OfferingsPage() {
   const [sort, setSort] = useState<SortKey>('test');
   const [dir, setDir] = useState<'asc' | 'desc'>('asc');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetch('/api/v1/admin/vendors?sort=name').then((r) => r.json()).then((j) => setVendors((j.data ?? []).map((v: { id: string; name: string }) => ({ id: v.id, name: v.name }))));
-    fetch('/api/v1/admin/tests?sort=name').then((r) => r.json()).then((j) => setTests((j.data ?? []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))));
+    fetch('/api/v1/admin/vendors?sort=name').then((r) => r.json()).then((j) => setVendors((j.data ?? []).map((v: { id: string; name: string }) => ({ id: v.id, name: v.name })))).catch(() => {});
+    fetch('/api/v1/admin/tests?sort=name').then((r) => r.json()).then((j) => setTests((j.data ?? []).map((t: { id: string; name: string }) => ({ id: t.id, name: t.name })))).catch(() => {});
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError(null);
     const params = new URLSearchParams({ sort, dir });
     if (vendorId) params.set('vendorId', vendorId);
     if (testId) params.set('testId', testId);
-    fetch(`/api/v1/admin/offerings?${params.toString()}`).then((r) => r.json()).then((j) => { setOfferings(j.data ?? []); setLoading(false); });
-  }, [vendorId, testId, sort, dir]);
+    fetch(`/api/v1/admin/offerings?${params.toString()}`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error?.message ?? 'Could not load offerings.');
+        setOfferings(j.data ?? []);
+      })
+      .catch((e) => {
+        setLoadError(e instanceof Error ? e.message : 'Could not load offerings — try again.');
+        setOfferings([]);
+      })
+      .finally(() => setLoading(false));
+  }, [vendorId, testId, sort, dir, reloadKey]);
 
   const toggleSort = (key: SortKey) => {
     if (sort === key) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -82,6 +95,8 @@ export default function OfferingsPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="p-6 text-center text-brand-400">Loading...</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan={6} className="p-6 text-center text-red-600">{loadError} <button className="ml-2 underline" onClick={() => setReloadKey((k) => k + 1)}>Retry</button></td></tr>
             ) : offerings.length === 0 ? (
               <tr><td colSpan={6} className="p-6 text-center text-brand-400">No offerings found.</td></tr>
             ) : (

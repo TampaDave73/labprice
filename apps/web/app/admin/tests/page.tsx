@@ -41,6 +41,7 @@ export default function TestsListPage() {
   const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
   const [pageIndex, setPageIndex] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // CSV import flow: pick file → dry-run preview (modal) → Apply. The csv text is held so Apply
   // re-posts the exact same file the preview was computed from.
@@ -107,15 +108,24 @@ export default function TestsListPage() {
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true);
-      const params = new URLSearchParams({ sort, dir, limit: String(PAGE_SIZE) });
-      if (search) params.set('search', search);
-      const cursor = pageCursors[pageIndex];
-      if (cursor) params.set('cursor', cursor);
-      const res = await fetch(`/api/v1/admin/tests?${params.toString()}`);
-      const json = await res.json();
-      setTests(json.data ?? []);
-      setNextCursor(json.nextCursor);
-      setLoading(false);
+      setLoadError(null);
+      try {
+        const params = new URLSearchParams({ sort, dir, limit: String(PAGE_SIZE) });
+        if (search) params.set('search', search);
+        const cursor = pageCursors[pageIndex];
+        if (cursor) params.set('cursor', cursor);
+        const res = await fetch(`/api/v1/admin/tests?${params.toString()}`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error?.message ?? 'Could not load tests.');
+        setTests(json.data ?? []);
+        setNextCursor(json.nextCursor);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Could not load tests — try again.');
+        setTests([]);
+        setNextCursor(undefined);
+      } finally {
+        setLoading(false);
+      }
     }, 300);
     return () => clearTimeout(t);
   }, [search, sort, dir, refresh, pageIndex, pageCursors]);
@@ -260,6 +270,8 @@ export default function TestsListPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="p-6 text-center text-brand-400">Loading...</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan={6} className="p-6 text-center text-red-600">{loadError} <button className="ml-2 underline" onClick={() => setRefresh((n) => n + 1)}>Retry</button></td></tr>
             ) : tests.length === 0 ? (
               <tr><td colSpan={6} className="p-6 text-center text-brand-400">No tests found.</td></tr>
             ) : (

@@ -20,10 +20,11 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/v1/admin/users');
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error?.message ?? 'Could not load users.');
       setUsers(json.data ?? []);
-    } catch {
-      setMsg('Could not load users — reload to retry.');
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Could not load users — try again.');
     } finally {
       setLoading(false);
     }

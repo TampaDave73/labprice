@@ -101,6 +101,10 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   const [savingVendor, setSavingVendor] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  // Without this, a failed load leaves `vendor` null forever — the page hangs on "Loading..." with
+  // no error and no way out but a manual reload. `reloadKey` re-runs the load effect for Try again.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Catalog (test↔vendor links)
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -110,9 +114,13 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   const [newPrice, setNewPrice] = useState('');
 
   const loadCatalog = async () => {
-    const j = await fetch(`/api/v1/admin/vendors/${id}/offerings`).then((r) => r.json());
-    setCatalog(j.data?.offerings ?? []);
-    setAvailableTests(j.data?.availableTests ?? []);
+    try {
+      const j = await fetch(`/api/v1/admin/vendors/${id}/offerings`).then((r) => r.json());
+      setCatalog(j.data?.offerings ?? []);
+      setAvailableTests(j.data?.availableTests ?? []);
+    } catch {
+      setMsg('Could not load the catalog — try refreshing.');
+    }
   };
   useEffect(() => { loadCatalog(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,8 +128,12 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   // run failed (e.g. "HTTP 403 for https://...") without querying the DB directly.
   const [runs, setRuns] = useState<ScrapeRunRow[]>([]);
   const loadRuns = async () => {
-    const j = await fetch(`/api/v1/admin/vendors/${id}/runs`).then((r) => r.json());
-    setRuns(j.data ?? []);
+    try {
+      const j = await fetch(`/api/v1/admin/vendors/${id}/runs`).then((r) => r.json());
+      setRuns(j.data ?? []);
+    } catch {
+      // Non-critical panel — fails quietly, runs list just stays empty rather than blocking the page.
+    }
   };
   useEffect(() => { loadRuns(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -151,28 +163,36 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   };
 
   useEffect(() => {
-    fetch(`/api/v1/admin/vendors/${id}`).then((r) => r.json()).then((j) => {
-      setVendor(j.data);
-      const c = j.data?.scrapeConfig;
-      if (c) {
-        const sel = c.selectors ?? {};
-        setConfig({
-          engine: c.engine ?? 'HTTP',
-          baseUrl: c.baseUrl ?? '',
-          catalogMode: sel.mode === 'catalog',
-          catalogAdapter: sel.adapter ?? 'goodlabs',
-          catalogPath: sel.catalogPath ?? '',
-          priceSelector: sel.priceSelector ?? '',
-          nameSelector: sel.nameSelector ?? '',
-          containerSelector: sel.containerSelector ?? '',
-          frequencyDays: c.frequencyDays ?? 7,
-          isEnabled: c.isEnabled ?? true,
-          timeoutMs: c.timeoutMs ?? 30000,
-          maxRetries: c.maxRetries ?? 3,
-        });
-      }
-    });
-  }, [id]);
+    setLoadError(null);
+    fetch(`/api/v1/admin/vendors/${id}`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.data) throw new Error(j.error?.message ?? 'Could not load this vendor.');
+        return j.data;
+      })
+      .then((d) => {
+        setVendor(d);
+        const c = d?.scrapeConfig;
+        if (c) {
+          const sel = c.selectors ?? {};
+          setConfig({
+            engine: c.engine ?? 'HTTP',
+            baseUrl: c.baseUrl ?? '',
+            catalogMode: sel.mode === 'catalog',
+            catalogAdapter: sel.adapter ?? 'goodlabs',
+            catalogPath: sel.catalogPath ?? '',
+            priceSelector: sel.priceSelector ?? '',
+            nameSelector: sel.nameSelector ?? '',
+            containerSelector: sel.containerSelector ?? '',
+            frequencyDays: c.frequencyDays ?? 7,
+            isEnabled: c.isEnabled ?? true,
+            timeoutMs: c.timeoutMs ?? 30000,
+            maxRetries: c.maxRetries ?? 3,
+          });
+        }
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Could not load this vendor — try again.'));
+  }, [id, reloadKey]);
 
   const setV = (field: keyof VendorData, value: unknown) => setVendor((p) => (p ? { ...p, [field]: value } : p));
   const setC = (field: keyof ConfigForm, value: unknown) => setConfig((p) => ({ ...p, [field]: value }));
@@ -230,6 +250,14 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     router.push('/admin/vendors');
   };
 
+  if (loadError) {
+    return (
+      <div className="admin-card max-w-2xl p-6">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</div>
+        <button className="admin-btn mt-3" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+      </div>
+    );
+  }
   if (!vendor) return <div className="p-6 text-brand-400">Loading...</div>;
   const t = vendor.trust;
 

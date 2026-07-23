@@ -68,6 +68,7 @@ export default function DiscoveredPage() {
   const [demand, setDemand] = useState<Demand[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -140,15 +141,22 @@ export default function DiscoveredPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ tab });
-    if (search) params.set('search', search);
-    const res = await fetch(`/api/v1/admin/discovered?${params.toString()}`);
-    const json = await res.json();
-    setCounts(json.data?.counts ?? { clusters: 0, matched: 0, panels: 0, ignored: 0 });
-    setClusters(json.data?.clusters ?? []);
-    setDemand(json.data?.demand ?? []);
-    setProducts(json.data?.products ?? []);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const params = new URLSearchParams({ tab });
+      if (search) params.set('search', search);
+      const res = await fetch(`/api/v1/admin/discovered?${params.toString()}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error?.message ?? 'Could not load discovered products.');
+      setCounts(json.data?.counts ?? { clusters: 0, matched: 0, panels: 0, ignored: 0 });
+      setClusters(json.data?.clusters ?? []);
+      setDemand(json.data?.demand ?? []);
+      setProducts(json.data?.products ?? []);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Could not load discovered products — try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [tab, search]);
 
   useEffect(() => {
@@ -313,6 +321,11 @@ export default function DiscoveredPage() {
 
       {loading ? (
         <div className="admin-card p-6 text-center text-brand-400">Loading…</div>
+      ) : loadError ? (
+        <div className="admin-card p-6 text-center">
+          <p className="mb-2 text-sm text-red-600">{loadError}</p>
+          <button className="admin-btn admin-btn-sm" onClick={load}>Try again</button>
+        </div>
       ) : tab === 'clusters' ? (
         clusters.length === 0 ? (
           <div className="admin-card p-6 text-center text-brand-400">Nothing waiting — every non-panel product the scrapers found is matched, listed, or ignored.</div>

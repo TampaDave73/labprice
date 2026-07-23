@@ -9,6 +9,27 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-24, admin pages: silent-hang bug on load failure)
+- **Every admin client page that fetches its own data on mount could hang on "Loading..." forever
+  with zero error shown** if that fetch ever returned a non-2xx response (expired session, transient
+  403/500) or the JSON body didn't parse. The `.then(r => r.json()).then(j => setX(j.data))` pattern
+  never checked `r.ok`, so an error-shaped response (`{error:{...}}` instead of `{data:{...}}`) either
+  threw inside the `.then()` (an unhandled rejection that skipped the `setLoading(false)`/`setX(...)`
+  call the page's render gate was waiting on) or, where a `?? fallback` masked the throw, just quietly
+  left the gating state at its initial `null`/`true` — visually identical to "still loading," forever.
+  Confirmed the failure mode directly: a mocked 403 and a mocked malformed-JSON response both now
+  resolve to a visible error state instead of an unresolvable one (previously neither did).
+  Fixed in every admin page with this pattern: `tests/[id]`, `vendors/[id]` (both were hard page-level
+  hangs — no error, no retry, only a manual reload could recover), `coverage` (same class — `data`
+  stayed `null` forever), `tests`, `changes`, `categories`, `audit`, `offerings`, `vendors`,
+  `discovered` (all had the same unguarded `res.json()` shape, gated by a `loading` boolean that could
+  get stuck `true`), plus a lighter pass on `pages`, `settings`, `suggestions`, `users` (already
+  `.finally()`-protected from hanging, but silently swallowed the error instead of surfacing it).
+  Every fix follows `analytics/page.tsx`'s existing correct pattern (check `res.ok`, throw into a
+  `.catch()`, always `.finally()`/`try/finally` the loading flag) and adds a visible red error banner
+  with a **Try again**/**Retry** action, reusing each file's existing error-display convention where
+  one existed.
+
 ### Added (2026-07-24, Test editor: auto-fill provenance + vendor bulk-select)
 - **Auto-fill now shows where each field actually came from.** Prompted by a report that a Dirt Cheap
   Labs catalog match for "Adiponectin" looked wrong — investigated and confirmed it was actually

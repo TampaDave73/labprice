@@ -61,23 +61,46 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
   const [codeSources, setCodeSources] = useState<{ questCode?: string; labcorpCode?: string }>({});
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [vendorBusy, setVendorBusy] = useState<Set<string>>(new Set());
+  // Distinct from `error` (which is action feedback on an already-loaded page): a failure here means
+  // `test` never gets set, so without this the page would hang on "Loading..." forever with no way
+  // out but a manual reload. `reloadKey` re-runs both load effects for the Try again button.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [vendorsError, setVendorsError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const isNew = id === 'new';
 
   useEffect(() => {
-    fetch('/api/v1/admin/categories').then((r) => r.json()).then((j) => setCategories(j.data ?? []));
-  }, []);
+    fetch('/api/v1/admin/categories').then((r) => r.json()).then((j) => setCategories(j.data ?? [])).catch(() => {});
+  }, [reloadKey]);
 
   useEffect(() => {
     if (isNew) { setTest({ ...EMPTY }); return; }
-    fetch(`/api/v1/admin/tests/${id}`).then((r) => r.json()).then((j) => {
-      const d = j.data;
-      // Full category set = m2m memberships ∪ the (legacy) display pointer.
-      const ids = Array.from(new Set([d.categoryId, ...(d.categories ?? []).map((c: { categoryId: string }) => c.categoryId)].filter(Boolean)));
-      setTest({ ...d, categoryIds: ids });
-    });
-    // Which vendors offer this test (managed inline below). Existing tests only.
-    fetch(`/api/v1/admin/tests/${id}/vendors`).then((r) => r.json()).then((j) => setVendors(j.data ?? []));
-  }, [id, isNew]);
+    setLoadError(null);
+    fetch(`/api/v1/admin/tests/${id}`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.data) throw new Error(j.error?.message ?? 'Could not load this test.');
+        return j.data;
+      })
+      .then((d) => {
+        // Full category set = m2m memberships ∪ the (legacy) display pointer.
+        const ids = Array.from(new Set([d.categoryId, ...(d.categories ?? []).map((c: { categoryId: string }) => c.categoryId)].filter(Boolean)));
+        setTest({ ...d, categoryIds: ids });
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Could not load this test — try again.'));
+
+    // Which vendors offer this test (managed inline below). Existing tests only. Failure here doesn't
+    // block the page — it just leaves the checklist empty with an inline error, since the test itself
+    // is still usable without it.
+    setVendorsError(null);
+    fetch(`/api/v1/admin/tests/${id}/vendors`)
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error?.message ?? 'Could not load vendors.');
+        setVendors(j.data ?? []);
+      })
+      .catch((e) => setVendorsError(e instanceof Error ? e.message : 'Could not load vendors — try again.'));
+  }, [id, isNew, reloadKey]);
 
   const toggleCategory = (catId: string) =>
     setTest((prev) => {
@@ -207,6 +230,14 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
     router.push('/admin/tests');
   };
 
+  if (loadError) {
+    return (
+      <div className="admin-card max-w-2xl p-6">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</div>
+        <button className="admin-btn mt-3" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+      </div>
+    );
+  }
   if (!test) return <div className="p-6 text-brand-400">Loading...</div>;
 
   const labelCls = 'mb-1 block text-sm font-medium text-brand-700';
@@ -350,10 +381,15 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
           </div>
+          {vendorsError && (
+            <p className="mb-1 text-xs text-red-600">
+              {vendorsError} <button type="button" className="underline" onClick={() => setReloadKey((k) => k + 1)}>Retry</button>
+            </p>
+          )}
           {isNew ? (
             <p className="text-xs text-brand-400">Save the test first, then attach vendors here.</p>
           ) : vendors.length === 0 ? (
-            <p className="text-xs text-brand-400">No vendors yet.</p>
+            <p className="text-xs text-brand-400">{vendorsError ? '' : 'No vendors yet.'}</p>
           ) : (
             <div className="space-y-1">
               {vendors.map((v) => {

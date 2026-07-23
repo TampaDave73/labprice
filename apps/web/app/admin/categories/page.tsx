@@ -18,9 +18,17 @@ export default function CategoriesPage() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = async () => {
-    const j = await fetch('/api/v1/admin/categories').then((r) => r.json());
-    setCategories(j.data ?? []);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/v1/admin/categories');
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error?.message ?? 'Could not load categories.');
+      setCategories(j.data ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load categories — try again.');
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, []);
 
@@ -74,7 +82,11 @@ export default function CategoriesPage() {
         no category is blocked until you reassign those tests.
       </p>
 
-      {error && <div className="mb-4 max-w-2xl rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && (
+        <div className="mb-4 max-w-2xl rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error} <button className="underline" onClick={load}>Retry</button>
+        </div>
+      )}
 
       {/* Add */}
       <div className="mb-4 flex max-w-md items-center gap-2">

@@ -126,6 +126,16 @@ user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs th
    `middleware.ts` — it allows inline styles/scripts (public pages need them); tighten the other
    directives, not those, or the site breaks. It also pre-allows `googletagmanager.com`/
    `google-analytics.com` for the (currently inert) GA4 scaffold — harmless while unconfigured.
+10. **Admin client-fetch pages must check `res.ok` before touching `j.data`.** A bare
+    `fetch(url).then(r => r.json()).then(j => setX(j.data))` treats an error response
+    (`{error:{...}}`) as if it were `{data:{...}}` — either it throws inside the `.then()` (unhandled
+    rejection, so whatever `setLoading(false)`/gating `setState` call was supposed to run next never
+    does) or a `?? fallback` silently masks it and the gating state just stays at its initial
+    `null`/`true`. Either way the page hangs on "Loading..." forever with no error and no retry short
+    of a manual reload — happened for real on `tests/[id]` and `vendors/[id]` (2026-07-24 fix swept
+    every admin page with this pattern). Follow `analytics/page.tsx`'s pattern: check `res.ok`, throw
+    into a `.catch()`, always resolve the loading flag in `.finally()`/`try...finally`, and show a
+    retry action on failure — don't add a new bare fetch-then-chain to any admin page.
 
 ## Verifying changes
 

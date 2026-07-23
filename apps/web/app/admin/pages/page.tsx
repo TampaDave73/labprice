@@ -16,15 +16,23 @@ interface PageRow {
 export default function AdminPagesPage() {
   const [pages, setPages] = useState<PageRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ slug: string; text: string; ok: boolean } | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setLoadError(null);
     fetch('/api/v1/admin/pages')
-      .then((r) => r.json())
-      .then((j) => setPages(j.data?.pages ?? []))
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error?.message ?? 'Could not load pages.');
+        setPages(j.data?.pages ?? []);
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Could not load pages — try again.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+  useEffect(load, []);
 
   function update(slug: string, field: keyof PageRow, val: string) {
     setPages((prev) => prev.map((p) => (p.slug === slug ? { ...p, [field]: val } : p)));
@@ -62,6 +70,10 @@ export default function AdminPagesPage() {
 
       {loading ? (
         <p className="text-brand-400">Loading…</p>
+      ) : loadError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError} <button className="underline" onClick={load}>Retry</button>
+        </div>
       ) : (
         <div className="space-y-6">
           {pages.map((page) => (

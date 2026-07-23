@@ -29,6 +29,7 @@ export default function ChangeQueuePage() {
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Same cursor-stack pagination as /admin/tests — see that page for the reasoning.
   const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
@@ -46,16 +47,25 @@ export default function ChangeQueuePage() {
 
   const fetchChanges = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
-    if (tab !== 'All') params.set('status', tab);
-    const cursor = pageCursors[pageIndex];
-    if (cursor) params.set('cursor', cursor);
-    const res = await fetch(`/api/v1/admin/staged-changes?${params.toString()}`);
-    const json = await res.json();
-    setChanges(json.data ?? []);
-    setNextCursor(json.nextCursor);
-    setSelected(new Set());
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      if (tab !== 'All') params.set('status', tab);
+      const cursor = pageCursors[pageIndex];
+      if (cursor) params.set('cursor', cursor);
+      const res = await fetch(`/api/v1/admin/staged-changes?${params.toString()}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error?.message ?? 'Could not load the change queue.');
+      setChanges(json.data ?? []);
+      setNextCursor(json.nextCursor);
+      setSelected(new Set());
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Could not load the change queue — try again.');
+      setChanges([]);
+      setNextCursor(undefined);
+    } finally {
+      setLoading(false);
+    }
   }, [tab, pageIndex, pageCursors]);
 
   useEffect(() => { fetchChanges(); }, [fetchChanges]);
@@ -171,6 +181,8 @@ export default function ChangeQueuePage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={9} className="p-6 text-center text-brand-400">Loading...</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan={9} className="p-6 text-center text-red-600">{loadError} <button className="ml-2 underline" onClick={fetchChanges}>Retry</button></td></tr>
             ) : changes.length === 0 ? (
               <tr><td colSpan={9} className="p-6 text-center text-brand-400">No changes found.</td></tr>
             ) : (

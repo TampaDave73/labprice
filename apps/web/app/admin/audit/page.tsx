@@ -24,6 +24,7 @@ export default function AuditLogPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [action, setAction] = useState('');
   const [entityType, setEntityType] = useState('');
@@ -33,19 +34,28 @@ export default function AuditLogPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-    if (action) params.set('action', action);
-    if (entityType) params.set('entityType', entityType);
-    if (actorId) params.set('actorId', actorId);
-    if (from) params.set('from', from);
-    if (to) params.set('to', to);
-    const res = await fetch(`/api/v1/admin/audit?${params.toString()}`);
-    const json = await res.json();
-    setRows(json.data ?? []);
-    setLabels(json.labels ?? {});
-    setMeta(json.meta ?? { actions: [], entityTypes: [], actors: [], hasSystemActor: false });
-    setTotal(json.total ?? 0);
-    setLoading(false);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+      if (action) params.set('action', action);
+      if (entityType) params.set('entityType', entityType);
+      if (actorId) params.set('actorId', actorId);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const res = await fetch(`/api/v1/admin/audit?${params.toString()}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error?.message ?? 'Could not load the audit log.');
+      setRows(json.data ?? []);
+      setLabels(json.labels ?? {});
+      setMeta(json.meta ?? { actions: [], entityTypes: [], actors: [], hasSystemActor: false });
+      setTotal(json.total ?? 0);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load the audit log — try again.');
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   }, [page, action, entityType, actorId, from, to]);
 
   useEffect(() => { load(); }, [load]);
@@ -116,6 +126,8 @@ export default function AuditLogPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={4} className="p-6 text-center text-brand-400">Loading...</td></tr>
+            ) : error ? (
+              <tr><td colSpan={4} className="p-6 text-center text-red-600">{error} <button className="ml-2 underline" onClick={load}>Retry</button></td></tr>
             ) : rows.length === 0 ? (
               <tr><td colSpan={4} className="p-6 text-center text-brand-400">No audit entries match these filters.</td></tr>
             ) : (

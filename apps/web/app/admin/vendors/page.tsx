@@ -37,6 +37,8 @@ export default function VendorsListPage() {
     initialSort && ['name', 'trust', 'offerings', 'active'].includes(initialSort) ? (initialSort as SortKey) : 'name',
   );
   const [dir, setDir] = useState<'asc' | 'desc'>(sp.get('dir') === 'desc' ? 'desc' : 'asc');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   // Bulk "scrape all catalog vendors" trigger state — null until clicked, then a result/error line.
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<string | null>(null);
@@ -64,15 +66,23 @@ export default function VendorsListPage() {
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true);
-      const params = new URLSearchParams({ sort, dir });
-      if (search) params.set('search', search);
-      const res = await fetch(`/api/v1/admin/vendors?${params.toString()}`);
-      const json = await res.json();
-      setVendors(json.data ?? []);
-      setLoading(false);
+      setLoadError(null);
+      try {
+        const params = new URLSearchParams({ sort, dir });
+        if (search) params.set('search', search);
+        const res = await fetch(`/api/v1/admin/vendors?${params.toString()}`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error?.message ?? 'Could not load vendors.');
+        setVendors(json.data ?? []);
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : 'Could not load vendors — try again.');
+        setVendors([]);
+      } finally {
+        setLoading(false);
+      }
     }, 300);
     return () => clearTimeout(t);
-  }, [search, sort, dir]);
+  }, [search, sort, dir, reloadKey]);
 
   const toggleSort = (key: SortKey) => {
     if (sort === key) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -114,6 +124,8 @@ export default function VendorsListPage() {
           <tbody>
             {loading ? (
               <tr><td colSpan={7} className="p-6 text-center text-brand-400">Loading...</td></tr>
+            ) : loadError ? (
+              <tr><td colSpan={7} className="p-6 text-center text-red-600">{loadError} <button className="ml-2 underline" onClick={() => setReloadKey((k) => k + 1)}>Retry</button></td></tr>
             ) : vendors.length === 0 ? (
               <tr><td colSpan={7} className="p-6 text-center text-brand-400">No vendors found.</td></tr>
             ) : (

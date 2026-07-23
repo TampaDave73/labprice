@@ -15,11 +15,28 @@ type Data = {
 
 export default function CoveragePage() {
   const [data, setData] = useState<Data | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    fetch('/api/v1/admin/coverage').then((r) => r.json()).then((j) => setData(j.data ?? null));
-  }, []);
+    setLoadError(null);
+    fetch('/api/v1/admin/coverage')
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error?.message ?? 'Could not load coverage data.');
+        setData(j.data ?? null);
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Could not load coverage — try again.'));
+  }, [reloadKey]);
 
+  if (loadError) {
+    return (
+      <div className="admin-card p-6 text-center">
+        <p className="mb-2 text-sm text-red-600">{loadError}</p>
+        <button className="admin-btn admin-btn-sm" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
+      </div>
+    );
+  }
   if (!data) return <div className="admin-card p-6 text-center text-brand-400">Loading…</div>;
 
   const gaps = Object.values(data.cells).filter((c) => c.s === 'found').length;

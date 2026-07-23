@@ -39,8 +39,8 @@ export default function SettingsPage() {
         else v[f.key] = raw === undefined ? (f.default as number) : Number(raw);
       }
       setValues(v);
-      setLoading(false);
-    });
+    }).catch(() => setMsg('Could not load settings — reload the page to retry.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const save = async () => {

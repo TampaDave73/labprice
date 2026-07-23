@@ -94,9 +94,14 @@ export default function SuggestionsPage() {
 
   function load() {
     setLoading(true);
+    setError(null);
     fetch('/api/v1/admin/suggestions')
-      .then((r) => r.json())
-      .then((j) => setRows(toRows(j.data?.vendors ?? [], j.data?.tests ?? [], j.data?.reports ?? [])))
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error?.message ?? 'Could not load suggestions.');
+        setRows(toRows(j.data?.vendors ?? [], j.data?.tests ?? [], j.data?.reports ?? []));
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load suggestions — try again.'))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -160,7 +165,7 @@ export default function SuggestionsPage() {
         the default view (reversible), or delete to remove permanently.
       </p>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600">{error} <button className="underline" onClick={load}>Retry</button></p>}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-lg border border-brand-100 bg-brand-50 p-1">
