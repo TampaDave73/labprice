@@ -54,6 +54,11 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState<string | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupNote, setLookupNote] = useState<string | null>(null);
+  // Per-field provenance for the two code inputs only — 'dirtcheaplabs' (a live catalog match, not
+  // AI) vs 'ai' (Claude's best guess, needs verification). The five content fields never have a
+  // vendor-sourced option: they're always Claude's writing, never copied from a vendor page — see the
+  // static note below the Auto-fill button.
+  const [codeSources, setCodeSources] = useState<{ questCode?: string; labcorpCode?: string }>({});
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [vendorBusy, setVendorBusy] = useState<Set<string>>(new Set());
   const isNew = id === 'new';
@@ -116,6 +121,7 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
         }
         return next;
       });
+      setCodeSources(d.sources ?? {});
       setLookupNote(Array.isArray(d.notes) && d.notes.length ? d.notes.join(' ') : 'Auto-fill complete.');
     } catch {
       setError('Lookup failed — check your connection and try again.');
@@ -149,6 +155,12 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
     } finally {
       setVendorBusy((prev) => { const n = new Set(prev); n.delete(row.vendorId); return n; });
     }
+  };
+
+  // Bulk-toggle: reuses toggleVendor per row (in parallel) rather than duplicating its request/state
+  // logic — each row has its own vendorId key in vendorBusy so concurrent calls don't collide.
+  const toggleAllVendors = (select: boolean) => {
+    vendors.filter((v) => v.offered !== select && !vendorBusy.has(v.vendorId)).forEach((row) => toggleVendor(row));
   };
 
   const handleAddCategory = async () => {
@@ -221,7 +233,12 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
               {lookingUp ? 'Looking up…' : '✨ Auto-fill'}
             </button>
           </div>
-          <p className="mt-1 text-xs text-brand-400">Auto-fill pulls order codes from vendor catalogs and generates the content fields. It only fills blanks — review before saving.</p>
+          <p className="mt-1 text-xs text-brand-400">
+            Auto-fill only fills blanks, never overwrites what you&apos;ve typed. <span className="font-medium text-brand-600">Order codes</span> come
+            from a live vendor-catalog match when one exists (flagged below), AI-guessed otherwise. <span className="font-medium text-brand-600">Every
+            content field below</span> (description, purpose, procedure, preparation, normal ranges) is written by Claude from the test name —
+            it is never copied from a vendor&apos;s page. Review everything before saving either way.
+          </p>
           {lookupNote && (
             <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{lookupNote}</div>
           )}
@@ -279,13 +296,20 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           <div>
             <label className={labelCls}>Quest Code</label>
             <input type="text" className="admin-input" value={test.questCode ?? ''} onChange={(e) => handleChange('questCode', e.target.value)} />
+            {codeSources.questCode === 'ai' && <p className="mt-1 text-xs text-amber-700">⚠ AI-suggested — verify against the lab before saving.</p>}
+            {codeSources.questCode && codeSources.questCode !== 'ai' && <p className="mt-1 text-xs text-success-700">✓ Matched in the {codeSources.questCode} catalog, not AI-guessed.</p>}
           </div>
           <div>
             <label className={labelCls}>LabCorp Code</label>
             <input type="text" className="admin-input" value={test.labcorpCode ?? ''} onChange={(e) => handleChange('labcorpCode', e.target.value)} />
+            {codeSources.labcorpCode === 'ai' && <p className="mt-1 text-xs text-amber-700">⚠ AI-suggested — verify against the lab before saving.</p>}
+            {codeSources.labcorpCode && codeSources.labcorpCode !== 'ai' && <p className="mt-1 text-xs text-success-700">✓ Matched in the {codeSources.labcorpCode} catalog, not AI-guessed.</p>}
           </div>
         </div>
 
+        <p className="text-xs font-medium uppercase tracking-wide text-brand-400">
+          Content fields — always AI-written from the test name, never copied from a vendor
+        </p>
         {([
           ['description', 'Description'],
           ['purpose', 'Purpose'],
@@ -312,7 +336,20 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
 
         {/* Vendors — which services offer this test. Attaching a catalog vendor auto-scrapes its price. */}
         <div>
-          <label className={labelCls}>Vendors</label>
+          <div className="mb-1 flex items-center justify-between">
+            <label className={labelCls + ' mb-0'}>Vendors</label>
+            {!isNew && vendors.length > 1 && (
+              <div className="flex gap-2">
+                <button type="button" className="text-xs font-medium text-brand-500 hover:text-brand-700" onClick={() => toggleAllVendors(true)}>
+                  Select all
+                </button>
+                <span className="text-xs text-brand-300">·</span>
+                <button type="button" className="text-xs font-medium text-brand-500 hover:text-brand-700" onClick={() => toggleAllVendors(false)}>
+                  Deselect all
+                </button>
+              </div>
+            )}
+          </div>
           {isNew ? (
             <p className="text-xs text-brand-400">Save the test first, then attach vendors here.</p>
           ) : vendors.length === 0 ? (

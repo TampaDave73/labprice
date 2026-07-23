@@ -140,12 +140,20 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete.
   - **✨ Auto-fill** (next to the name): `POST /api/v1/admin/tests/lookup` fills short name, slug,
     categories, the five content fields, and Quest/LabCorp codes from the test name. Codes: vendor
-    catalogs first (DCL API → `code-lookup.ts`, same-name matches only), then **Claude**
-    (`claude-opus-4-8`) for gaps; Claude also writes short name/content and picks best-fitting existing
-    categories; slug is derived. Fills blanks only, for review. Needs `ANTHROPIC_API_KEY`; without it,
-    returns catalog codes + slug only.
+    catalogs first (DCL API → `code-lookup.ts`, same-name matches only — this hits DCL's **live** API
+    directly, independent of whatever we've ingested/promoted into our own DB, so a code match here
+    doesn't imply the vendor is already linked in our system), then **Claude** (`claude-opus-4-8`) for
+    gaps; Claude also writes short name/content and picks best-fitting existing categories; slug is
+    derived. Fills blanks only, for review. Needs `ANTHROPIC_API_KEY`; without it, returns catalog
+    codes + slug only. **Provenance is shown per field** (added 2026-07-24, after a report that a
+    correct DCL catalog match looked suspicious with no explanation of where it came from): a ✓/⚠
+    note under each code field says whether it was a live catalog match or an AI guess, and a fixed
+    label above the five content fields states they're always Claude-written from the test name, never
+    copied from a vendor page — true from day one, just not visible before.
   - **Vendors** checklist (existing tests only): attach/detach offerings from the test side via
     `/api/v1/admin/tests/[id]/vendors`; attaching a catalog vendor auto-scrapes the price inline.
+    **Select all / Deselect all** links above the list (added 2026-07-24) bulk-toggle every vendor at
+    once instead of clicking each checkbox.
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
 - **Vendors** — list (sortable incl. by trust) + **Add Vendor** + **Scrape all catalog vendors**

@@ -9,6 +9,24 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-24, Test editor: auto-fill provenance + vendor bulk-select)
+- **Auto-fill now shows where each field actually came from.** Prompted by a report that a Dirt Cheap
+  Labs catalog match for "Adiponectin" looked wrong — investigated and confirmed it was actually
+  correct (verified against DCL's live API and their storefront directly: Quest #15060 / LabCorp
+  #004650, both listed). The real issue was that the UI gave no way to tell a live catalog match from
+  an AI guess, or vendor-sourced content from AI-written content (it's always AI-written — the code
+  lookup only ever returns numeric codes, never description text — but nothing on screen said so).
+  Added a ✓/⚠ provenance note under each code field and a fixed label above the content fields making
+  the always-AI-written guarantee explicit.
+- **"Select all" / "Deselect all" for the Vendors checklist** on the Test editor, so listing a test
+  across every vendor doesn't require clicking each checkbox individually.
+- **Confirmed automatic nightly scraping is working as designed**, in response to "it doesn't appear
+  to be happening" — traced through BullMQ's job-scheduler state on production Redis (`iterationCount`
+  climbing daily, `next` correctly armed for the following 06:00 UTC) and the `scrape_jobs` history.
+  The daily tick has fired every day since it was created; most days enqueue nothing because every
+  vendor is on a 7-day schedule and manual "Scrape now" runs (ours during testing, or an admin's) keep
+  resetting each vendor's due-clock, which is the documented intended behavior, not a bug.
+
 ### Added (2026-07-23, Change Queue usability)
 - **Pagination on `/admin/tests` and `/admin/changes`** — both list APIs already supported
   `limit`/`cursor`, just never wired into the page, so `/admin/tests` silently capped at the first 25
