@@ -9,6 +9,24 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-24, vendor Catalog Excel round-trip)
+- **`Export Excel`/`Import Excel` on the vendor Catalog section** (`/admin/vendors/[id]`). The
+  one-by-one Catalog table only lists tests already linked to a vendor; the export instead lists
+  **every test in the system**, filled in with whatever this vendor already has, blank where a test
+  they might carry never got auto-matched — so a gap (e.g. "DirectLabs has no URL for Vitamin C") is
+  something you can find and fix in bulk instead of hunting one test at a time. Same
+  dry-run-diff-then-apply contract, TEXT-formatted reference code columns, and only-create-or-update
+  (never unlink) philosophy as every other admin workbook in this project. Verified end-to-end:
+  soft-deleted a real offering to simulate a gap, exported, filled in a URL + price, dry-ran (showed
+  exactly one create), applied, and confirmed the offering was correctly reactivated in the database
+  with the new values.
+- Investigated how DirectLabs product URLs get into the system despite their storefront hiding every
+  test behind a JS click-to-modal (no real navigation, no URL to copy, confirmed by hand). Their
+  actual store (`store.directlabs.com`) is an Angular SPA that loads its catalog from a clean JSON
+  API (`GetTestsByCategoryID`) — `packages/scrapers/src/catalog/directlabs-parser.ts` hits that API
+  directly and builds `store.directlabs.com/testinfo/<PK_TestID>` from the numeric id it returns. Not
+  a bug — there's no code fix needed, just documenting it since it's not discoverable by browsing.
+
 ### Fixed (2026-07-24, Change Queue: Approve/Reject pushed off-screen)
 - The inline URL editor added 2026-07-23 could widen a Change Queue row (1133px) past the table
   card's width (935px on a common 1280px-wide window) — `overflow-x-auto` correctly contained it

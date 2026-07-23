@@ -3,7 +3,7 @@
 // Vendor editor. Five sections, each saving independently: Details (+ trust override), Catalog
 // (test<->vendor links with product URL/price), Scraper Health (read-only computed trust metrics),
 // and Scraper Configuration (+ a "Scrape now" trigger). Effective trust = override ?? computed.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type TrustLevel = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -39,6 +39,16 @@ type CatalogItem = {
   externalUrl: string | null;
   currentPrice: number | null;
   isActive: boolean;
+};
+
+// Shape of the Catalog Excel import's dry-run/apply summary (see that route for semantics).
+type CatalogImportSummary = {
+  creates: { line: number; testName: string; externalUrl: string | null; currentPrice: number | null }[];
+  updates: { line: number; testName: string; changes?: Record<string, { from: string; to: string }> }[];
+  unchanged: number;
+  skippedBlank: number;
+  errors: { line: number; message: string }[];
+  applied: boolean;
 };
 
 type RunError = { message: string; errorType: string; url: string | null };
@@ -123,6 +133,60 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     }
   };
   useEffect(() => { loadCatalog(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bulk Catalog Excel round-trip: pick file → dry-run preview (modal) → Apply. Same two-phase
+  // contract as the Tests/Discovered importers — see the import route for why. The File is held so
+  // Apply re-posts the exact file the preview was computed from.
+  const catalogFileInput = useRef<HTMLInputElement>(null);
+  const [catalogImportFile, setCatalogImportFile] = useState<File | null>(null);
+  const [catalogImportPreview, setCatalogImportPreview] = useState<CatalogImportSummary | null>(null);
+  const [catalogImportError, setCatalogImportError] = useState<string | null>(null);
+  const [catalogImportBusy, setCatalogImportBusy] = useState(false);
+
+  const postCatalogImport = async (file: File, apply: boolean): Promise<CatalogImportSummary | null> => {
+    const formData = new FormData();
+    formData.set('file', file);
+    formData.set('apply', String(apply));
+    const res = await fetch(`/api/v1/admin/vendors/${id}/offerings/import`, { method: 'POST', body: formData });
+    const json = await res.json();
+    if (!res.ok && !json.data) {
+      setCatalogImportError(json.error?.message ?? 'Import failed.');
+      return null;
+    }
+    return json.data as CatalogImportSummary;
+  };
+
+  const onCatalogFilePicked = async (file: File) => {
+    setCatalogImportError(null);
+    setCatalogImportBusy(true);
+    try {
+      const preview = await postCatalogImport(file, false);
+      if (preview) { setCatalogImportFile(file); setCatalogImportPreview(preview); }
+    } catch {
+      setCatalogImportError('Could not read that file.');
+    } finally {
+      setCatalogImportBusy(false);
+      if (catalogFileInput.current) catalogFileInput.current.value = ''; // allow re-picking the same file
+    }
+  };
+
+  const applyCatalogImport = async () => {
+    if (!catalogImportFile) return;
+    setCatalogImportBusy(true);
+    setCatalogImportError(null);
+    try {
+      const result = await postCatalogImport(catalogImportFile, true);
+      if (result?.applied) {
+        setCatalogImportPreview(null);
+        setCatalogImportFile(null);
+        loadCatalog();
+      } else if (result) {
+        setCatalogImportPreview(result); // apply was blocked (e.g. data changed since preview) — show why
+      }
+    } finally {
+      setCatalogImportBusy(false);
+    }
+  };
 
   // Recent scrape runs + errors — the "live insight into scraping" view, so an admin can see *why* a
   // run failed (e.g. "HTTP 403 for https://...") without querying the DB directly.
@@ -302,10 +366,103 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
 
       {/* Catalog: which tests this vendor offers */}
       <div className="admin-card space-y-4 p-6">
-        <div>
-          <h2 className="admin-h2">Catalog</h2>
-          <p className="mt-1 text-sm text-brand-400">The tests this vendor offers. Edits to a URL or price <span className="font-medium">save automatically</span> when you click away (no separate Save button). For catalog vendors, a discovered test fills its own Product URL; if a test is unmatched, paste the correct product page URL here and the next scrape will price it directly.</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="admin-h2">Catalog</h2>
+            <p className="mt-1 text-sm text-brand-400">The tests this vendor offers. Edits to a URL or price <span className="font-medium">save automatically</span> when you click away (no separate Save button). For catalog vendors, a discovered test fills its own Product URL; if a test is unmatched, paste the correct product page URL here and the next scrape will price it directly.</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <a
+              href={`/api/v1/admin/vendors/${id}/offerings/export`}
+              className="admin-btn admin-btn-sm"
+              title="Download every test in the system as a spreadsheet, with whatever this vendor already has filled in — blank rows are tests they might carry but that never got auto-matched."
+            >
+              Export Excel
+            </a>
+            <button
+              className="admin-btn admin-btn-sm"
+              disabled={catalogImportBusy}
+              onClick={() => catalogFileInput.current?.click()}
+              title="Upload an edited export to bulk-create/update links — you'll see a preview of every change before anything is applied"
+            >
+              {catalogImportBusy && !catalogImportPreview ? 'Reading…' : 'Import Excel'}
+            </button>
+            <input
+              ref={catalogFileInput}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onCatalogFilePicked(f); }}
+            />
+          </div>
         </div>
+
+        {catalogImportError && <p className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">{catalogImportError}</p>}
+
+        {catalogImportPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !catalogImportBusy && setCatalogImportPreview(null)}>
+            <div className="admin-card max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="admin-h2 mb-1">Import preview</h2>
+              <p className="mb-4 text-sm text-brand-400">
+                {catalogImportPreview.creates.length} new link{catalogImportPreview.creates.length === 1 ? '' : 's'} · {catalogImportPreview.updates.length} changed · {catalogImportPreview.unchanged} unchanged
+                {catalogImportPreview.errors.length > 0 && <span className="font-medium text-red-600"> · {catalogImportPreview.errors.length} error{catalogImportPreview.errors.length === 1 ? '' : 's'}</span>}
+              </p>
+
+              {catalogImportPreview.errors.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-1 text-sm font-semibold text-red-700">Errors — fix the file and re-upload (nothing can be applied until these are gone)</h3>
+                  <ul className="space-y-1 text-sm text-red-700">
+                    {catalogImportPreview.errors.map((e, i) => <li key={i}>Line {e.line}: {e.message}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {catalogImportPreview.creates.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-1 text-sm font-semibold text-brand-900">New links</h3>
+                  <ul className="space-y-1 text-sm text-brand-600">
+                    {catalogImportPreview.creates.map((c) => (
+                      <li key={c.line}>{c.testName} <span className="text-brand-400">({c.externalUrl ?? 'no URL'}{c.currentPrice != null ? ` · $${c.currentPrice.toFixed(2)}` : ''})</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {catalogImportPreview.updates.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="mb-1 text-sm font-semibold text-brand-900">Changed links</h3>
+                  <div className="space-y-2 text-sm">
+                    {catalogImportPreview.updates.map((u) => (
+                      <div key={u.line}>
+                        <p className="text-brand-900">{u.testName}</p>
+                        <ul className="ml-4 text-xs text-brand-600">
+                          {Object.entries(u.changes ?? {}).map(([field, d]) => (
+                            <li key={field}>
+                              <span className="font-mono">{field}</span>: <span className="text-red-600 line-through">{d.from || '—'}</span> → <span className="text-green-700">{d.to || '—'}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {catalogImportPreview.creates.length === 0 && catalogImportPreview.updates.length === 0 && catalogImportPreview.errors.length === 0 && (
+                <p className="mb-4 text-sm text-brand-400">The file matches the database — nothing to apply.</p>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button className="admin-btn" disabled={catalogImportBusy} onClick={() => setCatalogImportPreview(null)}>Cancel</button>
+                {(catalogImportPreview.creates.length > 0 || catalogImportPreview.updates.length > 0) && catalogImportPreview.errors.length === 0 && (
+                  <button className="admin-btn" disabled={catalogImportBusy} onClick={applyCatalogImport}>
+                    {catalogImportBusy ? 'Applying…' : `Apply ${catalogImportPreview.creates.length + catalogImportPreview.updates.length} change${catalogImportPreview.creates.length + catalogImportPreview.updates.length === 1 ? '' : 's'}`}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

@@ -175,6 +175,17 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   path for catalog-scraper vendors), **Catalog** (link/unlink tests + product URL + price), and
   **Scrape now** (runs inline for most catalog vendors; queues to the `scrape-discover` worker and
   shows a "queued" message for `needsBrowser` vendors like Request A Test).
+  - **Catalog Excel round-trip** (added 2026-07-24) — `Export Excel`/`Import Excel` above the Catalog
+    table (`GET`/`POST /api/v1/admin/vendors/[id]/offerings/export`|`import`). Unlike the one-by-one
+    table (which only lists tests already linked), the export lists **every test in the system** —
+    blank `external_url`/`current_price` for a test this vendor might carry but that never got
+    auto-matched. Fill in the blanks (or fix a wrong URL/price) and re-import: `test_id` anchors every
+    row, `offering_id` anchors an *existing* link when present. Same dry-run-diff-then-apply contract
+    as every other admin workbook here; quest_code/labcorp_code are reference-only, TEXT-formatted.
+    **Only creates and updates, never unlinks** — same reasoning as the Tests importer not supporting
+    delete-by-sheet; use the ✕ button in the one-by-one table to unlink. A blank `offering_id` row
+    with both URL and price still blank is just an untouched reference row (`skippedBlank` in the
+    response), not an error.
 - **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
   to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
 - **Change Queue** (cursor-paginated, 25/page) — review staged price changes (Approve/Reject); has an
