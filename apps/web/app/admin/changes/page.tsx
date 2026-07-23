@@ -265,12 +265,12 @@ export default function ChangeQueuePage() {
                     <td className="p-3">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                         c.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                        c.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                        c.status === 'APPROVED' || c.status === 'AUTO_APPROVED' ? 'bg-green-100 text-green-700' :
                         'bg-red-100 text-red-700'
                       }`}>{c.status}</span>
                     </td>
                     <td className="sticky right-0 z-10 border-l border-brand-100 bg-white p-3 group-hover:bg-brand-50/50">
-                      {c.status === 'PENDING' && (
+                      {c.status === 'PENDING' ? (
                         <div className="flex gap-1">
                           <button
                             onClick={() => handleAction('approve', [c.id], overridden ? Number(draftPrice) : undefined)}
@@ -287,6 +287,10 @@ export default function ChangeQueuePage() {
                             Reject
                           </button>
                         </div>
+                      ) : (
+                        // Nothing to do — already resolved. An empty cell here (especially with the
+                        // sticky column's left border) reads as broken, so say so explicitly instead.
+                        <span className="text-brand-300" title={`Already ${c.status.toLowerCase().replace('_', ' ')} — no action needed.`}>—</span>
                       )}
                     </td>
                   </tr>

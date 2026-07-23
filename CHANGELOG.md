@@ -9,6 +9,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-25, Change Queue: AUTO_APPROVED mis-styled red + blank Actions cell)
+- Reported as "no Approve/Reject buttons appear, only on the Pending tab" — traced with real DOM
+  inspection (not just a visual check) rather than assumed: on the `All` tab, the visible page
+  happened to be all `APPROVED`/`AUTO_APPROVED` rows, which correctly have no buttons (nothing
+  pending to act on) — that part was working as designed. But found a real bug along the way: the
+  Status badge's color logic only special-cased `PENDING` and `APPROVED`, so `AUTO_APPROVED` (a
+  *success* state — the scraper's price was small enough to auto-publish) fell through to the same
+  red styling as `REJECTED`, reading as if something had gone wrong. Fixed to treat `AUTO_APPROVED`
+  as green, same as `APPROVED`. Also replaced the blank Actions cell on non-pending rows with an
+  explicit "—" (same convention already used for a null Old Price) so an already-resolved row reads
+  as "nothing to do here" instead of looking broken, especially against the sticky column's left
+  border.
+
 ### Added (2026-07-24, vendor Catalog Excel round-trip)
 - **`Export Excel`/`Import Excel` on the vendor Catalog section** (`/admin/vendors/[id]`). The
   one-by-one Catalog table only lists tests already linked to a vendor; the export instead lists
