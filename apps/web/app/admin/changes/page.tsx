@@ -175,7 +175,7 @@ export default function ChangeQueuePage() {
               <th className="p-3 text-right">% Change</th>
               <th className="p-3">Date</th>
               <th className="p-3">Status</th>
-              <th className="p-3">Actions</th>
+              <th className="sticky right-0 z-10 border-l border-brand-100 bg-brand-50 p-3">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -192,7 +192,7 @@ export default function ChangeQueuePage() {
                 const overridden = draftPrice !== undefined && draftPrice !== '' && Number(draftPrice) !== Number(c.newPrice);
                 const pct = pctChange(c.oldPrice, effectivePrice);
                 return (
-                  <tr key={c.id} className="border-b border-brand-100 hover:bg-brand-50/50">
+                  <tr key={c.id} className="group border-b border-brand-100 hover:bg-brand-50/50">
                     <td className="p-3"><input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} /></td>
                     <td className="p-3 font-medium text-brand-900">{c.offering.test.name}</td>
                     <td className="p-3">
@@ -269,7 +269,7 @@ export default function ChangeQueuePage() {
                         'bg-red-100 text-red-700'
                       }`}>{c.status}</span>
                     </td>
-                    <td className="p-3">
+                    <td className="sticky right-0 z-10 border-l border-brand-100 bg-white p-3 group-hover:bg-brand-50/50">
                       {c.status === 'PENDING' && (
                         <div className="flex gap-1">
                           <button

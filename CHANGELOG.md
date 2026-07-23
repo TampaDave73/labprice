@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-24, Change Queue: Approve/Reject pushed off-screen)
+- The inline URL editor added 2026-07-23 could widen a Change Queue row (1133px) past the table
+  card's width (935px on a common 1280px-wide window) — `overflow-x-auto` correctly contained it
+  in a horizontal scrollbar rather than breaking the page layout, but that scrollbar was easy to
+  miss, leaving Approve/Reject effectively invisible. Made the Actions column `sticky right-0` so
+  it stays pinned and visible regardless of how wide the rest of the row gets — the same pattern
+  used for frozen action columns in data grids. Reproduced and verified the fix with real DOM
+  measurements (`scrollWidth` vs `clientWidth`) before and after, not just a visual check.
+
 ### Changed (2026-07-24, Tests CSV → Excel)
 - **`/admin/tests` Export/Import switched from CSV to `.xlsx`**, same fix already applied to the
   Discovered round-trip: Excel silently strips a leading zero off a LabCorp code like `004650` when
