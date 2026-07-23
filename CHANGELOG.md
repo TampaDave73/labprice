@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-07-24, Tests CSV → Excel)
+- **`/admin/tests` Export/Import switched from CSV to `.xlsx`**, same fix already applied to the
+  Discovered round-trip: Excel silently strips a leading zero off a LabCorp code like `004650` when
+  it opens a CSV, because it auto-detects "numeric-looking" cells regardless of what produced the
+  file. `quest_code`/`labcorp_code` are now TEXT-formatted (`numFmt: '@'`) so that can't happen.
+  Also added a `Categories` reference sheet. Import moved from a JSON `{csv}` body to
+  `multipart/form-data`; the dry-run-diff-then-apply contract and every validation rule are otherwise
+  unchanged. Verified end-to-end: exported, edited a leading-zero code and a short_name, re-imported —
+  the diff correctly showed only the intended change and the code round-tripped intact in the DB.
+  Extracted the cell-parsing helpers (`cellText`/`parseWorkbookSheet`) into `apps/web/lib/xlsx.ts`,
+  shared with the Discovered importer instead of duplicated; deleted the now-unused `lib/csv.ts`.
+
 ### Fixed (2026-07-24, admin pages: silent-hang bug on load failure)
 - **Every admin client page that fetches its own data on mount could hang on "Loading..." forever
   with zero error shown** if that fetch ever returned a non-2xx response (expired session, transient

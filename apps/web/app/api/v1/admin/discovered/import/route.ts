@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import ExcelJS from 'exceljs';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
 import { attachProductsToTest, createPromotedTest } from '@/lib/discovered-actions';
+import { parseWorkbookSheet } from '@/lib/xlsx';
 
 // Write-back half of the Discovered Excel round-trip (see export/route.ts for the read half and the
 // reasoning). NEVER blind: same two-phase contract as the Tests importer — apply:false always
@@ -28,52 +28,6 @@ import { attachProductsToTest, createPromotedTest } from '@/lib/discovered-actio
 
 const MAX_ROWS = 2000;
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
-
-/** Plain text out of any ExcelJS cell value shape (string, number, Date, formula result, rich text,
- * hyperlink object) — the sheet's quest_code/labcorp_code columns are TEXT-formatted specifically so
- * these never arrive as numbers, but this stays defensive against a user re-typing into a re-
- * formatted cell anyway. */
-function cellText(value: ExcelJS.CellValue): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value.trim();
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (value instanceof Date) return value.toISOString();
-  if (typeof value === 'object') {
-    if ('richText' in value) return value.richText.map((t) => t.text).join('').trim();
-    if ('result' in value) return cellText(value.result ?? '');
-    if ('text' in value) return String(value.text).trim();
-  }
-  return String(value).trim();
-}
-
-/** Reads the 'Discovered' sheet into the same {header, records} shape the old CSV parser produced,
- * so every validation/processing line below this is untouched by the CSV -> Excel switch. */
-async function parseWorkbook(buffer: ArrayBuffer): Promise<{ header: string[]; records: Record<string, string>[] } | { error: string }> {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-  const sheet = workbook.getWorksheet('Discovered');
-  if (!sheet) return { error: "No 'Discovered' sheet found — upload the file exactly as exported (or make sure a sheet is literally named 'Discovered')." };
-
-  const header: string[] = [];
-  sheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    header[colNumber - 1] = cellText(cell.value).toLowerCase();
-  });
-
-  const records: Record<string, string>[] = [];
-  for (let r = 2; r <= sheet.rowCount; r++) {
-    const row = sheet.getRow(r);
-    const rec: Record<string, string> = {};
-    let hasValue = false;
-    header.forEach((h, i) => {
-      if (!h) return;
-      const text = cellText(row.getCell(i + 1).value);
-      rec[h] = text;
-      if (text) hasValue = true;
-    });
-    if (hasValue) records.push(rec);
-  }
-  return { header, records };
-}
 
 type AttachGroup = { testId: string; testName: string; lines: number[]; vendorProductIds: string[] };
 type PromoteGroup = {
@@ -112,7 +66,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: { code: 'validation_error', message: 'Body must include a file.' } }, { status: 400 });
   }
 
-  const parsed = await parseWorkbook(await file.arrayBuffer()).catch(() => ({ error: "Could not read that file as an Excel workbook. Start from an Export to get a file in the right shape." }));
+  const parsed = await parseWorkbookSheet(await file.arrayBuffer(), 'Discovered').catch(() => ({ error: "Could not read that file as an Excel workbook. Start from an Export to get a file in the right shape." }));
   if ('error' in parsed) {
     return NextResponse.json({ error: { code: 'validation_error', message: parsed.error } }, { status: 400 });
   }

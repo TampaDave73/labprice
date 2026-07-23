@@ -43,20 +43,19 @@ export default function TestsListPage() {
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // CSV import flow: pick file → dry-run preview (modal) → Apply. The csv text is held so Apply
+  // Excel import flow: pick file → dry-run preview (modal) → Apply. The File is held so Apply
   // re-posts the exact same file the preview was computed from.
   const fileInput = useRef<HTMLInputElement>(null);
-  const [importCsv, setImportCsv] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportSummary | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState(false);
 
-  const postImport = async (csv: string, apply: boolean): Promise<ImportSummary | null> => {
-    const res = await fetch('/api/v1/admin/tests/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ csv, apply }),
-    });
+  const postImport = async (file: File, apply: boolean): Promise<ImportSummary | null> => {
+    const formData = new FormData();
+    formData.set('file', file);
+    formData.set('apply', String(apply));
+    const res = await fetch('/api/v1/admin/tests/import', { method: 'POST', body: formData });
     const json = await res.json();
     if (!res.ok && !json.data) {
       setImportError(json.error?.message ?? 'Import failed.');
@@ -69,9 +68,8 @@ export default function TestsListPage() {
     setImportError(null);
     setImportBusy(true);
     try {
-      const text = await file.text();
-      const preview = await postImport(text, false);
-      if (preview) { setImportCsv(text); setImportPreview(preview); }
+      const preview = await postImport(file, false);
+      if (preview) { setImportFile(file); setImportPreview(preview); }
     } catch {
       setImportError('Could not read that file.');
     } finally {
@@ -81,14 +79,14 @@ export default function TestsListPage() {
   };
 
   const applyImport = async () => {
-    if (!importCsv) return;
+    if (!importFile) return;
     setImportBusy(true);
     setImportError(null);
     try {
-      const result = await postImport(importCsv, true);
+      const result = await postImport(importFile, true);
       if (result?.applied) {
         setImportPreview(null);
-        setImportCsv(null);
+        setImportFile(null);
         setRefresh((n) => n + 1);
       } else if (result) {
         setImportPreview(result); // apply was blocked (e.g. data changed since preview) — show why
@@ -150,8 +148,8 @@ export default function TestsListPage() {
       <div className="mb-6 flex items-center justify-between gap-3">
         <h1 className="admin-h1">Tests</h1>
         <div className="flex items-center gap-3">
-          <a href="/api/v1/admin/tests/export" className="admin-btn" title="Download every test as CSV (identity fields only — no prices)">
-            Export CSV
+          <a href="/api/v1/admin/tests/export" className="admin-btn" title="Download every test as an Excel workbook (identity fields only — no prices). Quest/LabCorp codes are text-formatted so Excel can't strip a leading zero.">
+            Export Excel
           </a>
           <button
             className="admin-btn"
@@ -159,12 +157,12 @@ export default function TestsListPage() {
             onClick={() => fileInput.current?.click()}
             title="Upload an edited export — you'll see a preview of every change before anything is applied"
           >
-            {importBusy && !importPreview ? 'Reading…' : 'Import CSV'}
+            {importBusy && !importPreview ? 'Reading…' : 'Import Excel'}
           </button>
           <input
             ref={fileInput}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onFilePicked(f); }}
           />

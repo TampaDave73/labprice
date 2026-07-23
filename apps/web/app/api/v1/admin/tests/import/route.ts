@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { parseCsv } from '@/lib/csv';
 import { normalizeName } from '@labprice/scrapers/src/catalog/matcher';
+import { parseWorkbookSheet } from '@/lib/xlsx';
 
-// CSV import of the canonical tests layer, id-anchored. NEVER blind: the client first posts with
+// Excel import of the canonical tests layer, id-anchored. NEVER blind: the client first posts with
 // apply:false and shows the returned diff (creates / field-level updates / unchanged / errors /
 // categories to create); only a second post with apply:true executes — in one transaction, audit-
 // logged. Import only creates and updates; deleting a test stays a deliberate UI action.
@@ -16,7 +16,7 @@ import { normalizeName } from '@labprice/scrapers/src/catalog/matcher';
 // sheet is what the test has afterwards. Unknown category names are created on apply.
 
 type RowPlan = {
-  line: number; // 1-based CSV line (header = line 1) for human-readable errors
+  line: number; // 1-based sheet row (header = line 1) for human-readable errors
   action: 'create' | 'update';
   testId?: string;
   fields: {
@@ -45,24 +45,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: { code: 'forbidden', message: 'Admin access required' } }, { status: 403 });
   }
 
-  const body = await req.json().catch(() => null);
-  const csv = typeof body?.csv === 'string' ? body.csv : null;
-  const apply = body?.apply === true;
-  if (!csv) {
-    return NextResponse.json({ error: { code: 'validation_error', message: 'Body must include a csv string.' } }, { status: 400 });
+  const form = await req.formData().catch(() => null);
+  const file = form?.get('file');
+  const apply = form?.get('apply') === 'true';
+  if (!file || typeof file === 'string') {
+    return NextResponse.json({ error: { code: 'validation_error', message: 'Body must include a file.' } }, { status: 400 });
   }
 
-  const { header, records } = parseCsv(csv);
+  const parsed = await parseWorkbookSheet(await file.arrayBuffer(), 'Tests').catch(() => ({ error: "Could not read that file as an Excel workbook. Start from an Export to get a file in the right shape." }));
+  if ('error' in parsed) {
+    return NextResponse.json({ error: { code: 'validation_error', message: parsed.error } }, { status: 400 });
+  }
+  const { header, records } = parsed;
+
   const required = ['name'];
   const missing = required.filter((c) => !header.includes(c));
   if (records.length === 0 || missing.length > 0) {
     const msg = records.length === 0
-      ? 'The CSV has no data rows.'
-      : `The CSV is missing required column(s): ${missing.join(', ')}. Start from an export to get the right columns.`;
+      ? 'The Tests sheet has no data rows.'
+      : `The Tests sheet is missing required column(s): ${missing.join(', ')}. Start from an export to get the right columns.`;
     return NextResponse.json({ error: { code: 'validation_error', message: msg } }, { status: 400 });
   }
   if (records.length > 2000) {
-    return NextResponse.json({ error: { code: 'validation_error', message: 'CSV has more than 2,000 rows — split it up.' } }, { status: 400 });
+    return NextResponse.json({ error: { code: 'validation_error', message: 'More than 2,000 rows — split it up.' } }, { status: 400 });
   }
 
   const [tests, categories] = await Promise.all([

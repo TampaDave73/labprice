@@ -124,13 +124,20 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Coverage** (`/admin/coverage`) — tests × vendors matrix: green price = live offering, amber dot
   = vendor sells it per the ingest layer but no offering exists, blank = not carried.
   `GET /api/v1/admin/coverage`.
-- **Tests CSV round-trip** — `Export CSV` / `Import CSV` buttons on /admin/tests
+- **Tests Excel round-trip** — `Export Excel` / `Import Excel` buttons on /admin/tests
   (`GET /api/v1/admin/tests/export`, `POST /api/v1/admin/tests/import`). Identity fields only
   (id-anchored; name, short_name, slug, codes, categories|pipes, aliases|pipes, is_popular) —
   **no prices by design** (sheet owns identity, scrapers own prices). Import is always previewed
   (dry-run diff → confirm), errors block the whole file, applies are transactional + audit-logged.
   Blank id = create new; categories/aliases are full-set replace; unknown categories get created.
-  CSV helpers in `apps/web/lib/csv.ts` (BOM, quoted fields — Excel-safe).
+  **Was plain CSV until 2026-07-24** — Excel auto-detects a "numeric-looking" cell on open and
+  silently strips a leading zero off a LabCorp code like `004650`; moved to a real `.xlsx` workbook
+  (`exceljs`, already a dependency for the Discovered round-trip) with `quest_code`/`labcorp_code`
+  TEXT-formatted (`numFmt: '@'`) so that can't happen, plus a `Categories` reference sheet. Import
+  switched from a JSON `{csv}` body to `multipart/form-data` (`file` + `apply`). The cell-value
+  normalization and header/row parsing (`cellText`/`parseWorkbookSheet`) now live in
+  `apps/web/lib/xlsx.ts`, shared with the Discovered importer instead of duplicated — `lib/csv.ts` is
+  gone, nothing imports it anymore.
 - **Audit Log** (`/admin/audit`) — the searchable audit trail: filter by action / entity type /
   actor (incl. "System" for scraper writes) / date range, 50-row pages, via
   `GET /api/v1/admin/audit`. Rows are humanized by the shared `lib/audit-describe.ts` (also used by
