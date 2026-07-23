@@ -25,6 +25,8 @@ type Test = {
 
 type SortKey = 'name' | 'category' | 'created' | 'popular';
 
+const PAGE_SIZE = 25;
+
 export default function TestsListPage() {
   const [tests, setTests] = useState<Test[]>([]);
   const [search, setSearch] = useState('');
@@ -32,6 +34,13 @@ export default function TestsListPage() {
   const [sort, setSort] = useState<SortKey>('name');
   const [dir, setDir] = useState<'asc' | 'desc'>('asc');
   const [refresh, setRefresh] = useState(0); // bumped after a CSV apply to reload the table
+
+  // Cursor pagination: pageCursors[i] is the `cursor` param that fetched page i (undefined = first
+  // page). Next pushes the API's nextCursor; Prev just steps the index back — no re-fetch needed for
+  // pages already visited since we keep the cursor, not the rows.
+  const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
 
   // CSV import flow: pick file → dry-run preview (modal) → Apply. The csv text is held so Apply
   // re-posts the exact same file the preview was computed from.
@@ -88,18 +97,35 @@ export default function TestsListPage() {
     }
   };
 
+  // Search/sort/refresh always jump back to page 1 — an old cursor from a different filter is
+  // meaningless once the underlying result set changes.
+  useEffect(() => {
+    setPageIndex(0);
+    setPageCursors([undefined]);
+  }, [search, sort, dir, refresh]);
+
   useEffect(() => {
     const t = setTimeout(async () => {
       setLoading(true);
-      const params = new URLSearchParams({ sort, dir });
+      const params = new URLSearchParams({ sort, dir, limit: String(PAGE_SIZE) });
       if (search) params.set('search', search);
+      const cursor = pageCursors[pageIndex];
+      if (cursor) params.set('cursor', cursor);
       const res = await fetch(`/api/v1/admin/tests?${params.toString()}`);
       const json = await res.json();
       setTests(json.data ?? []);
+      setNextCursor(json.nextCursor);
       setLoading(false);
     }, 300);
     return () => clearTimeout(t);
-  }, [search, sort, dir, refresh]);
+  }, [search, sort, dir, refresh, pageIndex, pageCursors]);
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPageCursors((prev) => (prev.length === pageIndex + 1 ? [...prev, nextCursor] : prev));
+    setPageIndex((i) => i + 1);
+  };
+  const goPrev = () => setPageIndex((i) => Math.max(0, i - 1));
 
   const toggleSort = (key: SortKey) => {
     if (sort === key) setDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -251,6 +277,18 @@ export default function TestsListPage() {
           </tbody>
         </table>
       </div>
+
+      {(pageIndex > 0 || nextCursor) && (
+        <div className="mt-4 flex items-center justify-between">
+          <button className="admin-btn admin-btn-sm" disabled={pageIndex === 0} onClick={goPrev}>
+            ← Prev
+          </button>
+          <span className="text-sm text-brand-400">Page {pageIndex + 1}</span>
+          <button className="admin-btn admin-btn-sm" disabled={!nextCursor} onClick={goNext}>
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

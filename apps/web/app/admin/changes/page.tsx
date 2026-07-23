@@ -10,6 +10,7 @@ type Change = {
   status: string;
   createdAt: string;
   offering: {
+    id: string;
     externalUrl: string | null;
     test: { id: string; name: string };
     vendor: { id: string; name: string; websiteUrl: string | null };
@@ -17,6 +18,7 @@ type Change = {
 };
 
 const TABS = ['All', 'PENDING', 'APPROVED', 'REJECTED'] as const;
+const PAGE_SIZE = 25;
 
 export default function ChangeQueuePage() {
   // ?status=PENDING deep-links from the dashboard's attention cards straight to a filtered tab.
@@ -28,25 +30,70 @@ export default function ChangeQueuePage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
+  // Same cursor-stack pagination as /admin/tests — see that page for the reasoning.
+  const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+
+  // Row-local edit state, keyed by staged-change id. `urlDrafts`/`priceDrafts` only exist while a
+  // row is being edited; committed values live back on `changes` after a successful save/approve.
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [urlDrafts, setUrlDrafts] = useState<Record<string, string>>({});
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [urlSaving, setUrlSaving] = useState<string | null>(null);
+
+  useEffect(() => { setPageIndex(0); setPageCursors([undefined]); }, [tab]);
+
   const fetchChanges = useCallback(async () => {
     setLoading(true);
-    const qs = tab !== 'All' ? `?status=${tab}` : '';
-    const res = await fetch(`/api/v1/admin/staged-changes${qs}`);
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+    if (tab !== 'All') params.set('status', tab);
+    const cursor = pageCursors[pageIndex];
+    if (cursor) params.set('cursor', cursor);
+    const res = await fetch(`/api/v1/admin/staged-changes?${params.toString()}`);
     const json = await res.json();
     setChanges(json.data ?? []);
+    setNextCursor(json.nextCursor);
     setSelected(new Set());
     setLoading(false);
-  }, [tab]);
+  }, [tab, pageIndex, pageCursors]);
 
   useEffect(() => { fetchChanges(); }, [fetchChanges]);
 
-  const handleAction = async (action: 'approve' | 'reject', ids: string[]) => {
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPageCursors((prev) => (prev.length === pageIndex + 1 ? [...prev, nextCursor] : prev));
+    setPageIndex((i) => i + 1);
+  };
+  const goPrev = () => setPageIndex((i) => Math.max(0, i - 1));
+
+  const handleAction = async (action: 'approve' | 'reject', ids: string[], overridePrice?: number) => {
     await fetch('/api/v1/admin/staged-changes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ids }),
+      body: JSON.stringify({ action, ids, ...(overridePrice != null ? { overridePrice } : {}) }),
     });
+    setPriceDrafts((d) => { const next = { ...d }; for (const id of ids) delete next[id]; return next; });
     fetchChanges();
+  };
+
+  // Independent of approve/reject — this edits Offering.externalUrl directly via the same endpoint
+  // the Vendors catalog table uses, so it's live immediately and isn't affected by what the reviewer
+  // does with the pending price change (and vice versa).
+  const saveUrl = async (c: Change) => {
+    const url = (urlDrafts[c.id] ?? '').trim();
+    setUrlSaving(c.id);
+    try {
+      await fetch(`/api/v1/admin/vendors/${c.offering.vendor.id}/offerings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offeringId: c.offering.id, externalUrl: url || null }),
+      });
+      setChanges((prev) => prev.map((x) => (x.id === c.id ? { ...x, offering: { ...x.offering, externalUrl: url || null } } : x)));
+      setEditingUrl(null);
+    } finally {
+      setUrlSaving(null);
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -77,7 +124,10 @@ export default function ChangeQueuePage() {
           are auto-approved and published immediately. Larger jumps — and <span className="font-medium">every</span> change
           from a <span className="font-medium">LOW-trust</span> vendor — land here as <span className="font-medium">Pending</span> for
           you to <span className="font-medium text-success-700">Approve</span> or <span className="font-medium text-red-600">Reject</span>.
-          Approving publishes the new price to the live offering.
+          Approving publishes the new price to the live offering; <span className="font-medium">rejecting changes nothing</span> —
+          the live price was never touched, so it just stays whatever it already was (shown as
+          &quot;Old Price&quot; below). You can also edit the New Price before approving, if the scraper
+          caught a stale sale price or you spot-checked the vendor and it&apos;s already different.
         </p>
       </div>
 
@@ -125,28 +175,77 @@ export default function ChangeQueuePage() {
               <tr><td colSpan={9} className="p-6 text-center text-brand-400">No changes found.</td></tr>
             ) : (
               changes.map((c) => {
-                const pct = pctChange(c.oldPrice, c.newPrice);
+                const draftPrice = priceDrafts[c.id];
+                const effectivePrice = draftPrice !== undefined && draftPrice !== '' ? draftPrice : c.newPrice;
+                const overridden = draftPrice !== undefined && draftPrice !== '' && Number(draftPrice) !== Number(c.newPrice);
+                const pct = pctChange(c.oldPrice, effectivePrice);
                 return (
                   <tr key={c.id} className="border-b border-brand-100 hover:bg-brand-50/50">
                     <td className="p-3"><input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} /></td>
                     <td className="p-3 font-medium text-brand-900">{c.offering.test.name}</td>
                     <td className="p-3">
-                      {c.offering.externalUrl || c.offering.vendor.websiteUrl ? (
-                        <a
-                          href={(c.offering.externalUrl ?? c.offering.vendor.websiteUrl)!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-brand-600 underline decoration-dotted underline-offset-2 hover:text-brand-800"
-                          title="Open the vendor's page for this test to verify the price"
+                      <div className="flex items-center gap-1.5">
+                        {c.offering.externalUrl || c.offering.vendor.websiteUrl ? (
+                          <a
+                            href={(c.offering.externalUrl ?? c.offering.vendor.websiteUrl)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-brand-600 underline decoration-dotted underline-offset-2 hover:text-brand-800"
+                            title="Open the vendor's page for this test to verify the price"
+                          >
+                            {c.offering.vendor.name} ↗
+                          </a>
+                        ) : (
+                          <span className="text-brand-600">{c.offering.vendor.name}</span>
+                        )}
+                        <button
+                          onClick={() => { setEditingUrl(c.id); setUrlDrafts((d) => ({ ...d, [c.id]: c.offering.externalUrl ?? '' })); }}
+                          className="text-xs text-brand-300 hover:text-brand-600"
+                          title="Fix this vendor's product URL — independent of approving/rejecting the price"
                         >
-                          {c.offering.vendor.name} ↗
-                        </a>
-                      ) : (
-                        <span className="text-brand-600">{c.offering.vendor.name}</span>
+                          ✎
+                        </button>
+                      </div>
+                      {editingUrl === c.id && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            autoFocus
+                            className="admin-input admin-input-inline w-64"
+                            placeholder="https://vendor.com/product/..."
+                            value={urlDrafts[c.id] ?? ''}
+                            onChange={(e) => setUrlDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveUrl(c);
+                              if (e.key === 'Escape') setEditingUrl(null);
+                            }}
+                          />
+                          <button onClick={() => saveUrl(c)} disabled={urlSaving === c.id} className="admin-btn admin-btn-sm">
+                            {urlSaving === c.id ? '…' : 'Save'}
+                          </button>
+                          <button onClick={() => setEditingUrl(null)} className="admin-btn admin-btn-sm admin-btn-ghost">Cancel</button>
+                        </div>
                       )}
                     </td>
                     <td className="p-3 text-right text-brand-600">{c.oldPrice ? `$${Number(c.oldPrice).toFixed(2)}` : '—'}</td>
-                    <td className="p-3 text-right font-medium text-brand-900">${Number(c.newPrice).toFixed(2)}</td>
+                    <td className="p-3 text-right font-medium text-brand-900">
+                      {c.status === 'PENDING' ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <span>$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className={`admin-input admin-input-inline w-20 text-right ${overridden ? 'border-amber-400' : ''}`}
+                            value={draftPrice ?? c.newPrice}
+                            onChange={(e) => setPriceDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                            title={overridden ? `Scraper saw $${Number(c.newPrice).toFixed(2)} — you're overriding it` : 'Scraped price — edit to override before approving'}
+                          />
+                        </div>
+                      ) : (
+                        `$${Number(c.newPrice).toFixed(2)}`
+                      )}
+                    </td>
                     <td className={`p-3 text-right font-medium ${pct === null ? '' : pct < 0 ? 'text-success-700' : 'text-red-600'}`}>
                       {pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}
                     </td>
@@ -161,8 +260,20 @@ export default function ChangeQueuePage() {
                     <td className="p-3">
                       {c.status === 'PENDING' && (
                         <div className="flex gap-1">
-                          <button onClick={() => handleAction('approve', [c.id])} className="admin-btn admin-btn-sm admin-btn-success">Approve</button>
-                          <button onClick={() => handleAction('reject', [c.id])} className="admin-btn admin-btn-sm admin-btn-danger">Reject</button>
+                          <button
+                            onClick={() => handleAction('approve', [c.id], overridden ? Number(draftPrice) : undefined)}
+                            className="admin-btn admin-btn-sm admin-btn-success"
+                            title={overridden ? `Publishes your override of $${Number(draftPrice).toFixed(2)}` : 'Publishes the scraped price to the live offering'}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleAction('reject', [c.id])}
+                            className="admin-btn admin-btn-sm admin-btn-danger"
+                            title={`Leaves the current price unchanged (stays ${c.oldPrice ? `$${Number(c.oldPrice).toFixed(2)}` : 'as-is'})`}
+                          >
+                            Reject
+                          </button>
                         </div>
                       )}
                     </td>
@@ -173,6 +284,18 @@ export default function ChangeQueuePage() {
           </tbody>
         </table>
       </div>
+
+      {(pageIndex > 0 || nextCursor) && (
+        <div className="mt-4 flex items-center justify-between">
+          <button className="admin-btn admin-btn-sm" disabled={pageIndex === 0} onClick={goPrev}>
+            ← Prev
+          </button>
+          <span className="text-sm text-brand-400">Page {pageIndex + 1}</span>
+          <button className="admin-btn admin-btn-sm" disabled={!nextCursor} onClick={goNext}>
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

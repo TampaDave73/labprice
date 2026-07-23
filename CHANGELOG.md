@@ -9,6 +9,23 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-23, Change Queue usability)
+- **Pagination on `/admin/tests` and `/admin/changes`** — both list APIs already supported
+  `limit`/`cursor`, just never wired into the page, so `/admin/tests` silently capped at the first 25
+  rows with no way to see the rest. Added cursor-based Prev/Next controls to both.
+- **Inline vendor-URL fix in the Change Queue** — previously the only way to correct a wrong/stale
+  `Offering.externalUrl` was Admin → Vendors → vendor → Catalog. Added an edit-in-place pencil icon
+  next to the vendor link on each Change Queue row (reuses the existing offerings PATCH endpoint).
+  Confirmed this is fully independent of the pending price change either direction — editing the URL
+  doesn't touch the staged row, and Approve/Reject doesn't touch the URL.
+- **Editable price before approving** — the scraped "New Price" is now an editable field; Approve
+  publishes whatever's in the field, not necessarily what the scraper saw. The original scraped value
+  is preserved in `StagedPriceChange.reviewNote` (appended, not overwritten, since that field can
+  also carry a discovered-URL marker `publishStagedChange` reads on approve).
+- **Reject clarified as a no-op** — added plain-language copy/tooltips: rejecting a staged change
+  never touches `Offering.currentPrice`; the live price simply stays what it already was. (Confirmed
+  via code read: only Approve → `publishStagedChange` ever writes to `Offering`.)
+
 ### Fixed (2026-07-22, Discovered import: multi-category promote)
 - **`new_test_category` on the Discovered Excel import now correctly supports a comma-separated
   list** (e.g. `"Hormones, Metabolic"`) — previously the whole cell was treated as one literal

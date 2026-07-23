@@ -162,7 +162,19 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   shows a "queued" message for `needsBrowser` vendors like Request A Test).
 - **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
   to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
-- **Change Queue** — review staged price changes (Approve/Reject); has an in-UI workflow explainer.
+- **Change Queue** (cursor-paginated, 25/page) — review staged price changes (Approve/Reject); has an
+  in-UI workflow explainer. **Reject is a pure no-op** — nothing on `Offering` is touched until
+  Approve; the live price just stays whatever it already was. **New Price is editable** before
+  approving (reviewer override) — Approve then publishes the edited value, not the scraped one, and
+  the original scraped price is preserved in `StagedPriceChange.reviewNote` for audit (appended, not
+  replacing any discovered-URL note already there — see `publishStagedChange`'s `@ <url>` passthrough
+  in `lib/publish-change.ts`). The vendor product URL (`Offering.externalUrl`) has its own inline
+  edit (pencil icon next to the vendor link) — it's completely independent of the approve/reject
+  decision on the price change; fixing a wrong URL doesn't require deciding anything about the
+  pending price. Both the price-override POST body (`overridePrice`, single-id only) and the URL edit
+  (reuses the Vendors Catalog's `PATCH /api/v1/admin/vendors/[id]/offerings`) were added 2026-07-23.
+- **Tests** (`/admin/tests`, cursor-paginated, 25/page) — the list API always supported
+  `limit`/`cursor`; the page just didn't use it until 2026-07-23.
 - **Pages** (`/admin/pages`) — edit the public About / Terms / Privacy / Medical Disclaimer copy
   (title, "last updated" label, body). Saved to `system_settings` (`page_<slug>`) via
   `GET`/`PATCH /api/v1/admin/pages`; the live page is revalidated on save.

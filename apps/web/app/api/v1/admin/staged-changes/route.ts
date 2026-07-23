@@ -53,13 +53,36 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { action, ids } = body as { action: 'approve' | 'reject'; ids: string[] };
+  const { action, ids, overridePrice } = body as { action: 'approve' | 'reject'; ids: string[]; overridePrice?: number };
 
   if (!action || !['approve', 'reject'].includes(action) || !Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json(
       { error: { code: 'validation_error', message: 'Body must include action (approve|reject) and non-empty ids array' } },
       { status: 400 },
     );
+  }
+
+  // Reviewer can correct the scraped price before approving (e.g. the scraper caught a sale price
+  // that already expired). Only meaningful for a single row — a bulk override would apply one number
+  // to every selected change, which is never what's wanted. Recorded in reviewNote so the originally
+  // scraped value isn't lost, just superseded.
+  if (action === 'approve' && overridePrice != null && ids.length === 1) {
+    if (!(overridePrice > 0)) {
+      return NextResponse.json({ error: { code: 'validation_error', message: 'overridePrice must be a positive number' } }, { status: 400 });
+    }
+    const original = await prisma.stagedPriceChange.findUnique({ where: { id: ids[0] }, select: { newPrice: true, status: true, reviewNote: true } });
+    if (original?.status === 'PENDING') {
+      // Append rather than replace — reviewNote can carry a "@ <url>" discovered-URL marker from
+      // catalog discovery that publishStagedChange still needs to read on approve.
+      const overrideNote = `Reviewer override: scraper saw $${Number(original.newPrice).toFixed(2)}, approved at $${overridePrice.toFixed(2)}.`;
+      await prisma.stagedPriceChange.update({
+        where: { id: ids[0]! },
+        data: {
+          newPrice: overridePrice,
+          reviewNote: original.reviewNote ? `${original.reviewNote} | ${overrideNote}` : overrideNote,
+        },
+      });
+    }
   }
 
   const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
