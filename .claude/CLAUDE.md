@@ -69,6 +69,11 @@ magic-link and Google buttons on `/auth/signin` do nothing. To log in locally, u
 box on that page (or `POST /api/dev-login` with an `email`) — it mints a DB session for an existing
 user and is hard-gated to `NODE_ENV !== 'production'`. Production login needs those provider creds set.
 
+`GA4_PROPERTY_ID`/`GA4_CLIENT_EMAIL`/`GA4_PRIVATE_KEY` (optional) — a GCP service account with Viewer
+access on the GA4 property, powers the GA4 Data API pull into `/admin/analytics` (`lib/ga4-data.ts`).
+Separate from `NEXT_PUBLIC_GA_MEASUREMENT_ID` (the client-side tracking tag); without these three, that
+section of the page just falls back to a "Open Google Analytics" link-out instead of failing.
+
 ## ⚠️ Gotchas that have bitten us (do not relearn the hard way)
 
 1. **Tailwind v4 + arbitrary values are unreliable here.** `text-[oklch(...)]`, `bg-[...]`, `p-[..]`
@@ -161,8 +166,8 @@ admin session cookie.
       with `transpilePackages` including `@labprice/database`, per the comment there). Verified: warning
       gone from `next dev --turbopack`, `next build` output unchanged.
 - [x] Setup/deployment guide — see `docs/08-deployment.md`.
-- [ ] **Pull GA4's own reports into `/admin/analytics`** (sessions/geo/device/funnels — beyond what our
-      own SearchLog/PageView/AffiliateClick tables track). Needs a GA4 property + a service account
-      (or OAuth) with Analytics Data API access — credentials only the site owner can provide; the
-      `NEXT_PUBLIC_GA_MEASUREMENT_ID` tag itself is already scaffolded (`GoogleAnalytics.tsx`, currently
-      unset/inert).
+- [x] **Pull GA4's own reports into `/admin/analytics`** (top countries, device breakdown, and the
+      custom funnel events wired up 2026-07-21). `lib/ga4-data.ts` calls the GA4 Data API via a GCP
+      service account (`labtestcompare-ga4-reader@labtestcompare.iam.gserviceaccount.com`, Viewer on
+      property `546489198`); falls back to the old "Open Google Analytics" link-out if the three
+      `GA4_*` env vars aren't set or the pull fails. Verified end-to-end against the live property.

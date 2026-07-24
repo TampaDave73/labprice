@@ -233,9 +233,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   but with GA4's session/device/geo attached, from `TestDetailClient`), and
   `suggestion_modal_opened`/`suggestion_submitted` (funnel drop-off on the 3 `SuggestionModal` forms —
   our DB only ever sees successful submits, so "opened but abandoned" was previously invisible).
-  `/admin/analytics` links out to `analytics.google.com` for this session/funnel data rather than
-  embedding it — pulling GA4's own reports back into this page needs the GA4 Data API + a service
-  account, not yet wired up (see CLAUDE.md TODO).
+  `/admin/analytics` also pulls GA4's own reports back in (2026-07-25): top countries, device-category
+  breakdown, and counts for those 5 funnel events, via `lib/ga4-data.ts` (`@google-analytics/data`) and
+  a GCP service account (`GA4_PROPERTY_ID`/`GA4_CLIENT_EMAIL`/`GA4_PRIVATE_KEY` env vars — separate
+  credential from the `NEXT_PUBLIC_GA_MEASUREMENT_ID` tracking tag). Falls back to the old "Open Google
+  Analytics" link-out card if those env vars are unset or the pull fails, so this is never fatal to the
+  rest of the page.
 - **Suggestions** (`/admin/suggestions`) — public "Suggest a Vendor"/"Suggest a Test" footer submissions
   plus test-page **result error reports**, unified into one sortable table (not per-type cards) with
   status tabs (Pending/Reviewed/Dismissed/All — Dismissed is filtered OUT of the default Pending view,

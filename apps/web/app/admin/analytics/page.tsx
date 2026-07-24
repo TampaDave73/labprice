@@ -9,6 +9,10 @@ type OfferingClickRow = { testName: string; vendorName: string; clicks: number }
 type ViewedTestRow = { test: { id: string; name: string; slug: string }; views: number };
 type PageRow = { path: string; views: number };
 type ReferrerRow = { referrer: string; clicks: number };
+type CountryRow = { country: string; sessions: number };
+type DeviceRow = { device: string; sessions: number };
+type FunnelEventRow = { event: string; count: number };
+type Ga4Data = { topCountries: CountryRow[]; devices: DeviceRow[]; funnelEvents: FunnelEventRow[] };
 
 type DailyRow = DailyPoint & { searches: number; clicks: number };
 
@@ -23,6 +27,18 @@ type AnalyticsData = {
   topViewedTests: ViewedTestRow[];
   topPages: PageRow[];
   topReferrers: ReferrerRow[];
+  // null when GA4_PROPERTY_ID/service-account creds aren't configured, or the GA4 API call failed —
+  // either way the page falls back to the "Open Google Analytics" callout instead of this section.
+  ga4: Ga4Data | null;
+};
+
+// Human-readable labels for the raw GA4 event names (see lib/ga4-data.ts FUNNEL_EVENTS).
+const FUNNEL_EVENT_LABELS: Record<string, string> = {
+  search: 'Search performed',
+  search_suggestion_click: 'Autocomplete suggestion clicked',
+  vendor_click: 'Vendor "Order" link clicked',
+  suggestion_modal_opened: 'Suggestion form opened',
+  suggestion_submitted: 'Suggestion form submitted',
 };
 
 const DAY_OPTIONS = [7, 30, 90];
@@ -76,25 +92,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* GA4 callout — honest about what's NOT here yet: everything below is our own DB (PageView/
-          SearchLog/AffiliateClick), which was never built to capture session/device/geo or funnel
-          drop-off (opened a suggestion form but didn't submit, used a search suggestion vs typed a
-          full query). GA4 now tracks those as custom events (search, search_suggestion_click,
-          vendor_click, suggestion_modal_opened, suggestion_submitted — see SKILLS.md), but pulling
-          that data back INTO this page needs the GA4 Data API + a service account, which isn't wired
-          up yet — for now, this is a link out, not an embed. */}
-      {GA_CONFIGURED && (
-        <div className="admin-card mb-6 flex items-center justify-between gap-4 p-4">
-          <p className="text-sm text-brand-600">
-            Session/device/geo and funnel drop-off (search suggestions used, forms opened but not
-            submitted) are tracked in Google Analytics now — not shown on this page yet.
-          </p>
-          <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="admin-btn shrink-0 text-sm">
-            Open Google Analytics ↗
-          </a>
-        </div>
-      )}
-
       {error ? (
         <p className="text-red-600">Couldn&apos;t load analytics — check the server logs and reload.</p>
       ) : loading || !data ? (
@@ -116,6 +113,64 @@ export default function AnalyticsPage() {
             <p className="mb-3 text-xs text-brand-400">Site-wide page views and unique visitors, by day.</p>
             <TrafficChart daily={data.daily} />
           </div>
+
+          {/* GA4 — session/geo/device and funnel-step counts our own DB was never built to capture
+              (PageView/SearchLog/AffiliateClick have no country/device dimension, and don't track a
+              form opened-but-not-submitted). Falls back to a link-out callout if the GA4 Data API
+              isn't configured or the pull failed — see lib/ga4-data.ts GA4_CONFIGURED. */}
+          {data.ga4 ? (
+            <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="admin-card p-5">
+                <h2 className="mb-1 text-sm font-semibold text-brand-700">Top countries</h2>
+                <p className="mb-3 text-xs text-brand-400">From Google Analytics — sessions by country.</p>
+                <Table
+                  empty="No GA4 session data in this window."
+                  rows={data.ga4.topCountries}
+                  columns={[
+                    { header: 'Country', render: (r) => r.country },
+                    { header: 'Sessions', render: (r) => r.sessions, align: 'right' },
+                  ]}
+                />
+              </div>
+              <div className="admin-card p-5">
+                <h2 className="mb-1 text-sm font-semibold text-brand-700">Devices</h2>
+                <p className="mb-3 text-xs text-brand-400">From Google Analytics — sessions by device category.</p>
+                <Table
+                  empty="No GA4 session data in this window."
+                  rows={data.ga4.devices}
+                  columns={[
+                    { header: 'Device', render: (r) => r.device },
+                    { header: 'Sessions', render: (r) => r.sessions, align: 'right' },
+                  ]}
+                />
+              </div>
+              <div className="admin-card p-5">
+                <h2 className="mb-1 text-sm font-semibold text-brand-700">Funnel events</h2>
+                <p className="mb-3 text-xs text-brand-400">From Google Analytics — includes drop-off steps our own DB doesn&apos;t log.</p>
+                <Table
+                  empty="No GA4 event data in this window."
+                  rows={data.ga4.funnelEvents}
+                  columns={[
+                    { header: 'Step', render: (r) => FUNNEL_EVENT_LABELS[r.event] ?? r.event },
+                    { header: 'Count', render: (r) => r.count, align: 'right' },
+                  ]}
+                />
+              </div>
+            </div>
+          ) : (
+            GA_CONFIGURED && (
+              <div className="admin-card mb-6 flex items-center justify-between gap-4 p-4">
+                <p className="text-sm text-brand-600">
+                  Session/device/geo and funnel drop-off (search suggestions used, forms opened but not
+                  submitted) are tracked in Google Analytics — the Data API pull isn&apos;t configured or
+                  isn&apos;t returning data right now, so it&apos;s not shown on this page.
+                </p>
+                <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer" className="admin-btn shrink-0 text-sm">
+                  Open Google Analytics ↗
+                </a>
+              </div>
+            )
+          )}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Zero-result searches — the gap-finding view */}

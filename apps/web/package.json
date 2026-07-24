@@ -12,11 +12,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "@auth/prisma-adapter": "^2.8.0",
+    "@google-analytics/data": "^6.1.0",
     "@labprice/database": "workspace:*",
-    "@prisma/client": "^6.9.0",
     "@labprice/scrapers": "workspace:*",
     "@labprice/shared": "workspace:*",
     "@labprice/ui": "workspace:*",
+    "@prisma/client": "^6.9.0",
     "bullmq": "^5.34.0",
     "clsx": "^2.1.0",
     "exceljs": "^4.4.0",

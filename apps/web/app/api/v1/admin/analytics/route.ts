@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
+import { fetchGa4Summary, GA4_CONFIGURED } from '@/lib/ga4-data';
 
 async function requireAdmin() {
   const session = await auth();
@@ -187,6 +188,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // GA4 pull runs after (not inside) the Promise.all above and is never fatal to the rest of the
+    // page — a GA4 API hiccup (quota, revoked access) shouldn't take down our own DB-backed stats.
+    let ga4: Awaited<ReturnType<typeof fetchGa4Summary>> = null;
+    if (GA4_CONFIGURED) {
+      try {
+        ga4 = await fetchGa4Summary(days);
+      } catch (err) {
+        console.error('[GET /api/v1/admin/analytics] GA4 fetch failed', err);
+      }
+    }
+
     return NextResponse.json({
       data: {
         days,
@@ -204,6 +216,7 @@ export async function GET(req: NextRequest) {
         topViewedTests: topViewedTests.slice(0, 25),
         topPages,
         topReferrers,
+        ga4,
       },
     });
   } catch (err) {
