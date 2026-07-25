@@ -75,13 +75,15 @@ export async function GET(req: NextRequest) {
 
   if (tab === 'matched') {
     const rows = await prisma.vendorProduct.findMany({
-      where: { status: 'MATCHED', ...searchWhere },
+      where: { status: 'MATCHED', id: { in: [...unlistedMatchedIds] }, ...searchWhere },
       select: productSelect,
       orderBy: { lastSeenAt: 'desc' },
       take: 500,
     });
+    // Every row here is, by the query above, already known to have no offering yet — hasOffering is
+    // always false. Kept on the shape so the client's existing rendering logic doesn't need to change.
     return NextResponse.json({
-      data: { counts, products: rows.map((r) => ({ ...r, hasOffering: !unlistedMatchedIds.has(r.id) })) },
+      data: { counts, products: rows.map((r) => ({ ...r, hasOffering: false })) },
     });
   }
 
