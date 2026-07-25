@@ -75,8 +75,10 @@ export async function POST(req: NextRequest) {
       // Append rather than replace — reviewNote can carry a "@ <url>" discovered-URL marker from
       // catalog discovery that publishStagedChange still needs to read on approve.
       const overrideNote = `Reviewer override: scraper saw $${Number(original.newPrice).toFixed(2)}, approved at $${overridePrice.toFixed(2)}.`;
-      await prisma.stagedPriceChange.update({
-        where: { id: ids[0]! },
+      // status: 'PENDING' guard in the WHERE (not just the read above) — a concurrent reject of this
+      // same row between the read and this write would otherwise still get overwritten here.
+      await prisma.stagedPriceChange.updateMany({
+        where: { id: ids[0]!, status: 'PENDING' },
         data: {
           newPrice: overridePrice,
           reviewNote: original.reviewNote ? `${original.reviewNote} | ${overrideNote}` : overrideNote,

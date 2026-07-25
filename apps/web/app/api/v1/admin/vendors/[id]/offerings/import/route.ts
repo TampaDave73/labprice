@@ -108,7 +108,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     const changes: Record<string, { from: string; to: string }> = {};
     const cmp = (key: string, from: string, to: string) => { if (from !== to) changes[key] = { from, to }; };
     cmp('external_url', existing.externalUrl ?? '', url ?? '');
-    cmp('current_price', existing.currentPrice != null ? String(Number(existing.currentPrice)) : '', price != null ? String(price) : '');
+    // A blank current_price cell means "no data for this column," not "clear the price" (matches the
+    // apply step below, which likewise leaves an existing price untouched when the cell is blank) —
+    // so don't diff/flag it as a change at all.
+    if (priceStr) cmp('current_price', existing.currentPrice != null ? String(Number(existing.currentPrice)) : '', String(price));
     cmp('is_active', String(existing.isActive), String(isActive));
     if (Object.keys(changes).length === 0) { unchanged++; return; }
     plans.push({ line, action: 'update', offeringId: existing.id, testId, testName: test.name, fields: { externalUrl: url, currentPrice: price, isActive }, changes });
@@ -149,7 +152,14 @@ export async function POST(req: NextRequest, { params }: Params) {
       } else {
         await tx.offering.update({
           where: { id: plan.offeringId! },
-          data: { externalUrl: plan.fields.externalUrl, currentPrice: plan.fields.currentPrice, isActive: plan.fields.isActive },
+          // A blank current_price cell means "no data for this column," not "clear the price" — same
+          // as the create/reactivate branch above. Without this guard, editing only external_url on an
+          // exported row (current_price left blank) would silently null out a live price.
+          data: {
+            externalUrl: plan.fields.externalUrl,
+            ...(plan.fields.currentPrice != null ? { currentPrice: plan.fields.currentPrice } : {}),
+            isActive: plan.fields.isActive,
+          },
         });
       }
     }

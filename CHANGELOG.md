@@ -9,6 +9,65 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-25, full-codebase bug sweep)
+- **`PATCH /api/v1/admin/tests/[id]`**: category update wrote the raw, unvalidated `categoryIds`
+  array to `testCategory.createMany` instead of the id-validated `cats` list — a stale/bogus category
+  id could FK-violate *after* `test.update` already committed, leaving `Test.categoryId` pointing
+  somewhere `TestCategory` didn't back up. Also wrapped `test.create`/`test.update` + their
+  `TestCategory` writes in a single `$transaction` (POST and PATCH) so they can't commit separately.
+- **`apps/worker/src/workers/scrape-execute.ts`**: vendor trust was resolved *after* creating the
+  `ScrapeRun`, so that in-progress (RUNNING) run counted against its own vendor's success rate —
+  could wrongly force a brand-new vendor to LOW trust on its very first scrape (the exact bug the
+  catalog-discovery path was already fixed for; the per-URL path hadn't been). Trust is now resolved
+  before the run is created.
+- **`getTests()` (`/api/v1/tests?category=`)**: filtered on the single `category` FK (the derived
+  display pointer) instead of the `TestCategory` many-to-many join, so a test showed under its primary
+  category but silently vanished from `?category=` queries for its other categories.
+- **`/api/v1/trends/[testId]`**: didn't check the parent Test's `deletedAt`, so a soft-deleted test's
+  price history stayed publicly queryable indefinitely (deleting a test only stamps `Test.deletedAt`;
+  its offerings are untouched).
+- **Catalog matcher (`packages/scrapers/src/catalog/matcher.ts`)**: three code paths could return
+  `status: 'matched'` with `price: null` when every candidate for the winning tier lacked a price (a
+  stale/broken vendor price selector) — the sole consumer (`persist.ts`) does `new Decimal(result.price!)`
+  there, which throws. Now falls through to the next tier / `unmatched` instead.
+- **Ingest auto-match (`persist.ts`)**: for `codeMatchAnyProvider` vendors (HealthLabs, Walk-In Lab,
+  Own Your Labs) whose `labProvider` label on a code can't be trusted, the ingest layer's `codeOf()`
+  used that label anyway — assigning a code to the wrong `questCode`/`labcorpCode` field and silently
+  failing strict auto-match even when the pricing matcher matched the same product fine. Now pools all
+  codes and checks them against both Quest/LabCorp maps for these vendors, matching the pricing
+  matcher's semantics.
+- **`publishStagedChange`**: four sequential writes (offering, price history, staged-change status,
+  audit log) weren't atomic and had a check-then-act race allowing a concurrent double-publish of the
+  same staged change. Wrapped in `$transaction` with an atomic status-guarded claim. Same TOCTOU
+  pattern fixed in the staged-changes override-price route.
+- **`getScrapeSettings()`**: `Number(v) || default` silently discarded a legitimately-configured `0`
+  threshold (e.g. "never auto-approve price increases"); now only falls back when the value doesn't
+  parse to a real number.
+- **Vendor Catalog Excel import**: a blank `current_price` cell on an *update* row nulled out a
+  live price (the sibling create/reactivate path already guarded against this) — now treated as "no
+  data for this column" consistently in both the diff preview and the apply step.
+- **Several admin pages** (`vendors/[id]`, `changes`, `settings`, `discovered`) had fetches that
+  skipped the `res.ok` check documented as a recurring bug class in `.claude/CLAUDE.md` — save actions
+  claimed success on a failed PATCH/PUT, and some read paths could throw an unhandled rejection on a
+  non-2xx response. All now check `res.ok` and surface a real error message.
+- **`SearchBar` autocomplete**: no guard against a slower, now-stale response overwriting a faster,
+  newer one when a user types past a pending request. Added an `AbortController`.
+- **`/api/v1/me` PATCH**: `data: { name: name ?? null }` unconditionally nulled the user's name on any
+  partial PATCH that omitted the field (e.g. `{}`); now only touches `name` when the client sent it.
+  Also added the try/catch every other route has (a malformed body previously fell through to Next's
+  generic error page instead of the app's JSON error shape).
+- **Test detail page JSON-LD**: `JSON.stringify` doesn't escape `<`, so a test name/description
+  containing `</script>` could break out of the embedded JSON-LD block; now escaped.
+
+Found via 5 parallel review agents surveying admin API routes, public API/lib, admin+public frontend,
+worker/database, and the scraper catalog/matcher subsystem; each finding verified against source
+before fixing. `packages/scrapers` (194 tests) and `apps/web`/`packages/scrapers` `tsc --noEmit` all
+green after the sweep. Known but NOT fixed: `sort=price-asc/price-desc` on `/api/v1/tests` sorts by
+`displayOrder`, not price — currently unreachable from any UI; a correct fix needs a raw-SQL
+correlated subquery (Prisma can't filter a relation aggregate by `isActive`/`deletedAt` when ordering
+by `_min`) and a redesign of the cursor pagination for a computed sort key, out of scope for a
+same-session fix.
+
 ### Added (2026-07-25, GA4 Data API pull into /admin/analytics)
 - **The last open TODO item — pulling GA4's own reports back into the admin dashboard — is wired up.**
   `NEXT_PUBLIC_GA_MEASUREMENT_ID` (the client-side tracking tag, live since 2026-07-21) is a different

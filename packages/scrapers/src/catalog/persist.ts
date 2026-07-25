@@ -349,7 +349,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   // VendorProduct. Non-fatal on purpose — a failed ingest must not turn a successful pricing run
   // into a failed one (it would wrongly ding vendor trust).
   try {
-    const ingested = await ingestVendorProducts(opts.vendorId, catalogEntries, catalogProducts, matches);
+    const ingested = await ingestVendorProducts(opts.vendorId, catalogEntries, catalogProducts, matches, cfg.matchOptions?.codeMatchAnyProvider ?? false);
     log(`ingest: ${ingested.upserted} product(s) recorded, ${ingested.autoMatched} auto-matched`);
   } catch (e) {
     log(`ingest failed (non-fatal): ${e instanceof Error ? e.message : String(e)}`);
@@ -377,6 +377,7 @@ async function ingestVendorProducts(
   entries: CatalogEntry[],
   products: CatalogProduct[],
   matches: OfferingMatch[],
+  codeMatchAnyProvider = false,
 ): Promise<{ upserted: number; autoMatched: number }> {
   type Detail = {
     name: string;
@@ -385,6 +386,12 @@ async function ingestVendorProducts(
     labProvider: string | null;
     questCode: string | null;
     labcorpCode: string | null;
+    // Populated instead of questCode/labcorpCode for codeMatchAnyProvider vendors, whose per-provider
+    // `labProvider` label can't be trusted to say which lab a code actually belongs to (HealthLabs/
+    // Walk-In Lab hardcode 'quest', OYL hardcodes 'labcorp' for genuinely unlabelled codes — the same
+    // reason the pricing matcher uses codeMatchAnyProvider for these vendors). Checked against BOTH
+    // byQuest/byLabcorp in autoMatch, mirroring matcher.ts's array-membership (not label) semantics.
+    anyProviderCodes: string[];
     isPanel: boolean;
     hasDetail: boolean;
   };
@@ -394,7 +401,7 @@ async function ingestVendorProducts(
   for (const e of entries) {
     bySlug.set(e.slug, {
       name: e.name, url: e.url || null, price: null, labProvider: null,
-      questCode: null, labcorpCode: null, isPanel: PANEL_NAME_RE.test(e.name), hasDetail: false,
+      questCode: null, labcorpCode: null, anyProviderCodes: [], isPanel: PANEL_NAME_RE.test(e.name), hasDetail: false,
     });
   }
   for (const p of products) {
@@ -406,8 +413,11 @@ async function ingestVendorProducts(
       url: p.url || null,
       price: cheapest?.price ?? null,
       labProvider: cheapest?.labProvider ?? null,
-      questCode: codeOf('quest'),
-      labcorpCode: codeOf('labcorp'),
+      questCode: codeMatchAnyProvider ? null : codeOf('quest'),
+      labcorpCode: codeMatchAnyProvider ? null : codeOf('labcorp'),
+      anyProviderCodes: codeMatchAnyProvider
+        ? [...new Set(nonPanel.flatMap((pr) => pr.labTestIDs))]
+        : [],
       // A product whose every provider is a bundle is a panel; a mixed product is orderable singly.
       isPanel: p.providers.length > 0 && p.providers.every((pr) => pr.isPanel),
       hasDetail: true,
@@ -465,6 +475,21 @@ async function ingestVendorProducts(
       if (!code) continue;
       const hits = (map.get(code) ?? []).filter((t) => testNames(t).some((n) => sharesStrongToken(n, d.name)));
       if (hits.length === 1) return { testId: hits[0]!.id, matchedBy: label };
+    }
+    // 1b. codeMatchAnyProvider vendors: the label can't be trusted, so check every code this product
+    //     carries against BOTH our Quest and LabCorp codes (mirrors matcher.ts's array-membership
+    //     check rather than a label lookup). Ambiguous (2+ plausible tests) → no auto-link.
+    if (d.anyProviderCodes.length > 0) {
+      const hits = new Map<string, TestKey>();
+      for (const code of d.anyProviderCodes) {
+        for (const t of [...(byQuest.get(code) ?? []), ...(byLabcorp.get(code) ?? [])]) {
+          if (testNames(t).some((n) => sharesStrongToken(n, d.name))) hits.set(t.id, t);
+        }
+      }
+      if (hits.size === 1) {
+        const only = [...hits.values()][0]!;
+        return { testId: only.id, matchedBy: 'any-code' };
+      }
     }
     // 2. Exact normalized name/alias.
     const norm = byNorm.get(normalizeName(d.name));
@@ -582,24 +607,35 @@ function shouldAutoApprove(oldPrice: Prisma.Decimal | null, newPrice: Prisma.Dec
  * stale even though prices were updating fine (caught 2026-07-19). Keep publish logic here, not
  * duplicated per-caller, so this can't drift out of sync again. */
 export async function publishStagedChange(stagedChangeId: string): Promise<boolean> {
-  const staged = await prisma.stagedPriceChange.findUnique({ where: { id: stagedChangeId } });
-  if (!staged || (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED')) return false;
-  await prisma.offering.update({
-    where: { id: staged.offeringId },
-    data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
+  return prisma.$transaction(async (tx) => {
+    const staged = await tx.stagedPriceChange.findUnique({ where: { id: stagedChangeId } });
+    if (!staged || (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED')) return false;
+
+    // Claim the row atomically (status filter in the WHERE, not just the read above) so two
+    // concurrent publish calls for the same staged change can't both pass the check and double-write
+    // price history / the audit log.
+    const claimed = await tx.stagedPriceChange.updateMany({
+      where: { id: stagedChangeId, status: staged.status },
+      data: { reviewedAt: new Date() },
+    });
+    if (claimed.count === 0) return false;
+
+    await tx.offering.update({
+      where: { id: staged.offeringId },
+      data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
+    });
+    await tx.priceHistory.create({
+      data: { offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice, observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId },
+    });
+    await tx.auditLog.create({
+      data: {
+        action: 'price_published',
+        entityType: 'offering',
+        entityId: staged.offeringId,
+        oldValues: { price: staged.oldPrice?.toString() ?? null },
+        newValues: { price: staged.newPrice.toString() },
+      },
+    });
+    return true;
   });
-  await prisma.priceHistory.create({
-    data: { offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice, observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId },
-  });
-  await prisma.stagedPriceChange.update({ where: { id: stagedChangeId }, data: { reviewedAt: new Date() } });
-  await prisma.auditLog.create({
-    data: {
-      action: 'price_published',
-      entityType: 'offering',
-      entityId: staged.offeringId,
-      oldValues: { price: staged.oldPrice?.toString() ?? null },
-      newValues: { price: staged.newPrice.toString() },
-    },
-  });
-  return true;
 }

@@ -72,14 +72,18 @@ export function matchTestToProducts(
       const trusted = codeHits.filter((h) => sharesStrongToken(test.name, h.product.name));
       if (trusted.length > 0) {
         const priced = [...trusted].filter((h) => h.provider.price != null).sort((a, b) => a.provider.price! - b.provider.price!);
-        const best = priced[0] ?? trusted[0]!;
-        const tier: MatchTier = !!test.questCode && best.provider.labTestIDs.includes(test.questCode) ? 'quest' : 'labcorp';
-        // The OTHER lab, if it also carries this test at a (necessarily higher, since `priced` is
-        // sorted ascending) price — surfaced as a secondary option rather than silently dropped.
-        const altBest = priced.find((h) => h.provider.labProvider !== best.provider.labProvider);
-        return matched(tier, best, trusted.map(toCandidate), altBest);
+        // If every trusted code hit lacks a price (a stale/broken price selector), there's nothing
+        // to stage — fall through to the name tier rather than reporting 'matched' with price:null.
+        if (priced.length > 0) {
+          const best = priced[0]!;
+          const tier: MatchTier = !!test.questCode && best.provider.labTestIDs.includes(test.questCode) ? 'quest' : 'labcorp';
+          // The OTHER lab, if it also carries this test at a (necessarily higher, since `priced` is
+          // sorted ascending) price — surfaced as a secondary option rather than silently dropped.
+          const altBest = priced.find((h) => h.provider.labProvider !== best.provider.labProvider);
+          return matched(tier, best, trusted.map(toCandidate), altBest);
+        }
       }
-      // Every code hit was name-incompatible → the codes are suspect; fall through to the name tier.
+      // Every code hit was name-incompatible or unpriced → the codes are suspect; fall through to the name tier.
     }
   }
 
@@ -92,8 +96,8 @@ export function matchTestToProducts(
 
     // Optional tie-break: if several providers of the SAME product matched, prefer a configured lab.
     if (distinctPrices.size > 1 && opts.preferredProvider) {
-      const preferred = hits.filter((h) => h.provider.labProvider === opts.preferredProvider);
-      const preferredPrices = new Set(preferred.map((h) => h.provider.price).filter((p) => p != null));
+      const preferred = hits.filter((h) => h.provider.labProvider === opts.preferredProvider && h.provider.price != null);
+      const preferredPrices = new Set(preferred.map((h) => h.provider.price));
       if (preferred.length > 0 && preferredPrices.size === 1) {
         const best = preferred[0]!;
         return matched(tier, best, candidates);
@@ -117,7 +121,10 @@ export function matchTestToProducts(
 
     // Single distinct price (or ambiguity-flagging disabled): take the cheapest concrete hit.
     const priced = hits.filter((h) => h.provider.price != null).sort((a, b) => a.provider.price! - b.provider.price!);
-    const best = priced[0] ?? hits[0]!;
+    // Every hit in this tier lacks a price (a stale/broken price selector) — nothing to stage.
+    // Try the next tier rather than reporting 'matched' with price:null.
+    if (priced.length === 0) continue;
+    const best = priced[0]!;
     return matched(tier, best, candidates);
   }
 

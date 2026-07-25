@@ -125,11 +125,13 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
 
   const loadCatalog = async () => {
     try {
-      const j = await fetch(`/api/v1/admin/vendors/${id}/offerings`).then((r) => r.json());
+      const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`);
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error?.message ?? 'Could not load the catalog.');
       setCatalog(j.data?.offerings ?? []);
       setAvailableTests(j.data?.availableTests ?? []);
-    } catch {
-      setMsg('Could not load the catalog — try refreshing.');
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'Could not load the catalog — try refreshing.');
     }
   };
   useEffect(() => { loadCatalog(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -203,10 +205,15 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
 
   const addLink = async () => {
     if (!newTestId) return;
-    await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
+    const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ testId: newTestId, externalUrl: newUrl || null, currentPrice: newPrice || null }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setMsg(j.error?.message ?? 'Could not add that link.');
+      return;
+    }
     setNewTestId(''); setNewUrl(''); setNewPrice('');
     loadCatalog();
   };
@@ -222,7 +229,12 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   };
 
   const unlink = async (offeringId: string) => {
-    await fetch(`/api/v1/admin/vendors/${id}/offerings?offeringId=${offeringId}`, { method: 'DELETE' });
+    const res = await fetch(`/api/v1/admin/vendors/${id}/offerings?offeringId=${offeringId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setMsg(j.error?.message ?? 'Could not remove that link.');
+      return;
+    }
     loadCatalog();
   };
 
@@ -264,28 +276,50 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   const saveVendor = async () => {
     if (!vendor) return;
     setSavingVendor(true); setMsg(null);
-    await fetch(`/api/v1/admin/vendors/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: vendor.name, slug: vendor.slug, websiteUrl: vendor.websiteUrl,
-        affiliateUrlTemplate: vendor.affiliateUrlTemplate, logoUrl: vendor.logoUrl,
-        isActive: vendor.isActive, trustOverride: vendor.trustOverride,
-      }),
-    });
-    setSavingVendor(false); setMsg('Vendor saved.');
-    // refresh effective trust
-    const j = await fetch(`/api/v1/admin/vendors/${id}`).then((r) => r.json());
-    setVendor((p) => (p ? { ...p, effectiveTrust: j.data.effectiveTrust, trust: j.data.trust } : p));
+    try {
+      const res = await fetch(`/api/v1/admin/vendors/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: vendor.name, slug: vendor.slug, websiteUrl: vendor.websiteUrl,
+          affiliateUrlTemplate: vendor.affiliateUrlTemplate, logoUrl: vendor.logoUrl,
+          isActive: vendor.isActive, trustOverride: vendor.trustOverride,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setMsg(j.error?.message ?? 'Could not save vendor.');
+        return;
+      }
+      setMsg('Vendor saved.');
+      // refresh effective trust (the PATCH response doesn't include it)
+      const j2 = await fetch(`/api/v1/admin/vendors/${id}`).then((r) => r.json()).catch(() => null);
+      if (j2?.data) setVendor((p) => (p ? { ...p, effectiveTrust: j2.data.effectiveTrust, trust: j2.data.trust } : p));
+    } catch {
+      setMsg('Could not save vendor — check your connection and try again.');
+    } finally {
+      setSavingVendor(false);
+    }
   };
 
   const saveConfig = async () => {
     setSavingConfig(true); setMsg(null);
-    // Map the catalogMode checkbox to the `mode` the API persists into selectors.
-    await fetch(`/api/v1/admin/vendors/${id}/scrape-config`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...config, mode: config.catalogMode ? 'catalog' : 'per-url', adapter: config.catalogAdapter }),
-    });
-    setSavingConfig(false); setMsg('Scraper config saved.');
+    try {
+      // Map the catalogMode checkbox to the `mode` the API persists into selectors.
+      const res = await fetch(`/api/v1/admin/vendors/${id}/scrape-config`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...config, mode: config.catalogMode ? 'catalog' : 'per-url', adapter: config.catalogAdapter }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setMsg(j.error?.message ?? 'Could not save scraper config.');
+        return;
+      }
+      setMsg('Scraper config saved.');
+    } catch {
+      setMsg('Could not save scraper config — check your connection and try again.');
+    } finally {
+      setSavingConfig(false);
+    }
   };
 
   const [scraping, setScraping] = useState(false);

@@ -75,14 +75,19 @@ export async function POST(req: NextRequest) {
   }
   const displayCategoryId = [...cats].sort((a, b) => a.displayOrder - b.displayOrder)[0]!.id;
 
-  const test = await prisma.test.create({
-    data: { name, shortName, slug, categoryId: displayCategoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder },
-    include: { category: true },
-  });
+  // One transaction so the test row and its category membership can't commit separately.
+  const test = await prisma.$transaction(async (tx) => {
+    const created = await tx.test.create({
+      data: { name, shortName, slug, categoryId: displayCategoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder },
+      include: { category: true },
+    });
 
-  await prisma.testCategory.createMany({
-    data: cats.map((c) => ({ testId: test.id, categoryId: c.id })),
-    skipDuplicates: true,
+    await tx.testCategory.createMany({
+      data: cats.map((c) => ({ testId: created.id, categoryId: c.id })),
+      skipDuplicates: true,
+    });
+
+    return created;
   });
 
   return NextResponse.json({ data: test }, { status: 201 });

@@ -87,11 +87,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const data: Record<string, unknown> = { ...scalars };
 
   const categoryIds = rawCategoryIds ? rawCategoryIds.filter(Boolean) : null;
+  let cats: { id: string; displayOrder: number }[] = [];
   if (categoryIds) {
     if (categoryIds.length === 0) {
       return NextResponse.json({ error: { code: 'validation_error', message: 'At least one category is required.' } }, { status: 400 });
     }
-    const cats = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, displayOrder: true } });
+    cats = await prisma.category.findMany({ where: { id: { in: categoryIds } }, select: { id: true, displayOrder: true } });
     if (cats.length === 0) {
       return NextResponse.json({ error: { code: 'validation_error', message: 'Selected categories were not found.' } }, { status: 400 });
     }
@@ -99,21 +100,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   try {
-    const test = await prisma.test.update({
-      where: { id },
-      data,
-      include: { category: true },
-    });
+    // One transaction so the test row and its category membership can't commit separately — a
+    // failure partway used to leave `test.categoryId` updated with stale `TestCategory` rows.
+    const test = await prisma.$transaction(async (tx) => {
+      const updated = await tx.test.update({
+        where: { id },
+        data,
+        include: { category: true },
+      });
 
-    if (categoryIds) {
-      await prisma.$transaction([
-        prisma.testCategory.deleteMany({ where: { testId: id } }),
-        prisma.testCategory.createMany({
-          data: categoryIds.map((categoryId) => ({ testId: id, categoryId })),
+      if (categoryIds) {
+        // Use `cats` (validated to actually exist), not the raw `categoryIds` — a stale/bogus id in
+        // the request would otherwise FK-violate here.
+        await tx.testCategory.deleteMany({ where: { testId: id } });
+        await tx.testCategory.createMany({
+          data: cats.map((c) => ({ testId: id, categoryId: c.id })),
           skipDuplicates: true,
-        }),
-      ]);
-    }
+        });
+      }
+
+      return updated;
+    });
 
     return NextResponse.json({ data: test });
   } catch (err) {

@@ -21,15 +21,21 @@ export default function SearchBar() {
   const router = useRouter();
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Aborts the in-flight request when a newer keystroke supersedes it — without this, a slower
+  // response for an earlier (now-stale) query can resolve after a faster one and overwrite it.
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchSuggestions = useCallback(async (q: string) => {
+    abortRef.current?.abort();
     if (q.length < 2) {
       setSuggestions([]);
       setOpen(false);
       return;
     }
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await fetch(`/api/v1/search/autocomplete?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/v1/search/autocomplete?q=${encodeURIComponent(q)}`, { signal: controller.signal });
       if (res.ok) {
         const json = await res.json();
         const results: Suggestion[] = json.data ?? [];
@@ -37,7 +43,7 @@ export default function SearchBar() {
         setOpen(results.length > 0);
       }
     } catch {
-      /* ignore */
+      /* ignore — includes intentional aborts */
     }
   }, []);
 

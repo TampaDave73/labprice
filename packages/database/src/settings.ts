@@ -36,7 +36,13 @@ export async function getScrapeSettings(): Promise<ScrapeSettings> {
     if (!field) continue;
     const v = row.value;
     if (field === 'scrapeEnabled') out.scrapeEnabled = v === true || v === 'true';
-    else out[field] = typeof v === 'number' ? v : Number(v) || SCRAPE_SETTING_DEFAULTS[field];
+    else if (typeof v === 'number') out[field] = v;
+    else {
+      // `||` would silently discard a legitimate 0 (e.g. "never auto-approve" thresholds) — only
+      // fall back to the default when the stored value doesn't parse to a real number at all.
+      const n = Number(v);
+      out[field] = Number.isFinite(n) ? n : SCRAPE_SETTING_DEFAULTS[field];
+    }
   }
   return out;
 }

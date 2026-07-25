@@ -28,7 +28,7 @@ export async function GET(
 
   const history = await prisma.priceHistory.findMany({
     where: {
-      offering: { testId, isActive: true, deletedAt: null },
+      offering: { testId, isActive: true, deletedAt: null, test: { deletedAt: null } },
       observedAt: { gte: since },
     },
     include: {

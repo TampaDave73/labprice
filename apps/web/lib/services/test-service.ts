@@ -38,7 +38,10 @@ export async function getTests(params: GetTestsParams) {
 
   const where: Prisma.TestWhereInput = {
     deletedAt: null,
-    ...(params.category ? { category: { slug: params.category } } : {}),
+    // Filter via the many-to-many join, not the singular `category` FK (which is only the
+    // derived display pointer) — otherwise a test shows in its primary category but not the
+    // others it's also a member of. See category/[slug]/page.tsx for the same pattern.
+    ...(params.category ? { categories: { some: { category: { slug: params.category } } } } : {}),
   };
 
   const tests = await prisma.test.findMany({

@@ -30,6 +30,7 @@ export default function ChangeQueuePage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Same cursor-stack pagination as /admin/tests — see that page for the reasoning.
   const [pageCursors, setPageCursors] = useState<(string | undefined)[]>([undefined]);
@@ -78,11 +79,17 @@ export default function ChangeQueuePage() {
   const goPrev = () => setPageIndex((i) => Math.max(0, i - 1));
 
   const handleAction = async (action: 'approve' | 'reject', ids: string[], overridePrice?: number) => {
-    await fetch('/api/v1/admin/staged-changes', {
+    setActionError(null);
+    const res = await fetch('/api/v1/admin/staged-changes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ids, ...(overridePrice != null ? { overridePrice } : {}) }),
     });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setActionError(j.error?.message ?? `Could not ${action} the selected change(s).`);
+      return;
+    }
     setPriceDrafts((d) => { const next = { ...d }; for (const id of ids) delete next[id]; return next; });
     fetchChanges();
   };
@@ -93,14 +100,22 @@ export default function ChangeQueuePage() {
   const saveUrl = async (c: Change) => {
     const url = (urlDrafts[c.id] ?? '').trim();
     setUrlSaving(c.id);
+    setActionError(null);
     try {
-      await fetch(`/api/v1/admin/vendors/${c.offering.vendor.id}/offerings`, {
+      const res = await fetch(`/api/v1/admin/vendors/${c.offering.vendor.id}/offerings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ offeringId: c.offering.id, externalUrl: url || null }),
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setActionError(j.error?.message ?? 'Could not save that URL.');
+        return;
+      }
       setChanges((prev) => prev.map((x) => (x.id === c.id ? { ...x, offering: { ...x.offering, externalUrl: url || null } } : x)));
       setEditingUrl(null);
+    } catch {
+      setActionError('Could not save that URL — check your connection and try again.');
     } finally {
       setUrlSaving(null);
     }
@@ -140,6 +155,10 @@ export default function ChangeQueuePage() {
           caught a stale sale price or you spot-checked the vendor and it&apos;s already different.
         </p>
       </div>
+
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{actionError}</div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (

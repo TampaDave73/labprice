@@ -35,21 +35,31 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
-  const body = await req.json();
-  const { name } = body as { name?: string };
+  try {
+    const body = await req.json();
+    const { name } = body as { name?: string };
 
-  if (name !== undefined && typeof name !== 'string') {
+    if (name !== undefined && typeof name !== 'string') {
+      return NextResponse.json(
+        { error: { code: 'bad_request', message: 'name must be a string' } },
+        { status: 400 },
+      );
+    }
+
+    const user = await prisma.user.update({
+      where: { id: session.user.id },
+      // Only touch `name` when the client actually sent it — `name ?? null` unconditionally wiped
+      // it on any partial PATCH (e.g. `{}`) that omitted the field.
+      data: name !== undefined ? { name } : {},
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
+    });
+
+    return NextResponse.json({ data: user });
+  } catch (err) {
+    console.error('[PATCH /api/v1/me]', err);
     return NextResponse.json(
-      { error: { code: 'bad_request', message: 'name must be a string' } },
-      { status: 400 },
+      { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
+      { status: 500 },
     );
   }
-
-  const user = await prisma.user.update({
-    where: { id: session.user.id },
-    data: { name: name ?? null },
-    select: { id: true, email: true, name: true, role: true, createdAt: true },
-  });
-
-  return NextResponse.json({ data: user });
 }

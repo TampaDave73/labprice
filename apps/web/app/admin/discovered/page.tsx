@@ -165,16 +165,21 @@ export default function DiscoveredPage() {
   }, [load]);
 
   useEffect(() => {
-    fetch('/api/v1/admin/categories').then((r) => r.json()).then((j) => setCategories(j.data ?? []));
+    fetch('/api/v1/admin/categories').then((r) => r.json()).then((j) => setCategories(j.data ?? [])).catch(() => {});
   }, []);
 
   // Test-picker search for Attach (reuses the admin tests list API).
   useEffect(() => {
     if (!attachFor) return;
     const t = setTimeout(async () => {
-      const res = await fetch(`/api/v1/admin/tests?search=${encodeURIComponent(testQuery)}&limit=8`);
-      const json = await res.json();
-      setTestResults((json.data ?? []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
+      try {
+        const res = await fetch(`/api/v1/admin/tests?search=${encodeURIComponent(testQuery)}&limit=8`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+        setTestResults((json.data ?? []).map((x: { id: string; name: string }) => ({ id: x.id, name: x.name })));
+      } catch {
+        // Non-critical: the picker just keeps showing whatever results it already had.
+      }
     }, 250);
     return () => clearTimeout(t);
   }, [attachFor, testQuery]);

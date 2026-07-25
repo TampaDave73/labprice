@@ -29,7 +29,11 @@ export default function SettingsPage() {
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
-    fetch('/api/v1/admin/settings').then((r) => r.json()).then((j) => {
+    fetch('/api/v1/admin/settings').then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error?.message ?? 'Could not load settings.');
+      return j;
+    }).then((j) => {
       const stored: Record<string, unknown> = {};
       (j.data?.settings ?? []).forEach((s: { key: string; value: unknown }) => { stored[s.key] = s.value; });
       const v: Record<string, number | boolean> = {};
@@ -39,19 +43,30 @@ export default function SettingsPage() {
         else v[f.key] = raw === undefined ? (f.default as number) : Number(raw);
       }
       setValues(v);
-    }).catch(() => setMsg('Could not load settings — reload the page to retry.'))
+    }).catch((e) => setMsg(e instanceof Error ? e.message : 'Could not load settings — reload the page to retry.'))
       .finally(() => setLoading(false));
   }, []);
 
   const save = async () => {
     setSaving(true); setMsg(null);
-    await fetch('/api/v1/admin/settings', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        settings: FIELDS.map((f) => ({ key: f.key, value: values[f.key] })),
-      }),
-    });
-    setSaving(false); setMsg('Settings saved.');
+    try {
+      const res = await fetch('/api/v1/admin/settings', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: FIELDS.map((f) => ({ key: f.key, value: values[f.key] })),
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setMsg(j.error?.message ?? 'Could not save settings.');
+        return;
+      }
+      setMsg('Settings saved.');
+    } catch {
+      setMsg('Could not save settings — check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Danger zone: wipe all traffic analytics. Native confirm() is enough friction — the wipe is

@@ -83,6 +83,11 @@ export function createExecuteWorker() {
         throw new Error(`Offering ${offeringId} not found`);
       }
 
+      // Resolve trust BEFORE creating the ScrapeRun below — getEffectiveTrust queries scrapeRun
+      // history with no status filter, so a RUNNING run for *this* scrape would otherwise count
+      // against its own vendor's success rate and wrongly depress a healthy vendor to LOW trust.
+      const trust = await getEffectiveTrust(vendorId, offering.vendor.trustOverride);
+
       // Create a scrape job + run record
       const scrapeJob = await prisma.scrapeJob.create({
         data: {
@@ -180,7 +185,6 @@ export function createExecuteWorker() {
       const priceChanged = !offering.currentPrice || !scrapedPrice.equals(offering.currentPrice);
 
       if (priceChanged) {
-        const trust = await getEffectiveTrust(vendorId, offering.vendor.trustOverride);
         const settings = await getScrapeSettings();
         const autoApprove = shouldAutoApprove(
           offering.currentPrice,

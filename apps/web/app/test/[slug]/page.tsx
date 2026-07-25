@@ -88,7 +88,9 @@ export default async function TestDetailPage({ params }: Props) {
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        // JSON.stringify doesn't escape "<" — a test name/description containing "</script>" could
+        // otherwise break out of this tag. < is valid inside a JSON string and parses identically.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
       />
       <PageViewTracker testId={test.id} />
       <Navbar />
