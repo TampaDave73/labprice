@@ -81,6 +81,10 @@ export default function DiscoveredPage() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [promoteForm, setPromoteForm] = useState({ name: '', shortName: '', categoryId: '', questCode: '', labcorpCode: '' });
 
+  // Row selection within a cluster card — unchecked rows get Ignored instead of promoted/attached.
+  // Keyed by product id (globally unique), default empty (= everything checked).
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+
   // Bulk Excel round-trip (the quarterly catch-up pass — see export/import route comments): pick file
   // → dry-run preview (modal) → Apply. The File is held so Apply re-posts the exact file the preview
   // was computed from.
@@ -207,8 +211,57 @@ export default function DiscoveredPage() {
     }
   };
 
+  // Used by Promote/Attach on a cluster: unchecked rows get Ignored first, then the checked rows go
+  // through the requested action — as one busy/notice/reload cycle instead of two, so the notice
+  // doesn't flash between an "ignored" message and the final one.
+  const runIgnoreThenAction = async (
+    action: 'promote' | 'attach',
+    clusterProducts: ProductRow[],
+    actionPayload: Record<string, unknown>,
+    doneMsg: string,
+  ) => {
+    const included = clusterProducts.filter((p) => !excludedIds.has(p.id));
+    const excluded = clusterProducts.filter((p) => excludedIds.has(p.id));
+    if (included.length === 0) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      if (excluded.length > 0) {
+        await fetch('/api/v1/admin/discovered', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'ignore', productIds: excluded.map((p) => p.id) }),
+        });
+      }
+      const res = await fetch('/api/v1/admin/discovered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, productIds: included.map((p) => p.id), ...actionPayload }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setNotice(json.error?.message ?? 'Action failed.');
+      } else {
+        const dropped: { vendorId: string; name: string }[] = json.data?.droppedDuplicates ?? [];
+        const parts = [doneMsg];
+        if (excluded.length > 0) parts.push(`${excluded.length} unselected product(s) marked Ignored.`);
+        if (dropped.length > 0) parts.push(`${dropped.length} product(s) skipped as same-vendor duplicates: ${dropped.map((d) => d.name).join(', ')}.`);
+        setNotice(parts.join(' '));
+        setExcludedIds((prev) => {
+          const next = new Set(prev);
+          for (const p of clusterProducts) next.delete(p.id);
+          return next;
+        });
+        await load();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const openPromote = (c: Cluster) => {
     setPromoteFor(c);
+    setExcludedIds(new Set());
     setPromoteForm({
       name: c.name,
       shortName: '',
@@ -220,10 +273,11 @@ export default function DiscoveredPage() {
 
   const money = (v: string | number | null) => (v == null ? '—' : `$${Number(v).toFixed(2)}`);
 
-  const productTable = (rows: ProductRow[], extra?: (p: ProductRow) => React.ReactNode) => (
+  const productTable = (rows: ProductRow[], extra?: (p: ProductRow) => React.ReactNode, selectable?: boolean) => (
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-brand-100 bg-brand-50 text-left text-brand-600">
+          {selectable && <th className="w-8 p-2" />}
           <th className="p-2">Vendor</th>
           <th className="p-2">Vendor's name</th>
           <th className="p-2 text-right">Price</th>
@@ -234,6 +288,20 @@ export default function DiscoveredPage() {
       <tbody>
         {rows.map((p) => (
           <tr key={p.id} className="border-b border-brand-50 last:border-0">
+            {selectable && (
+              <td className="p-2">
+                <input
+                  type="checkbox"
+                  checked={!excludedIds.has(p.id)}
+                  onChange={() => setExcludedIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(p.id)) next.delete(p.id); else next.add(p.id);
+                    return next;
+                  })}
+                  title="Uncheck to leave this row out — it'll be marked Ignored instead of promoted/attached"
+                />
+              </td>
+            )}
             <td className="p-2 text-brand-600">{p.vendor.name}</td>
             <td className="p-2">
               {p.url ? <a href={p.url} target="_blank" rel="noreferrer" className="text-brand-900 hover:text-brand-600 hover:underline">{p.name}</a> : <span className="text-brand-900">{p.name}</span>}
@@ -350,8 +418,8 @@ export default function DiscoveredPage() {
                       <p className="mt-1 text-xs text-amber-700">Looks similar to your test “{c.suggestedTest.name}” — attach if it's the same thing.</p>
                     )}
                     {c.duplicateVendors.length > 0 && (
-                      <p className="mt-1 text-xs text-amber-700" title="Promoting/attaching the whole cluster only creates one offering per vendor — the other product from these vendors would be silently skipped.">
-                        ⚠ {c.duplicateVendors.join(', ')} {c.duplicateVendors.length === 1 ? 'appears' : 'appear'} twice here — this cluster still mixes two different products. Check before promoting the whole thing.
+                      <p className="mt-1 text-xs text-amber-700">
+                        ⚠ {c.duplicateVendors.join(', ')} {c.duplicateVendors.length === 1 ? 'appears' : 'appear'} twice here — this cluster still mixes two different products. Uncheck the row(s) below that don't belong before promoting/attaching; unchecked rows are marked Ignored.
                       </p>
                     )}
                   </div>
@@ -360,7 +428,7 @@ export default function DiscoveredPage() {
                     <button
                       className="admin-btn text-sm"
                       disabled={busy}
-                      onClick={() => { setAttachFor(c); setTestQuery(c.suggestedTest?.name ?? c.name); }}
+                      onClick={() => { setAttachFor(c); setExcludedIds(new Set()); setTestQuery(c.suggestedTest?.name ?? c.name); }}
                     >
                       Attach to existing…
                     </button>
@@ -373,7 +441,7 @@ export default function DiscoveredPage() {
                     </button>
                   </div>
                 </div>
-                <div className="overflow-x-auto">{productTable(c.products)}</div>
+                <div className="overflow-x-auto">{productTable(c.products, undefined, true)}</div>
               </div>
             ))}
           </div>
@@ -532,18 +600,21 @@ export default function DiscoveredPage() {
           <div className="admin-card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="admin-h2 mb-1">Attach “{attachFor.name}”</h2>
             <p className="mb-3 text-sm text-brand-400">
-              Links {attachFor.products.length} vendor product(s) to an existing test, creates the
-              offerings, and learns the vendors' names as aliases.
+              Links the checked vendor product(s) below to an existing test, creates the offerings,
+              and learns the vendors' names as aliases. Unchecked rows are marked Ignored instead.
             </p>
+            <div className="mb-3 max-h-40 overflow-y-auto rounded-lg border border-brand-100">
+              {productTable(attachFor.products, undefined, true)}
+            </div>
             <input autoFocus type="text" className="admin-input mb-2 w-full" placeholder="Search your tests…" value={testQuery} onChange={(e) => setTestQuery(e.target.value)} />
             <div className="mb-4 max-h-56 overflow-y-auto">
               {testResults.map((t) => (
                 <button
                   key={t.id}
-                  className="block w-full rounded px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50"
-                  disabled={busy}
+                  className="block w-full rounded px-3 py-2 text-left text-sm text-brand-900 hover:bg-brand-50 disabled:opacity-50"
+                  disabled={busy || attachFor.products.every((p) => excludedIds.has(p.id))}
                   onClick={async () => {
-                    await act({ action: 'attach', productIds: attachFor.products.map((p) => p.id), testId: t.id }, `Attached to ${t.name}.`);
+                    await runIgnoreThenAction('attach', attachFor.products, { testId: t.id }, `Attached to ${t.name}.`);
                     setAttachFor(null);
                   }}
                 >
@@ -565,9 +636,13 @@ export default function DiscoveredPage() {
           <div className="admin-card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h2 className="admin-h2 mb-1">Promote to a new test</h2>
             <p className="mb-3 text-sm text-brand-400">
-              Creates the test and lists {promoteFor.products.length} vendor offering(s) with their
-              observed prices. Copy/details can be filled afterwards in the test editor (✨ Auto-fill).
+              Creates the test and lists the checked vendor offering(s) below with their observed
+              prices. Unchecked rows are marked Ignored instead. Copy/details can be filled
+              afterwards in the test editor (✨ Auto-fill).
             </p>
+            <div className="mb-4 max-h-40 overflow-y-auto rounded-lg border border-brand-100">
+              {productTable(promoteFor.products, undefined, true)}
+            </div>
             <label className="mb-2 block text-xs text-brand-400">
               Name
               <input type="text" className="admin-input mt-1 w-full" value={promoteForm.name} onChange={(e) => setPromoteForm((f) => ({ ...f, name: e.target.value }))} />
@@ -593,19 +668,20 @@ export default function DiscoveredPage() {
               <button className="admin-btn" disabled={busy} onClick={() => setPromoteFor(null)}>Cancel</button>
               <button
                 className="admin-btn"
-                disabled={busy || !promoteForm.name.trim() || !promoteForm.categoryId}
+                disabled={busy || !promoteForm.name.trim() || !promoteForm.categoryId || promoteFor.products.every((p) => excludedIds.has(p.id))}
                 onClick={async () => {
-                  await act(
+                  const includedCount = promoteFor.products.filter((p) => !excludedIds.has(p.id)).length;
+                  await runIgnoreThenAction(
+                    'promote',
+                    promoteFor.products,
                     {
-                      action: 'promote',
-                      productIds: promoteFor.products.map((p) => p.id),
                       name: promoteForm.name,
                       shortName: promoteForm.shortName,
                       categoryId: promoteForm.categoryId,
                       questCode: promoteForm.questCode,
                       labcorpCode: promoteForm.labcorpCode,
                     },
-                    `Created ${promoteForm.name} and listed ${promoteFor.products.length} offering(s).`,
+                    `Created ${promoteForm.name} and listed ${includedCount} offering(s).`,
                   );
                   setPromoteFor(null);
                 }}
