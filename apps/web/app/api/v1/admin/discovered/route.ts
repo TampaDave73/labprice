@@ -11,7 +11,7 @@ import { attachProductsToTest, createPromotedTest, clusterKey } from '@/lib/disc
 //     distinctive name tokens — "5 vendors sell something that looks like Ferritin" as ONE card.
 //   matched: MATCHED products, flagged by whether a live offering exists yet (matching alone never
 //     creates offerings — listing is the deliberate step here).
-//   panels / ignored: excluded-by-decision and admin-dismissed rows, kept visible + restorable.
+//   ignored: admin-dismissed rows (including auto-ignored panels), kept visible + restorable.
 //   demand: zero-result searches whose terms overlap an unmatched product name → "people search
 //     for it AND vendors sell it" (returned alongside clusters).
 //
@@ -50,11 +50,10 @@ export async function GET(req: NextRequest) {
     ? { name: { contains: search, mode: 'insensitive' } }
     : {};
 
-  // Tab badge counts are always computed so the UI can show all four numbers regardless of view.
-  const [unmatchedCount, matchedRows, panelCount, ignoredCount] = await Promise.all([
+  // Tab badge counts are always computed so the UI can show all three numbers regardless of view.
+  const [unmatchedCount, matchedRows, ignoredCount] = await Promise.all([
     prisma.vendorProduct.count({ where: { status: 'UNMATCHED', isPanel: false } }),
     prisma.vendorProduct.findMany({ where: { status: 'MATCHED' }, select: { id: true, testId: true, vendorId: true } }),
-    prisma.vendorProduct.count({ where: { isPanel: true, status: { not: 'IGNORED' } } }),
     prisma.vendorProduct.count({ where: { status: 'IGNORED' } }),
   ]);
 
@@ -71,7 +70,6 @@ export async function GET(req: NextRequest) {
   const counts = {
     clusters: unmatchedCount,
     matched: unlistedMatchedIds.size,
-    panels: panelCount,
     ignored: ignoredCount,
   };
 
@@ -87,11 +85,13 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (tab === 'panels' || tab === 'ignored') {
-    const where: Prisma.VendorProductWhereInput = tab === 'panels'
-      ? { isPanel: true, status: { not: 'IGNORED' }, ...searchWhere }
-      : { status: 'IGNORED', ...searchWhere };
-    const rows = await prisma.vendorProduct.findMany({ where, select: productSelect, orderBy: { name: 'asc' }, take: 500 });
+  if (tab === 'ignored') {
+    const rows = await prisma.vendorProduct.findMany({
+      where: { status: 'IGNORED', ...searchWhere },
+      select: productSelect,
+      orderBy: { name: 'asc' },
+      take: 500,
+    });
     return NextResponse.json({ data: { counts, products: rows } });
   }
 

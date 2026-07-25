@@ -50,20 +50,19 @@ type Cluster = {
 };
 
 type Demand = { query: string; searches: number; clusterKeys: string[]; clusterNames: string[] };
-type Counts = { clusters: number; matched: number; panels: number; ignored: number };
-type Tab = 'clusters' | 'matched' | 'panels' | 'ignored';
+type Counts = { clusters: number; matched: number; ignored: number };
+type Tab = 'clusters' | 'matched' | 'ignored';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'clusters', label: 'Discovered' },
   { key: 'matched', label: 'Matched, not listed' },
-  { key: 'panels', label: 'Panels' },
   { key: 'ignored', label: 'Ignored' },
 ];
 
 export default function DiscoveredPage() {
   const [tab, setTab] = useState<Tab>('clusters');
   const [search, setSearch] = useState('');
-  const [counts, setCounts] = useState<Counts>({ clusters: 0, matched: 0, panels: 0, ignored: 0 });
+  const [counts, setCounts] = useState<Counts>({ clusters: 0, matched: 0, ignored: 0 });
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [demand, setDemand] = useState<Demand[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -148,7 +147,7 @@ export default function DiscoveredPage() {
       const res = await fetch(`/api/v1/admin/discovered?${params.toString()}`);
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error?.message ?? 'Could not load discovered products.');
-      setCounts(json.data?.counts ?? { clusters: 0, matched: 0, panels: 0, ignored: 0 });
+      setCounts(json.data?.counts ?? { clusters: 0, matched: 0, ignored: 0 });
       setClusters(json.data?.clusters ?? []);
       setDemand(json.data?.demand ?? []);
       setProducts(json.data?.products ?? []);
@@ -419,7 +418,7 @@ export default function DiscoveredPage() {
                 </button>
               );
             }
-            return null; // panels: excluded by decision — display only
+            return null;
           })}
         </div>
       )}

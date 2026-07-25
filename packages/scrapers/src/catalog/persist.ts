@@ -516,6 +516,9 @@ async function ingestVendorProducts(
     // Only UNMATCHED (or new) rows get (re)matched — MATCHED/IGNORED are admin-owned state.
     const decideMatch = () => {
       if (offeringTestId) return { status: 'MATCHED' as const, testId: offeringTestId, matchedBy: 'offering', suggestedTestId: null };
+      // Panels are excluded from matching/clustering entirely (product decision 2026-07-20) — auto-
+      // ignore rather than leaving them UNMATCHED, so they never surface in the review queue.
+      if (d.isPanel) return { status: 'IGNORED' as const, testId: null, matchedBy: null, suggestedTestId: null };
       const m = autoMatch(d);
       if (m && 'testId' in m) { autoMatched++; return { status: 'MATCHED' as const, testId: m.testId, matchedBy: m.matchedBy, suggestedTestId: null }; }
       return { status: 'UNMATCHED' as const, testId: null, matchedBy: null, suggestedTestId: m && 'suggestedTestId' in m ? m.suggestedTestId : null };
