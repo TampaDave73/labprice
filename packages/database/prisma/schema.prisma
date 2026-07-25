@@ -375,6 +375,16 @@ model Offering {
   labProvider    String?   @map("lab_provider")
   altLabPrice    Decimal?  @map("alt_lab_price") @db.Decimal(10, 2)
   altLabProvider String?   @map("alt_lab_provider")
+  // Stable per-lab prices for mergeCodeTiers vendors (currently only Dirt Cheap Labs) — populated
+  // independently of which lab is cheaper. currentPrice/labProvider/altLabPrice/altLabProvider above
+  // remain a DERIVED cheaper/pricier ranking, recomputed from these two whenever either publishes
+  // (see rankDualLabPrices in packages/scrapers/src/catalog/dual-lab-pricing.ts) — every other reader
+  // of Offering (public site, sitemap, CSV export/import, trends) needs no changes. Null for every
+  // non-dual-lab vendor.
+  questPrice           Decimal? @map("quest_price") @db.Decimal(10, 2)
+  questPreviousPrice   Decimal? @map("quest_previous_price") @db.Decimal(10, 2)
+  labcorpPrice         Decimal? @map("labcorp_price") @db.Decimal(10, 2)
+  labcorpPreviousPrice Decimal? @map("labcorp_previous_price") @db.Decimal(10, 2)
   priceUpdatedAt DateTime? @map("price_updated_at")
   // When a scraper last VERIFIED this price (changed or unchanged). priceUpdatedAt only moves on a
   // price change, so the site's "checked N ago" freshness reads this — not priceUpdatedAt.
@@ -464,6 +474,9 @@ model PriceHistory {
   observedAt  DateTime    @map("observed_at")
   source      PriceSource
   scrapeRunId String?     @map("scrape_run_id")
+  // Mirrors StagedPriceChange.labProvider — which lab this observation is for, when applicable. Null
+  // for every ordinary single-price vendor.
+  labProvider String?     @map("lab_provider")
   createdAt   DateTime    @default(now()) @map("created_at")
 
   offering  Offering   @relation(fields: [offeringId], references: [id], onDelete: Cascade)
@@ -593,6 +606,10 @@ model StagedPriceChange {
   reviewedById String?      @map("reviewed_by")
   reviewedAt   DateTime?    @map("reviewed_at")
   reviewNote   String?      @map("review_note")
+  // Which lab this staged change is for, when the offering is priced through multiple labs
+  // (mergeCodeTiers vendors, e.g. Dirt Cheap Labs). Null for every ordinary single-price vendor —
+  // unchanged behavior.
+  labProvider  String?      @map("lab_provider")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
