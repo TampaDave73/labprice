@@ -53,7 +53,21 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { action, ids, overridePrice } = body as { action: 'approve' | 'reject'; ids: string[]; overridePrice?: number };
+  const { action, ids, overridePrice } = body as { action: 'approve' | 'reject' | 'clear'; ids?: string[]; overridePrice?: number };
+
+  if (action === 'clear') {
+    const { count } = await prisma.stagedPriceChange.deleteMany({ where: { status: 'PENDING' } });
+    await prisma.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        action: 'staged_changes_cleared',
+        entityType: 'staged_price_change',
+        entityId: 'bulk',
+        newValues: { count },
+      },
+    });
+    return NextResponse.json({ data: { cleared: count } });
+  }
 
   if (!action || !['approve', 'reject'].includes(action) || !Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json(

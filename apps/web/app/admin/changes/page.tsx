@@ -94,6 +94,22 @@ export default function ChangeQueuePage() {
     fetchChanges();
   };
 
+  const clearPending = async () => {
+    if (!confirm('Delete every PENDING staged change? This clears the queue across ALL vendors/tests, regardless of the tab you\'re viewing. Approved/rejected history is not affected.')) return;
+    setActionError(null);
+    const res = await fetch('/api/v1/admin/staged-changes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear' }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      setActionError(j.error?.message ?? 'Could not clear the queue.');
+      return;
+    }
+    fetchChanges();
+  };
+
   // Independent of approve/reject — this edits Offering.externalUrl directly via the same endpoint
   // the Vendors catalog table uses, so it's live immediately and isn't affected by what the reviewer
   // does with the pending price change (and vice versa).
@@ -170,6 +186,13 @@ export default function ChangeQueuePage() {
             {t === 'All' ? 'All' : t.charAt(0) + t.slice(1).toLowerCase()}
           </button>
         ))}
+        <button
+          onClick={clearPending}
+          className="admin-btn admin-btn-sm admin-btn-ghost"
+          title="Delete every PENDING staged change, across all tabs"
+        >
+          Clear pending
+        </button>
         {selected.size > 0 && (
           <div className="ml-auto flex gap-2">
             <button onClick={() => handleAction('approve', [...selected])} className="admin-btn admin-btn-success">
