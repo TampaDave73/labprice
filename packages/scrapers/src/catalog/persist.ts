@@ -9,6 +9,10 @@
 // Match → persistence mapping:
 //   matched   → ScrapeResult(PRICE_CHANGED|PRICE_SAME) + externalUrl stored; stage a change if the
 //               price moved, auto-approving within trust/settings thresholds (like scrape-execute).
+//               mergeCodeTiers vendors (Dirt Cheap Labs today) instead stage EACH lab (Quest/LabCorp)
+//               as its own independent StagedPriceChange — see the isMergeCodeTiers branch inside the
+//               matched case below; the derived currentPrice/labProvider ranking across both labs is
+//               recomputed by publishStagedChange (or immediately, on a lab dropping out entirely).
 //   ambiguous → ScrapeResult(MATCHED, no price); stage the LOWEST candidate as PENDING (never auto-
 //               approved) with a reviewNote listing every candidate → lands in the Change Queue.
 //   unmatched → ScrapeResult(UNMATCHED); nothing staged.
@@ -309,12 +313,39 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
     if (isMergeCodeTiers) {
       // Dirt Cheap Labs-style vendors: result.provider/price is the cheaper lab this scrape,
-      // result.altProvider/altPrice the pricier lab (if it also carries the test). Derive each lab's
-      // own price from those, and stage/compare per lab — currentPrice/altLabPrice are now a DERIVED
-      // ranking only recomputed on publish (see the `else` branch of publishStagedChange below), so
-      // they're intentionally NOT written here.
+      // result.altProvider/altPrice the pricier lab (if it also carries the test). Guard against an
+      // unrecognized provider string first (matcher's MatchResult.provider is a free-form `string |
+      // null` derived from vendor API data, not a guaranteed 'quest'|'labcorp' literal) — otherwise a
+      // vendor API change could silently fall through both branches below and clear BOTH lab prices
+      // with no error signal (caught in review 2026-07-25).
+      const isKnownProvider = (p: string | null | undefined): boolean => p == null || p === 'quest' || p === 'labcorp';
+      if (!isKnownProvider(result.provider) || !isKnownProvider(result.altProvider)) {
+        await prisma.scrapeError.create({
+          data: {
+            runId: run.id, errorType: 'OTHER',
+            message: `Unrecognized lab provider "${result.provider}"/"${result.altProvider}" for mergeCodeTiers match on ${test.name}`,
+          },
+        });
+        await prisma.scrapeResult.create({
+          data: { runId: run.id, testId: test.id, status: 'PRICE_SAME', matchedOfferingId: offering.id, scrapedPrice: null },
+        });
+        await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
+        continue;
+      }
+
+      // Derive each lab's own price from those, and stage/compare per lab — currentPrice/altLabPrice
+      // are a DERIVED ranking normally only recomputed on publish (see publishStagedChange's dual-lab
+      // branch), EXCEPT when a lab drops out entirely (below): that's applied immediately, not gated
+      // behind review, so the ranking can't go stale waiting on an unrelated future publish.
       const questPrice = result.provider === 'quest' ? result.price : result.altProvider === 'quest' ? result.altPrice : null;
       const labcorpPrice = result.provider === 'labcorp' ? result.price : result.altProvider === 'labcorp' ? result.altPrice : null;
+
+      // Running view of each lab's price, used only to recompute the ranking below when a removal
+      // happens this iteration — starts from the offering's stored values, updated as labs are cleared.
+      let questPriceForRanking = offering.questPrice != null ? offering.questPrice.toNumber() : null;
+      let labcorpPriceForRanking = offering.labcorpPrice != null ? offering.labcorpPrice.toNumber() : null;
+      let rankingNeedsUpdate = false;
+      let anyLabPriceStaged = false;
 
       for (const [lab, newRaw, priceField] of [
         ['quest', questPrice, 'questPrice'],
@@ -324,12 +355,17 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
         if (newRaw == null) {
           // This lab no longer carries the test — clear it directly, no review (same as the old
           // unconditional altLabPrice-clearing behavior, just per-field now).
-          if (existingPrice != null) offeringUpdate[priceField] = null;
+          if (existingPrice != null) {
+            offeringUpdate[priceField] = null;
+            if (lab === 'quest') questPriceForRanking = null; else labcorpPriceForRanking = null;
+            rankingNeedsUpdate = true;
+          }
           continue;
         }
         const newPrice = new Decimal(newRaw);
         if (existingPrice != null && newPrice.equals(existingPrice)) continue; // unchanged, nothing to stage
         pricesChanged++;
+        anyLabPriceStaged = true;
         const autoApprove = shouldAutoApprove(existingPrice, newPrice, trust, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
         const staged = await prisma.stagedPriceChange.create({
           data: {
@@ -342,10 +378,24 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
         if (autoApprove) summary.autoApprovedStagedIds.push(staged.id);
       }
 
+      // A removal needs the derived ranking recomputed NOW — it creates no staged change, so nothing
+      // else would ever trigger the recompute, and currentPrice/labProvider would otherwise stay stuck
+      // pointing at a price that no longer exists (caught in review 2026-07-25).
+      if (rankingNeedsUpdate) {
+        const ranked = rankDualLabPrices(questPriceForRanking, labcorpPriceForRanking);
+        offeringUpdate.currentPrice = ranked.currentPrice != null ? new Decimal(ranked.currentPrice) : null;
+        offeringUpdate.labProvider = ranked.labProvider;
+        offeringUpdate.altLabPrice = ranked.altLabPrice != null ? new Decimal(ranked.altLabPrice) : null;
+        offeringUpdate.altLabProvider = ranked.altLabProvider;
+      }
+
+      // scrapedPrice records whichever lab is cheaper this scrape (for consistency with the ranking),
+      // falling back to whichever lab is present when only one is.
+      const cheaperOfLabs = questPrice != null && labcorpPrice != null ? Math.min(questPrice, labcorpPrice) : questPrice ?? labcorpPrice ?? null;
       await prisma.scrapeResult.create({
         data: {
-          runId: run.id, testId: test.id, status: 'PRICE_SAME', matchedOfferingId: offering.id,
-          scrapedPrice: questPrice != null ? new Decimal(questPrice) : labcorpPrice != null ? new Decimal(labcorpPrice) : null,
+          runId: run.id, testId: test.id, status: anyLabPriceStaged ? 'PRICE_CHANGED' : 'PRICE_SAME', matchedOfferingId: offering.id,
+          scrapedPrice: cheaperOfLabs != null ? new Decimal(cheaperOfLabs) : null,
         },
       });
       await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
@@ -647,15 +697,20 @@ function shouldAutoApprove(oldPrice: Prisma.Decimal | null, newPrice: Prisma.Dec
   return false;
 }
 
-/** Publish one approved/auto-approved staged change to the live offering. Single choke point for
- * every publish path (worker queue, inline "Scrape now", the local CF-blocked-vendor script) — the
- * `price_published` audit-log write used to live only in the worker's `scrape-publish` job, so any
- * inline/local publish silently skipped it and the admin dashboard's "Recent Activity" feed went
- * stale even though prices were updating fine (caught 2026-07-19). Keep publish logic here, not
- * duplicated per-caller, so this can't drift out of sync again. */
+/** Publish one approved/auto-approved staged change to the live offering. The single choke point for
+ * every publish path (worker queue, inline "Scrape now", the local CF-blocked-vendor script, AND the
+ * admin Change Queue approve routes — `apps/web/lib/publish-change.ts` re-exports this function
+ * directly rather than keeping its own copy, consolidated 2026-07-25 after a review caught the two
+ * had drifted apart: the web copy had no `labProvider` awareness, no `price_published` audit log, and
+ * no atomic claim, so approving a dual-lab (mergeCodeTiers) change from the admin UI would have
+ * corrupted the derived ranking). Keep publish logic here, not duplicated per-caller, so this can't
+ * drift out of sync again. */
 export async function publishStagedChange(stagedChangeId: string): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
-    const staged = await tx.stagedPriceChange.findUnique({ where: { id: stagedChangeId } });
+    const staged = await tx.stagedPriceChange.findUnique({
+      where: { id: stagedChangeId },
+      include: { offering: { select: { externalUrl: true, currentPrice: true, questPrice: true, labcorpPrice: true } } },
+    });
     if (!staged || (staged.status !== 'APPROVED' && staged.status !== 'AUTO_APPROVED')) return false;
 
     // Claim the row atomically (status filter in the WHERE, not just the read above) so two
@@ -667,18 +722,22 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
     });
     if (claimed.count === 0) return false;
 
+    // A discovered source URL is passed through the reviewNote (`… @ <url>`); if present and the
+    // offering has no URL yet, adopt it so the affiliate/verify link resolves to the exact page.
+    // Ported from the old `apps/web/lib/publish-change.ts` duplicate — applies to every publish path,
+    // dual-lab or not.
+    const urlMatch = staged.reviewNote?.match(/@ (https?:\/\/\S+)/);
+    const discoveredUrl = urlMatch?.[1];
+    const urlUpdate = discoveredUrl && !staged.offering.externalUrl ? { externalUrl: discoveredUrl } : {};
+
     if (staged.labProvider === 'quest' || staged.labProvider === 'labcorp') {
       // Dual-lab (mergeCodeTiers) change: write the specific lab's field, then recompute the
       // derived cheaper/pricier ranking from BOTH labs' current prices — so currentPrice/labProvider/
       // altLabPrice/altLabProvider (read everywhere else in the app) reflect the latest APPROVED
       // price for each lab, not whichever lab happened to be cheaper mid-review.
-      const offering = await tx.offering.findUnique({
-        where: { id: staged.offeringId },
-        select: { questPrice: true, labcorpPrice: true },
-      });
       const newPriceNum = staged.newPrice.toNumber();
-      const questPrice = staged.labProvider === 'quest' ? newPriceNum : offering?.questPrice?.toNumber() ?? null;
-      const labcorpPrice = staged.labProvider === 'labcorp' ? newPriceNum : offering?.labcorpPrice?.toNumber() ?? null;
+      const questPrice = staged.labProvider === 'quest' ? newPriceNum : staged.offering.questPrice?.toNumber() ?? null;
+      const labcorpPrice = staged.labProvider === 'labcorp' ? newPriceNum : staged.offering.labcorpPrice?.toNumber() ?? null;
       const ranked = rankDualLabPrices(questPrice, labcorpPrice);
 
       await tx.offering.update({
@@ -687,18 +746,23 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
           ...(staged.labProvider === 'quest'
             ? { questPrice: staged.newPrice, questPreviousPrice: staged.oldPrice }
             : { labcorpPrice: staged.newPrice, labcorpPreviousPrice: staged.oldPrice }),
+          // previousPrice/currentPrice are the DERIVED ranking pair other pages still read
+          // (admin offerings list, offering-service) — must move in lockstep with the ranking, not
+          // just the per-lab fields, or they'd freeze at a stale value while currentPrice kept moving.
+          previousPrice: staged.offering.currentPrice,
           currentPrice: ranked.currentPrice != null ? new Decimal(ranked.currentPrice) : null,
           labProvider: ranked.labProvider,
           altLabPrice: ranked.altLabPrice != null ? new Decimal(ranked.altLabPrice) : null,
           altLabProvider: ranked.altLabProvider,
           priceUpdatedAt: new Date(),
           lastCheckedAt: new Date(),
+          ...urlUpdate,
         },
       });
     } else {
       await tx.offering.update({
         where: { id: staged.offeringId },
-        data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
+        data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date(), ...urlUpdate },
       });
     }
 
