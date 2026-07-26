@@ -381,12 +381,23 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       // A removal needs the derived ranking recomputed NOW — it creates no staged change, so nothing
       // else would ever trigger the recompute, and currentPrice/labProvider would otherwise stay stuck
       // pointing at a price that no longer exists (caught in review 2026-07-25).
+      // rankingPriceChanged tracks whether this recompute actually moves the publicly-displayed price
+      // (vs. e.g. the alt lab being the one that dropped, leaving currentPrice untouched) — only a real
+      // move needs the priceUpdatedAt stamp / PriceHistory / audit-log writes below (final review fix
+      // 2026-07-25: this write used to change currentPrice with zero traceability).
+      let rankingPriceChanged = false;
+      let rankedCurrentPrice: Prisma.Decimal | null = null;
       if (rankingNeedsUpdate) {
         const ranked = rankDualLabPrices(questPriceForRanking, labcorpPriceForRanking);
-        offeringUpdate.currentPrice = ranked.currentPrice != null ? new Decimal(ranked.currentPrice) : null;
+        rankedCurrentPrice = ranked.currentPrice != null ? new Decimal(ranked.currentPrice) : null;
+        offeringUpdate.currentPrice = rankedCurrentPrice;
         offeringUpdate.labProvider = ranked.labProvider;
         offeringUpdate.altLabPrice = ranked.altLabPrice != null ? new Decimal(ranked.altLabPrice) : null;
         offeringUpdate.altLabProvider = ranked.altLabProvider;
+        rankingPriceChanged = offering.currentPrice == null
+          ? rankedCurrentPrice != null
+          : rankedCurrentPrice == null || !rankedCurrentPrice.equals(offering.currentPrice);
+        if (rankingPriceChanged) offeringUpdate.priceUpdatedAt = new Date();
       }
 
       // scrapedPrice records whichever lab is cheaper this scrape (for consistency with the ranking),
@@ -399,6 +410,32 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
         },
       });
       await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
+      if (rankingPriceChanged) {
+        // A lab dropping out just changed the publicly-displayed price outside the normal
+        // stage/review/publish path — give it the same PriceHistory + audit trail a reviewed publish
+        // gets (see publishStagedChange below), so the price-history chart and audit log don't have a
+        // silent gap. labProvider is null here: this is a ranking recompute, not one lab's own staged
+        // price move. PriceHistory.newPrice is a required (non-nullable) column, so the rare case where
+        // BOTH labs drop out in the same crawl (rankedCurrentPrice itself goes to null) can't get a
+        // PriceHistory row — the audit log still captures it either way.
+        if (rankedCurrentPrice != null) {
+          await prisma.priceHistory.create({
+            data: {
+              offeringId: offering.id, oldPrice: offering.currentPrice, newPrice: rankedCurrentPrice,
+              observedAt: new Date(), source: 'SCRAPE', scrapeRunId: run.id, labProvider: null,
+            },
+          });
+        }
+        await prisma.auditLog.create({
+          data: {
+            action: 'price_published',
+            entityType: 'offering',
+            entityId: offering.id,
+            oldValues: { price: offering.currentPrice?.toString() ?? null },
+            newValues: { price: rankedCurrentPrice?.toString() ?? null },
+          },
+        });
+      }
       continue;
     }
 

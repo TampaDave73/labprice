@@ -28,6 +28,7 @@ type ProductRow = {
   questCode: string | null;
   labcorpCode: string | null;
   labProvider: string | null;
+  isPanel: boolean;
   matchedBy: string | null;
   lastSeenAt: string;
   vendor: { id: string; name: string; slug: string };
@@ -261,7 +262,9 @@ export default function DiscoveredPage() {
 
   const openPromote = (c: Cluster) => {
     setPromoteFor(c);
-    setExcludedIds(new Set());
+    // Prune to this cluster's ids only — drops stale exclusions from other clusters while
+    // preserving any in-progress unchecking the admin just did on this card (see Fix 2, final review).
+    setExcludedIds((prev) => new Set([...prev].filter((id) => c.products.some((p) => p.id === id))));
     setPromoteForm({
       name: c.name,
       shortName: '',
@@ -428,7 +431,7 @@ export default function DiscoveredPage() {
                     <button
                       className="admin-btn text-sm"
                       disabled={busy}
-                      onClick={() => { setAttachFor(c); setExcludedIds(new Set()); setTestQuery(c.suggestedTest?.name ?? c.name); }}
+                      onClick={() => { setAttachFor(c); setExcludedIds((prev) => new Set([...prev].filter((id) => c.products.some((p) => p.id === id)))); setTestQuery(c.suggestedTest?.name ?? c.name); }}
                     >
                       Attach to existing…
                     </button>
@@ -481,7 +484,12 @@ export default function DiscoveredPage() {
             }
             if (tab === 'ignored') {
               return (
-                <button className="admin-btn text-sm" disabled={busy} onClick={() => act({ action: 'restore', productIds: [p.id] }, 'Restored to review.')}>
+                <button
+                  className="admin-btn text-sm"
+                  disabled={busy || p.isPanel}
+                  title={p.isPanel ? "This is an auto-detected panel — restoring won't stick since the next crawl re-ignores it automatically. Panels aren't priced individually on this site." : undefined}
+                  onClick={() => act({ action: 'restore', productIds: [p.id] }, 'Restored to review.')}
+                >
                   Restore
                 </button>
               );

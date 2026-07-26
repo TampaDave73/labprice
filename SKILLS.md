@@ -78,11 +78,19 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   (creates offerings), **Ignore** (reversible; Ignored tab restores). Attach/promote/list all
   **learn aliases**: a confirmed product name that differs from the test's known names becomes a
   `TestAlias` (source = vendor slug). "Matched, not listed" tab = auto-matched products with no
-  offering yet — `List`/`List all` creates them (matching NEVER auto-publishes an offering). Panels
-  tab is display-only (panels excluded from matching by decision 2026-07-20 — no two vendors sell
-  the same panel). Top of the page: **demand chips** — zero-result `SearchLog` queries that overlap
-  an unmatched product name. `GET/POST /api/v1/admin/discovered` (actions: attach/promote/ignore/
-  restore/list).
+  offering yet — `List`/`List all` creates them (matching NEVER auto-publishes an offering). **Panels
+  auto-ignore on ingest** (no separate Panels tab — removed 2026-07-25): a product flagged `isPanel`
+  lands straight in the Ignored tab instead of Clusters (panels excluded from matching by decision
+  2026-07-20 — no two vendors sell the same panel). Ignored rows show whether they're a panel; the
+  Restore button is disabled for one (with an explanatory tooltip) since restoring just sets it back
+  to UNMATCHED, which the `clusters` query still filters out by `isPanel: false` — the next crawl's
+  auto-ignore would silently re-ignore it anyway, so Restore can't actually recover a mis-flagged
+  panel today (a real fix needs a product decision on how panels should be reviewable, deferred).
+  Cluster cards have a **per-row checkbox** (default all checked) — uncheck a row that doesn't belong
+  before Promote/Attach and it's marked Ignored instead of included; opening Promote/Attach prunes any
+  stale exclusions from other clusters but keeps the current cluster's in-progress unchecking. Top of
+  the page: **demand chips** — zero-result `SearchLog` queries that overlap an unmatched product name.
+  `GET/POST /api/v1/admin/discovered` (actions: attach/promote/ignore/restore/list).
 - **Discovered Excel round-trip** — `Export Excel` / `Import Excel` on `/admin/discovered`, for the
   quarterly catch-up pass across thousands of rows the one-by-one UI doesn't scale to
   (`GET/POST /api/v1/admin/discovered/export|import`; a real `.xlsx` workbook via `exceljs`, not CSV
@@ -193,8 +201,15 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   Approve; the live price just stays whatever it already was. **New Price is editable** before
   approving (reviewer override) — Approve then publishes the edited value, not the scraped one, and
   the original scraped price is preserved in `StagedPriceChange.reviewNote` for audit (appended, not
-  replacing any discovered-URL note already there — see `publishStagedChange`'s `@ <url>` passthrough
-  in `lib/publish-change.ts`). The vendor product URL (`Offering.externalUrl`) has its own inline
+  replacing any discovered-URL note already there — see `publishStagedChange`'s `@ <url>` passthrough,
+  the single canonical implementation in `packages/scrapers/src/catalog/persist.ts`; `apps/web/lib/
+  publish-change.ts` is now just a re-export — consolidated 2026-07-25 after review found the web
+  copy had drifted from the worker/inline-scrape copy, missing the audit log and a race-safety fix).
+  Dual-lab (Dirt Cheap Labs) offerings stage Quest and LabCorp price moves **independently** — each
+  lab that changes price gets its own Change Queue row (`labProvider` on the staged change), not just
+  the cheaper lab; approving one publishes that lab's field and recomputes the derived cheaper/pricier
+  ranking (`currentPrice`/`labProvider`/`altLabPrice`/`altLabProvider`) from both labs' latest prices.
+  The vendor product URL (`Offering.externalUrl`) has its own inline
   edit (pencil icon next to the vendor link) — it's completely independent of the approve/reject
   decision on the price change; fixing a wrong URL doesn't require deciding anything about the
   pending price. Both the price-override POST body (`overridePrice`, single-id only) and the URL edit
@@ -402,7 +417,9 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     LabCorp at different prices; `mergeCodeTiers` ranks on the cheaper as `currentPrice`/`labProvider`
     and keeps the other lab's price as `Offering.altLabPrice`/`altLabProvider` (null when only one lab
     carries the test) — shown on the test page as a secondary "also available via X" line, same
-    treatment as MitoHealth's member price below.
+    treatment as MitoHealth's member price below. Each lab is staged **independently** (its own
+    Change Queue entry, `StagedPriceChange.labProvider`) — see "Change Queue" under the admin panel
+    for the approve-time ranking recompute.
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),

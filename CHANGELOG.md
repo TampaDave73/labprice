@@ -9,6 +9,50 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-25, Change Queue bulk-clear, dual-lab price staging, Discovered Products cleanup)
+- **Change Queue**: bulk-clear action for pending rows (act on a batch instead of one at a time).
+- **Dirt Cheap Labs dual pricing goes through review independently per lab.** Schema: `Offering`
+  gained `questPrice`/`questPreviousPrice`/`labcorpPrice`/`labcorpPreviousPrice`; `StagedPriceChange`
+  and `PriceHistory` gained `labProvider`. When Quest and LabCorp move to different prices in the same
+  crawl, each now stages its own `StagedPriceChange` (`labProvider: 'quest'|'labcorp'`) and its own
+  Change Queue row — previously only the cheaper lab's move went through review. Approving one
+  publishes that lab's field, then recomputes the derived cheaper/pricier ranking
+  (`currentPrice`/`labProvider`/`altLabPrice`/`altLabProvider`) from both labs' latest prices
+  (`rankDualLabPrices` in `packages/scrapers/src/catalog/dual-lab-pricing.ts`). A lab dropping out of
+  the catalog entirely still clears immediately, no review, same as before.
+- **Discovered Products** (`/admin/discovered`): panels now **auto-ignore on ingest** instead of
+  living in a separate, display-only Panels tab (removed) — they land in the Ignored tab like any
+  other dismissed row. The "Matched, not listed" tab's badge count now matches what the tab actually
+  lists (was previously counting differently than the query backing the list). Cluster cards gained a
+  **per-row checkbox** — uncheck a row that doesn't belong to the cluster before Promote/Attach and
+  it's marked Ignored instead of silently swept in with the rest.
+- **Consolidated a drifted `publishStagedChange` duplicate.** Found during this work: the worker/
+  inline-scrape paths and the admin Change Queue approve routes each had their own copy of the
+  publish logic, and they'd drifted apart — the admin copy (`apps/web/lib/publish-change.ts`) was
+  missing the `price_published` audit-log write and a race-safety fix (atomic status-guarded claim
+  against a concurrent double-publish) that the canonical copy already had. Consolidated to one
+  implementation in `packages/scrapers/src/catalog/persist.ts`; `apps/web/lib/publish-change.ts` is
+  now just a re-export, so every publish path (worker queue, inline "Scrape now", admin Change Queue
+  approve) shares the same audit trail and race-safety guarantees going forward.
+
+### Fixed (2026-07-25, final whole-branch review of the above)
+- **Ignored-tab Restore on an auto-ignored panel was a dead end.** The design intended a mis-flagged
+  panel to be "recoverable via the existing Ignored tab's Restore action," but Restore sets
+  `status: 'UNMATCHED'` and the Clusters query filters `isPanel: false` — the row vanished from all
+  three tabs until the next crawl silently re-ignored it. The UI now disables Restore for a panel row
+  with an explanatory tooltip instead of pretending it works; the underlying recoverability gap is
+  deferred pending a product decision.
+- **Cluster checkbox selection was silently wiped when opening Promote/Attach.** Both call sites reset
+  `excludedIds` to an empty `Set` on open, discarding any unchecking the admin had just done on the
+  card. Now prunes to the current cluster's ids instead of clearing entirely, so in-progress selection
+  survives opening either modal.
+- **A lab-dropout ranking recompute in `persist.ts` had no traceability.** When a lab stops carrying a
+  test, the derived cheaper/pricier ranking is recomputed and written immediately (correct — otherwise
+  it goes stale) but this could change the publicly-displayed `currentPrice` with no `priceUpdatedAt`
+  stamp, no `PriceHistory` row, and no audit-log entry. Now stamps `priceUpdatedAt` and writes both a
+  `PriceHistory` row (`labProvider: null` — a ranking recompute, not one lab's own staged move) and a
+  `price_published` audit-log entry, scoped to iterations where the recomputed price actually changed.
+
 ### Fixed (2026-07-25, full-codebase bug sweep)
 - **`PATCH /api/v1/admin/tests/[id]`**: category update wrote the raw, unvalidated `categoryIds`
   array to `testCategory.createMany` instead of the id-validated `cats` list — a stale/bogus category
