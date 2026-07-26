@@ -6,9 +6,13 @@ import '../src/env'; // must be first: self-locates root .env before prisma clie
 import { prisma } from '@labprice/database';
 
 async function main() {
-  const vendor = await prisma.vendor.findFirst({ where: { slug: 'dirtcheaplabs' } });
+  // NOTE: 'dirt-cheap-labs' is the Vendor.slug (DB row) — a different namespace from the
+  // 'dirtcheaplabs' adapter-config key used internally in packages/scrapers/persist.ts's
+  // ADAPTER_DEFAULTS. Confirmed against production data (2026-07-26) after this script
+  // silently no-op'd with the wrong slug on its first run.
+  const vendor = await prisma.vendor.findFirst({ where: { slug: 'dirt-cheap-labs' } });
   if (!vendor) {
-    console.log('No dirtcheaplabs vendor found — nothing to backfill.');
+    console.log('No dirt-cheap-labs vendor found — nothing to backfill.');
     return;
   }
 
