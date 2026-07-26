@@ -9,6 +9,7 @@ type Change = {
   newPrice: string;
   status: string;
   createdAt: string;
+  labProvider: 'quest' | 'labcorp' | null;
   offering: {
     id: string;
     externalUrl: string | null;
@@ -251,6 +252,14 @@ export default function ChangeQueuePage() {
                           </a>
                         ) : (
                           <span className="text-brand-600">{c.offering.vendor.name}</span>
+                        )}
+                        {c.labProvider && (
+                          <span
+                            className="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-brand-500"
+                            title="This vendor sells through multiple labs — this row is just the price for this one"
+                          >
+                            {c.labProvider === 'quest' ? 'Quest' : 'LabCorp'}
+                          </span>
                         )}
                         <button
                           onClick={() => { setEditingUrl(c.id); setUrlDrafts((d) => ({ ...d, [c.id]: c.offering.externalUrl ?? '' })); }}
