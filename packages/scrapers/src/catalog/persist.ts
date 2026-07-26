@@ -17,6 +17,7 @@ import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch }
 import { getAdapter } from './adapters';
 import { JASONHEALTH_ALGOLIA_HEADERS } from './jasonhealth-parser';
 import { matchTestToProducts, nameMatches, normalizeName, sharesStrongToken, testNames } from './matcher';
+import { rankDualLabPrices } from './dual-lab-pricing';
 import type { CatalogEntry, CatalogProduct, MatchTier, TestKey } from './types';
 
 const Decimal = Prisma.Decimal;
@@ -297,21 +298,64 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
 
     // matched
     summary.matched++;
+    const isMergeCodeTiers = !!cfg.matchOptions?.mergeCodeTiers;
+
     // Store the product URL + member price (secondary info, updated live — not subject to the Change
-    // Queue, which governs only the compared non-member currentPrice). lastCheckedAt is stamped on
-    // EVERY match — an unchanged price is still a verified price, and the site's "checked N ago"
-    // freshness reads it (priceUpdatedAt only moves on a change).
-    // labProvider/altLab* are set unconditionally (not `if present`, unlike externalUrl/memberPrice
-    // above) so a lab that stops carrying this test clears its stale alt price next scrape instead
-    // of leaving a phantom "also available at $X" forever.
-    const offeringUpdate: Record<string, unknown> = {
-      lastCheckedAt: new Date(),
-      labProvider: result.provider ?? null,
-      altLabPrice: result.altPrice != null ? new Decimal(result.altPrice) : null,
-      altLabProvider: result.altProvider ?? null,
-    };
+    // Queue). lastCheckedAt is stamped on EVERY match — an unchanged price is still a verified price,
+    // and the site's "checked N ago" freshness reads it (priceUpdatedAt only moves on a change).
+    const offeringUpdate: Record<string, unknown> = { lastCheckedAt: new Date() };
     if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
     if (result.memberPrice != null) offeringUpdate.memberPrice = new Decimal(result.memberPrice);
+
+    if (isMergeCodeTiers) {
+      // Dirt Cheap Labs-style vendors: result.provider/price is the cheaper lab this scrape,
+      // result.altProvider/altPrice the pricier lab (if it also carries the test). Derive each lab's
+      // own price from those, and stage/compare per lab — currentPrice/altLabPrice are now a DERIVED
+      // ranking only recomputed on publish (see the `else` branch of publishStagedChange below), so
+      // they're intentionally NOT written here.
+      const questPrice = result.provider === 'quest' ? result.price : result.altProvider === 'quest' ? result.altPrice : null;
+      const labcorpPrice = result.provider === 'labcorp' ? result.price : result.altProvider === 'labcorp' ? result.altPrice : null;
+
+      for (const [lab, newRaw, priceField] of [
+        ['quest', questPrice, 'questPrice'],
+        ['labcorp', labcorpPrice, 'labcorpPrice'],
+      ] as const) {
+        const existingPrice = offering[priceField];
+        if (newRaw == null) {
+          // This lab no longer carries the test — clear it directly, no review (same as the old
+          // unconditional altLabPrice-clearing behavior, just per-field now).
+          if (existingPrice != null) offeringUpdate[priceField] = null;
+          continue;
+        }
+        const newPrice = new Decimal(newRaw);
+        if (existingPrice != null && newPrice.equals(existingPrice)) continue; // unchanged, nothing to stage
+        pricesChanged++;
+        const autoApprove = shouldAutoApprove(existingPrice, newPrice, trust, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
+        const staged = await prisma.stagedPriceChange.create({
+          data: {
+            offeringId: offering.id, oldPrice: existingPrice, newPrice, scrapedAt: new Date(),
+            scrapeRunId: run.id, status: autoApprove ? 'AUTO_APPROVED' : 'PENDING', labProvider: lab,
+            reviewNote: `Matched by ${result.matchedBy} → ${lab} @ ${result.sourceUrl}`,
+          },
+        });
+        summary.staged++;
+        if (autoApprove) summary.autoApprovedStagedIds.push(staged.id);
+      }
+
+      await prisma.scrapeResult.create({
+        data: {
+          runId: run.id, testId: test.id, status: 'PRICE_SAME', matchedOfferingId: offering.id,
+          scrapedPrice: questPrice != null ? new Decimal(questPrice) : labcorpPrice != null ? new Decimal(labcorpPrice) : null,
+        },
+      });
+      await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
+      continue;
+    }
+
+    // Non-mergeCodeTiers: unchanged single-price flow.
+    offeringUpdate.labProvider = result.provider ?? null;
+    offeringUpdate.altLabPrice = result.altPrice != null ? new Decimal(result.altPrice) : null;
+    offeringUpdate.altLabProvider = result.altProvider ?? null;
     await prisma.offering.update({ where: { id: offering.id }, data: offeringUpdate });
     const price = new Decimal(result.price!);
     const priceChanged = !offering.currentPrice || !price.equals(offering.currentPrice);
@@ -623,20 +667,55 @@ export async function publishStagedChange(stagedChangeId: string): Promise<boole
     });
     if (claimed.count === 0) return false;
 
-    await tx.offering.update({
-      where: { id: staged.offeringId },
-      data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
-    });
+    if (staged.labProvider === 'quest' || staged.labProvider === 'labcorp') {
+      // Dual-lab (mergeCodeTiers) change: write the specific lab's field, then recompute the
+      // derived cheaper/pricier ranking from BOTH labs' current prices — so currentPrice/labProvider/
+      // altLabPrice/altLabProvider (read everywhere else in the app) reflect the latest APPROVED
+      // price for each lab, not whichever lab happened to be cheaper mid-review.
+      const offering = await tx.offering.findUnique({
+        where: { id: staged.offeringId },
+        select: { questPrice: true, labcorpPrice: true },
+      });
+      const newPriceNum = staged.newPrice.toNumber();
+      const questPrice = staged.labProvider === 'quest' ? newPriceNum : offering?.questPrice?.toNumber() ?? null;
+      const labcorpPrice = staged.labProvider === 'labcorp' ? newPriceNum : offering?.labcorpPrice?.toNumber() ?? null;
+      const ranked = rankDualLabPrices(questPrice, labcorpPrice);
+
+      await tx.offering.update({
+        where: { id: staged.offeringId },
+        data: {
+          ...(staged.labProvider === 'quest'
+            ? { questPrice: staged.newPrice, questPreviousPrice: staged.oldPrice }
+            : { labcorpPrice: staged.newPrice, labcorpPreviousPrice: staged.oldPrice }),
+          currentPrice: ranked.currentPrice != null ? new Decimal(ranked.currentPrice) : null,
+          labProvider: ranked.labProvider,
+          altLabPrice: ranked.altLabPrice != null ? new Decimal(ranked.altLabPrice) : null,
+          altLabProvider: ranked.altLabProvider,
+          priceUpdatedAt: new Date(),
+          lastCheckedAt: new Date(),
+        },
+      });
+    } else {
+      await tx.offering.update({
+        where: { id: staged.offeringId },
+        data: { previousPrice: staged.oldPrice, currentPrice: staged.newPrice, priceUpdatedAt: new Date(), lastCheckedAt: new Date() },
+      });
+    }
+
     await tx.priceHistory.create({
-      data: { offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice, observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId },
+      data: {
+        offeringId: staged.offeringId, oldPrice: staged.oldPrice, newPrice: staged.newPrice,
+        observedAt: staged.scrapedAt, source: 'SCRAPE', scrapeRunId: staged.scrapeRunId,
+        labProvider: staged.labProvider,
+      },
     });
     await tx.auditLog.create({
       data: {
         action: 'price_published',
         entityType: 'offering',
         entityId: staged.offeringId,
-        oldValues: { price: staged.oldPrice?.toString() ?? null },
-        newValues: { price: staged.newPrice.toString() },
+        oldValues: { price: staged.oldPrice?.toString() ?? null, labProvider: staged.labProvider },
+        newValues: { price: staged.newPrice.toString(), labProvider: staged.labProvider },
       },
     });
     return true;
