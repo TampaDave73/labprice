@@ -9,6 +9,52 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-07-26, Personalabs showing a stale pre-discount price)
+- **Reported live**: `/test/copper` showed Personalabs at $122; the vendor's own page shows $79.30
+  with "Reg. $122" struck through. Root cause confirmed with a real browser, not assumed: Personalabs
+  runs a "Discount Rules for WooCommerce" plugin that computes the actual price **client-side**, via
+  an AJAX call (`admin-ajax.php?action=awdr_get_product_discount`, nonce-protected) that rewrites the
+  page's price element after load — the raw HTML (and even the page's own server-rendered Yoast/
+  WooCommerce Product JSON-LD, which a scraper might otherwise trust as an authoritative structured-
+  data source) both still report the pre-discount $122. Replaying the AJAX call directly (matching
+  cookies + a freshly-scraped nonce) got `"Invalid token"` — it's bound to a live browser session, not
+  a replayable static token — so there's no plain-HTTP path to the real price at all.
+  Fixed by marking `personalabs` `needsBrowser: true` in `packages/scrapers/src/catalog/persist.ts`
+  (same mechanism already used for Request A Test/True Health Labs' Cloudflare challenges — a stealth
+  headless Chromium actually runs the page's JS, so the existing price-extraction regex, unchanged,
+  now reads the correct post-discount `.amount` value once the vendor's own script has rewritten it).
+  Verified live end-to-end: a direct `browserFetchHtml()` call against the Copper product page now
+  extracts `79.30`, not `122`. Re-ran Personalabs discovery against production after the fix to
+  correct all 46 previously-mispriced offerings (a same-session earlier "scrape all vendors" pass had
+  already re-published 9 of them using the pre-fix plain-HTTP code before this fix landed).
+  **Cost note**: Personalabs' catalog crawl (27 listing pages + ~50 narrowed product pages) now runs
+  via headless browser instead of plain HTTP — meaningfully slower per crawl, and "Scrape now" in the
+  admin UI will show "queued — needs the worker running" for this vendor going forward, same as the
+  other two `needsBrowser` vendors.
+
+### Added (2026-07-26, GA4 Data API pull into /admin/analytics)
+- **The last open TODO item — pulling GA4's own reports back into the admin dashboard — is wired up.**
+  `NEXT_PUBLIC_GA_MEASUREMENT_ID` (the client-side tracking tag, live since 2026-07-21) is a different
+  credential from what this needed: a GCP service account with read access to the GA4 Data API. Walked
+  the site owner through creating one (`labtestcompare-ga4-reader@labtestcompare.iam.gserviceaccount.com`,
+  granted Viewer on GA4 property `546489198`) — the service-account JSON key never touches the repo;
+  its three fields are split into `GA4_PROPERTY_ID`/`GA4_CLIENT_EMAIL`/`GA4_PRIVATE_KEY` env vars
+  (root `.env`, gitignored; set on Railway too for prod).
+  New `apps/web/lib/ga4-data.ts` (`@google-analytics/data`, new dependency): `fetchGa4Summary()` pulls
+  three reports in parallel — top countries, device-category breakdown, and counts for the 5 custom
+  funnel events added 2026-07-21 (`search`, `search_suggestion_click`, `vendor_click`,
+  `suggestion_modal_opened`, `suggestion_submitted`). `GA4_CONFIGURED` is a clean boolean gate; a
+  failed/empty pull returns `null` and `/admin/analytics` falls back to the pre-existing "Open Google
+  Analytics" link-out card instead of erroring. Verified end-to-end against the live property.
+
+### Added (2026-07-26, backfilled missing test content — 26 tests)
+- **26 of 66 tests had zero patient-facing content** (description/purpose/procedure/preparation/
+  normalRange all blank) — audited directly against production. Filled all 26 with authored,
+  factual, non-diagnostic copy matching the site's existing style (verified against a live example,
+  `Vitamin D 25-Hydroxy`), applied straight to production per an explicit one-time exception to the
+  normal auto-fill-then-admin-reviews flow. Each write is audit-logged
+  (`tests.ai_content_fill`, actor "System") for traceability.
+
 ### Added (2026-07-25, Change Queue bulk-clear, dual-lab price staging, Discovered Products cleanup)
 - **Change Queue**: bulk-clear action for pending rows (act on a batch instead of one at a time).
 - **Dirt Cheap Labs dual pricing goes through review independently per lab.** Schema: `Offering`

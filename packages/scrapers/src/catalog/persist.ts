@@ -78,7 +78,17 @@ const ADAPTER_DEFAULTS: Record<
   // Walk-In Lab exposes BOTH lab codes together on one product; Personalabs labels the provider
   // directly per product, so it uses strict per-lab tiers (no codeMatchAnyProvider).
   walkinlab: { baseUrl: 'https://www.walkinlab.com', catalogPath: '/categories/view/all-products', codeMatchAnyProvider: true },
-  personalabs: { baseUrl: 'https://www.personalabs.com', catalogPath: '/products/all-test/' },
+  // needsBrowser (2026-07-26): the displayed price is NOT the WooCommerce product price — a
+  // "Discount Rules for WooCommerce" plugin (woo-discount-rules) recalculates it client-side via an
+  // AJAX call (admin-ajax.php?action=awdr_get_product_discount, nonce-protected) and rewrites the DOM
+  // after load. Confirmed live on the Copper listing: plain HTTP (and even the page's own Yoast/
+  // WooCommerce Product JSON-LD, which is server-rendered) both report the pre-discount $122, while
+  // the page actually shows $79.30 struck through against "Reg. $122" once JS runs. Replaying the
+  // AJAX call directly (matching cookies + a freshly-scraped nonce) still 400s ("Invalid token") —
+  // it's tied to a live browser session, not just a static token — so a real headless browser (which
+  // lets the plugin's own JS compute and render the true price) is the only reliable fix, same
+  // mechanism already used for Request A Test/True Health Labs above.
+  personalabs: { baseUrl: 'https://www.personalabs.com', catalogPath: '/products/all-test/', needsBrowser: true },
   // No dedicated catalog page at all — sitemap.xml doubles as the full product index (single fetch,
   // no pagination); codes are unlabelled per-lab like Walk-In Lab.
   healthlabs: { baseUrl: 'https://www.healthlabs.com', catalogPath: '/sitemap.xml', codeMatchAnyProvider: true },

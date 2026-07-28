@@ -431,12 +431,19 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     Code(s)" field reads a real code for a single test but literally **"See Individual Tests"** for a
     multi-test bundle — a reliable vendor-supplied `isPanel` signal (verified live), unlike GoodLabs'
     explicit JSON flag or DCL/OYL's separate-endpoint/URL-shape exclusion.
-  - `personalabs` — WooCommerce store, plain HTTP, paginated (`/products/all-test/`, 27+ pages). Each
+  - `personalabs` — WooCommerce store, paginated (`/products/all-test/`, 27+ pages). Each
     product is labelled with its ONE fulfilling lab directly in the markup
     (`provider-cart-button labcorp`), so it uses **strict per-lab tiers** (no `codeMatchAnyProvider`) —
     the labProvider is read off the page, not guessed. **Panel detection**: a single test's order code
     lives in exactly one hidden `.hidden_test_code` div; a bundle carries one per constituent test, so
-    `isPanel = codes.length > 1`.
+    `isPanel = codes.length > 1`. **`needsBrowser: true` (2026-07-26, unlike the other two `needsBrowser`
+    vendors below, NOT a Cloudflare issue)**: the displayed price is computed **client-side** by a
+    "Discount Rules for WooCommerce" plugin (AJAX call, nonce-protected — replaying it directly 400s,
+    it's bound to a live browser session) and rewrites the DOM after load; plain HTTP, and even the
+    page's own server-rendered Product JSON-LD, both report the pre-discount list price. Confirmed live
+    on Copper: static/JSON-LD said $122, the page actually showed $79.30. No parser change needed —
+    the existing `.amount` regex already targets the right element, which the vendor's own JS mutates
+    in place once real JS execution (`browserFetchHtml`) is used instead of plain HTTP.
   - `healthlabs` — **no catalog page at all**; `sitemap.xml` is the catalog (single flat fetch, no
     pagination — the fastest of the recent vendors, ~20s). Clean JSON-LD `Product` blocks
     (`JSON.parse`-able directly), unlabelled per-lab codes (`codeMatchAnyProvider`). **No isPanel
