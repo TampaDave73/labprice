@@ -9,6 +9,44 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-27, master test catalog expansion — 66 → 278 tests)
+- **Imported a 246-row master biomarker list, growing the production catalog from 66 to 278 tests**
+  (212 created, 34 updated by slug match; 32 pre-existing tests not on the master list were kept, not
+  deleted, and flagged for manual review). Each test now carries a research-provenance data model:
+  `methodology` (free-text, e.g. "LC/MS-MS"), `labVariant`, `cardioIq` (Quest Cardio IQ® branded code),
+  `confidence` (`HIGH`/`MEDIUM`/`LOW` — how reliably the Quest/LabCorp codes were verified; new
+  `Confidence` enum), `thirdPartyOnly` (not carried by Quest or LabCorp at all), `notes`, and
+  `codeVerifiedAt` (system-stamped only, on HIGH promotion). Final confidence split: **145 HIGH / 33
+  MEDIUM / 100 LOW**. Schema applied directly to production (`prisma db push --accept-data-loss` +
+  `ddl-core.sql` re-run + two new partial indexes on `quest_code`/`labcorp_code`), the 246/11/108-row
+  source snapshot committed at `packages/database/data/2026-07-27-master-tests/{tests,fixes,pass3-queue}.json`.
+- **21-category taxonomy** (up from 10): the 10 original categories are `isPrimary=true`, 11 new ones
+  (Thyroid, Liver, Kidney, Electrolytes, Autoimmune, Allergy, Fertility, Nutrition, Coagulation, Bone
+  Health, Sexual Health / STD) are `isPrimary=false`. The homepage category filter is now a **two-facet**
+  picker (`CategoryFilters.tsx`, replacing the old single-select `CategoryTabs`): primary categories are
+  always-visible multi-select chips (OR-matched), secondary categories sit behind a "More filters"
+  disclosure (also OR-matched), and the two facets AND together.
+- **Test-level `confidence` now gates scraper auto-approval, independently of vendor trust** — a
+  `LOW`-confidence test's price never auto-publishes even from a HIGH-trust vendor scrape
+  (`shouldAutoApprove()` in `packages/scrapers/src/catalog/persist.ts`).
+- **Consumer-SKU letter suffixes are stripped before code matching** — a new `normalizeLabCode()` in
+  `packages/scrapers/src/catalog/matcher.ts` strips trailing letter suffixes (e.g. `"34604M"` →
+  `"34604"`) before comparing a vendor's listed code against ours, applied in both per-tier code
+  matching and the `mergeCodeTiers` (Dirt Cheap Labs dual-lab) path.
+- **Test detail page** shows new states driven by this data: a `thirdPartyOnly` test with no offerings
+  reads "Not offered by Quest or LabCorp" instead of an empty price table; a Cardio IQ® badge; a
+  "Partially verified"/"Unverified" badge for `MEDIUM`/`LOW` confidence; a `notes` callout when present
+  (also how a region-variable code gets surfaced — via the generic notes field, no dedicated flag).
+- **Admin**: the test editor (`/admin/tests/[id]`) and the Tests Excel export/import round-trip now
+  expose `methodology`/`lab_variant`/`cardio_iq`/`confidence`/`third_party_only`/`notes` for editing;
+  `codeVerifiedAt` stays read-only everywhere (system-stamped, not admin-editable).
+
+### Fixed (2026-07-27, master-list corrections applied to production)
+- Applied 8 of 11 corrections from the master-list research pass to production tests (the other 3
+  targeted rows that no longer existed, or were `NO CHANGE`-severity by design) — audit-logged via the
+  existing `AuditLog` model (`action: 'test.fix_applied'`,
+  `apps/worker/scripts/apply-master-test-fixes.ts`).
+
 ### Fixed (2026-07-26, Personalabs showing a stale pre-discount price)
 - **Reported live**: `/test/copper` showed Personalabs at $122; the vendor's own page shows $79.30
   with "Reg. $122" struck through. Root cause confirmed with a real browser, not assumed: Personalabs

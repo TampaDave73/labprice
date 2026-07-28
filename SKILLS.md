@@ -23,6 +23,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   falling back to `priceUpdatedAt` — `lastCheckedAt` is stamped on every scrape verification even
   when the price is unchanged; `priceUpdatedAt` only moves on a change);
   JSON-LD `MedicalTest`. Fully public + ISR-cacheable (no `auth()` — Save/Price-Alert were removed).
+  **Master-import data states** (2026-07-27, `TestDetailClient.tsx`): a `thirdPartyOnly` test with zero
+  offerings shows "Not offered by Quest or LabCorp — this is a specialty/third-party test" instead of an
+  empty price table; `cardioIq` shows a "Cardio IQ® branded variant" badge (plus `labVariant` text when
+  set); non-`HIGH` `confidence` shows a "Partially verified"/"Unverified" warning badge (`MEDIUM`/`LOW`);
+  a non-empty `notes` field renders as a callout — this is also how a region-variable code ("verify
+  locally") gets surfaced, via the generic notes field rather than a dedicated schema flag.
 - **Category pages** (`category/[slug]`) — lists tests via the many-to-many, so a test appears under
   every category it belongs to.
 - **Search results** (`/search?q=…`) — SSR page over the FTS `search()` service (reuses `TestCard`,
@@ -134,8 +140,12 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `GET /api/v1/admin/coverage`.
 - **Tests Excel round-trip** — `Export Excel` / `Import Excel` buttons on /admin/tests
   (`GET /api/v1/admin/tests/export`, `POST /api/v1/admin/tests/import`). Identity fields only
-  (id-anchored; name, short_name, slug, codes, categories|pipes, aliases|pipes, is_popular) —
-  **no prices by design** (sheet owns identity, scrapers own prices). Import is always previewed
+  (id-anchored; name, short_name, slug, codes, categories|pipes, aliases|pipes, is_popular,
+  **methodology, lab_variant, cardio_iq, confidence, third_party_only, notes** — added 2026-07-27
+  alongside the master import) — **no prices by design** (sheet owns identity, scrapers own prices).
+  `code_verified_at` is intentionally NOT a column — it's system-stamped (by the import script, or
+  when confidence is later promoted to HIGH) and stays read-only everywhere, including this sheet.
+  Import is always previewed
   (dry-run diff → confirm), errors block the whole file, applies are transactional + audit-logged.
   Blank id = create new; categories/aliases are full-set replace; unknown categories get created.
   **Was plain CSV until 2026-07-24** — Excel auto-detects a "numeric-looking" cell on open and
@@ -152,7 +162,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   the dashboard feed); the API batch-resolves offering/test/vendor entity ids into names and returns
   the filter vocabularies (distinct actions/types/actors) for the dropdowns.
 - **Tests** — list (sortable, search) + editor: name/codes/copy fields, **Categories multi-select
-  (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete.
+  (≥1 required, no "primary")**, popular flag, display order. Delete = soft delete. **Methodology,
+  lab variant, Cardio IQ, confidence (High/Medium/Low), third-party-only, and notes** (added
+  2026-07-27, same fields as the Excel round-trip above) are also editable here; `codeVerifiedAt`
+  is shown read-only (system-stamped, never admin-editable) if present.
   - **✨ Auto-fill** (next to the name): `POST /api/v1/admin/tests/lookup` fills short name, slug,
     categories, the five content fields, and Quest/LabCorp codes from the test name. Codes: vendor
     catalogs first (DCL API → `code-lookup.ts`, same-name matches only — this hits DCL's **live** API
@@ -284,9 +297,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   - **Catalog discovery** (`scrape-discover.ts` → `apps/worker/src/discovery.ts` →
     `@labprice/scrapers` `catalog/*`): for vendors that publish a whole catalog instead of per-test
     URLs (**GoodLabs**). See the dedicated recipe below.
-- **Auto-approval** (shared rules): first price, or a drop/rise within the Settings thresholds,
-  auto-approves; **LOW-trust vendors always route to the Change Queue**; HIGH trust gets 1.5×
-  thresholds. Approve → publish writes the live price + price history + a `price_published` audit-log
+- **Auto-approval** (shared rules, `shouldAutoApprove()` in `packages/scrapers/src/catalog/persist.ts`):
+  first price, or a drop/rise within the Settings thresholds, auto-approves; **LOW-trust vendors always
+  route to the Change Queue**; HIGH trust gets 1.5× thresholds. **`Test.confidence === 'LOW'` is a
+  second, independent gate** (added 2026-07-27 with the master import) — even a HIGH-trust vendor's
+  scrape never auto-publishes against a low-confidence (sparsely-verified) test code; both checks are
+  short-circuits in the same function, don't duplicate the confidence check elsewhere. Approve →
+  publish writes the live price + price history + a `price_published` audit-log
   row (admin dashboard "Recent Activity" reads that log). All publish paths — the `scrape-publish`
   queue, inline admin "Scrape now", the local CF-blocked-vendor script, and manually approving in the
   Change Queue — go through the single `publishStagedChange()` in
@@ -379,12 +396,20 @@ a ready token to paste into `document.cookie` in the preview browser.
   changes. Logo wordmark font is Poppins (`--font-poppins`, wired in `layout.tsx`); body copy is
   intentionally still DM Sans/system-ui — that scope split was deliberate, not an oversight.
 
-### Category model (many-to-many, no "primary")
+### Category model (many-to-many, no per-test "primary")
 - Membership lives in `TestCategory`. `Test.categoryId` is a **derived display pointer** (lowest
   `displayOrder` in the set) — never user-selected. Server sets it on every save.
 - Tests require ≥1 category (validated client + server). Category delete blocks on would-be orphans.
 - Public reads: cards/breadcrumbs use the display pointer; category pages & the homepage filter use
   the full m2m set.
+- **`Category.isPrimary`** (added 2026-07-27 with the 21-category taxonomy: 10 original categories
+  `isPrimary=true`, 11 new ones `isPrimary=false` — Thyroid, Liver, Kidney, Electrolytes, Autoimmune,
+  Allergy, Fertility, Nutrition, Coagulation, Bone Health, Sexual Health / STD) drives the homepage's
+  **two-facet filter** (`CategoryFilters.tsx`, replacing the old single-select `CategoryTabs`): primary
+  categories render as always-visible multi-select chips (OR-matched within the selection); secondary
+  categories live behind a "More filters" disclosure (also OR-matched); the two facets AND together.
+  It's a real column read at query time — not a hardcoded category-name list — so a newly added
+  category defaults to secondary unless explicitly marked primary.
 
 ### Adding data via the admin
 - **Test**: Admin → Tests → Add; pick ≥1 category (inline "+ New" creates one).
