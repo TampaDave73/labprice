@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma, Prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
+
+// The 6 fields the 2026-07-27 master-test-catalog-expansion added to Test (methodology/labVariant/
+// cardioIq/confidence/thirdPartyOnly/notes). Mirrors [id]/route.ts's patchSchema for the same fields —
+// the admin form always sends all 6 (new test or edit), so without this validation+create-side wiring
+// a NEW test silently dropped them and `confidence` landed on the schema default instead of what the
+// admin picked.
+const newFieldsSchema = z.object({
+  methodology: z.string().trim().max(200).nullable().optional(),
+  labVariant: z.string().trim().max(100).nullable().optional(),
+  cardioIq: z.boolean().optional(),
+  confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(),
+  thirdPartyOnly: z.boolean().optional(),
+  notes: z.string().max(2000).nullable().optional(),
+});
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -63,6 +78,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { name, shortName, slug, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder } = body;
 
+  const parsedNewFields = newFieldsSchema.safeParse(body);
+  if (!parsedNewFields.success) {
+    return NextResponse.json(
+      { error: { code: 'validation_error', message: 'Invalid field value', details: parsedNewFields.error.flatten() } },
+      { status: 400 },
+    );
+  }
+  const { methodology, labVariant, cardioIq, confidence, thirdPartyOnly, notes } = parsedNewFields.data;
+
   // A test must have at least one category. The `categoryId` column is kept only as a
   // derived "display" pointer (the selected category with the lowest displayOrder).
   const categoryIds: string[] = Array.isArray(body.categoryIds) ? body.categoryIds.filter(Boolean) : [];
@@ -78,7 +102,10 @@ export async function POST(req: NextRequest) {
   // One transaction so the test row and its category membership can't commit separately.
   const test = await prisma.$transaction(async (tx) => {
     const created = await tx.test.create({
-      data: { name, shortName, slug, categoryId: displayCategoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder },
+      data: {
+        name, shortName, slug, categoryId: displayCategoryId, description, purpose, procedure, preparation, normalRange, questCode, labcorpCode, isPopular, displayOrder,
+        methodology, labVariant, cardioIq, confidence, thirdPartyOnly, notes,
+      },
       include: { category: true },
     });
 

@@ -205,7 +205,7 @@ model Category {
   // The original 10-category taxonomy renders as primary filter chips on the homepage; anything added
   // later (the 2026-07-27 taxonomy expansion's 11 new categories, or any future admin-created one
   // this flag is left true for unless explicitly demoted) renders in the secondary/expandable facet.
-  isPrimary    Boolean  @default(true) @map("is_primary")
+  isPrimary    Boolean  @default(false) @map("is_primary")
   colorBg      String?  @map("color_bg")
   colorText    String?  @map("color_text")
   createdAt    DateTime @default(now()) @map("created_at")

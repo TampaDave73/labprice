@@ -20,7 +20,7 @@ import { prisma, Prisma, getEffectiveTrust, getScrapeSettings, type TrustLevel }
 import { discover, httpFetchHtml, type CatalogScrapeConfig, type OfferingMatch } from './catalog-scraper';
 import { getAdapter } from './adapters';
 import { JASONHEALTH_ALGOLIA_HEADERS } from './jasonhealth-parser';
-import { matchTestToProducts, nameMatches, normalizeName, sharesStrongToken, testNames } from './matcher';
+import { matchTestToProducts, nameMatches, normalizeLabCode, normalizeName, sharesStrongToken, testNames } from './matcher';
 import { rankDualLabPrices } from './dual-lab-pricing';
 import type { CatalogEntry, CatalogProduct, MatchTier, TestKey } from './types';
 
@@ -593,12 +593,15 @@ async function ingestVendorProducts(
     id: t.id, name: t.name, questCode: t.questCode, labcorpCode: t.labcorpCode, aliases: t.aliases.map((a) => a.alias),
     confidence: t.confidence,
   }));
+  // Keys AND lookups both go through normalizeLabCode — mirrors matcher.ts's pricing-match path, so a
+  // vendor's consumer-SKU-suffixed code ("34604M") auto-matches here the same way it already does for
+  // pricing (found in review: this ingest path compared raw codes and missed the suffix strip).
   const byQuest = new Map<string, TestKey[]>();
   const byLabcorp = new Map<string, TestKey[]>();
   const byNorm = new Map<string, { id: string; via: 'exact-name' | 'alias' }>();
   for (const t of keys) {
-    if (t.questCode) byQuest.set(t.questCode, [...(byQuest.get(t.questCode) ?? []), t]);
-    if (t.labcorpCode) byLabcorp.set(t.labcorpCode, [...(byLabcorp.get(t.labcorpCode) ?? []), t]);
+    if (t.questCode) { const k = normalizeLabCode(t.questCode); byQuest.set(k, [...(byQuest.get(k) ?? []), t]); }
+    if (t.labcorpCode) { const k = normalizeLabCode(t.labcorpCode); byLabcorp.set(k, [...(byLabcorp.get(k) ?? []), t]); }
     const norm = normalizeName(t.name);
     if (norm && !byNorm.has(norm)) byNorm.set(norm, { id: t.id, via: 'exact-name' });
     for (const a of t.aliases ?? []) {
@@ -616,7 +619,7 @@ async function ingestVendorProducts(
       [d.labcorpCode, byLabcorp, 'labcorp-code'],
     ] as const) {
       if (!code) continue;
-      const hits = (map.get(code) ?? []).filter((t) => testNames(t).some((n) => sharesStrongToken(n, d.name)));
+      const hits = (map.get(normalizeLabCode(code)) ?? []).filter((t) => testNames(t).some((n) => sharesStrongToken(n, d.name)));
       if (hits.length === 1) return { testId: hits[0]!.id, matchedBy: label };
     }
     // 1b. codeMatchAnyProvider vendors: the label can't be trusted, so check every code this product
@@ -625,7 +628,8 @@ async function ingestVendorProducts(
     if (d.anyProviderCodes.length > 0) {
       const hits = new Map<string, TestKey>();
       for (const code of d.anyProviderCodes) {
-        for (const t of [...(byQuest.get(code) ?? []), ...(byLabcorp.get(code) ?? [])]) {
+        const nc = normalizeLabCode(code);
+        for (const t of [...(byQuest.get(nc) ?? []), ...(byLabcorp.get(nc) ?? [])]) {
           if (testNames(t).some((n) => sharesStrongToken(n, d.name))) hits.set(t.id, t);
         }
       }

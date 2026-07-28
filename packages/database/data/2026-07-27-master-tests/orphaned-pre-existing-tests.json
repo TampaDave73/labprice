@@ -1,0 +1,130 @@
+[
+  {
+    "slug": "apolipoprotein-b-apob",
+    "name": "Apolipoprotein B (ApoB)"
+  },
+  {
+    "slug": "arsenic-blood-test",
+    "name": "Arsenic Blood Test"
+  },
+  {
+    "slug": "bilirubin",
+    "name": "Bilirubin"
+  },
+  {
+    "slug": "cbc-complete-blood-count",
+    "name": "CBC (Complete Blood Count)"
+  },
+  {
+    "slug": "comprehensive-metabolic-panel",
+    "name": "Comprehensive Metabolic Panel"
+  },
+  {
+    "slug": "copper",
+    "name": "Copper"
+  },
+  {
+    "slug": "cortisol",
+    "name": "Cortisol"
+  },
+  {
+    "slug": "estradiol",
+    "name": "Estradiol Sensitive, LC/MS"
+  },
+  {
+    "slug": "folate-red-blood-cell",
+    "name": "Folate (Red Blood Cell)"
+  },
+  {
+    "slug": "follicle-stimulating-hormone-fsh",
+    "name": "Follicle-Stimulating Hormone (FSH)"
+  },
+  {
+    "slug": "fsh-and-lh",
+    "name": "FSH and LH"
+  },
+  {
+    "slug": "ggt-gamma-glutamyl-transferase",
+    "name": "Gamma-Glutamyl Transferase (GGT)"
+  },
+  {
+    "slug": "hba1c-hemoglobin-a1c",
+    "name": "HbA1c (Hemoglobin A1c)"
+  },
+  {
+    "slug": "hs-crp-high-sensitivity-c-reactive-protein",
+    "name": "C-Reactive Protein, High Sensitivity (hs-CRP)"
+  },
+  {
+    "slug": "igf-1-insulin-like-growth-factor",
+    "name": "IGF-1 (Insulin-like Growth Factor 1), LC/MS"
+  },
+  {
+    "slug": "iodine",
+    "name": "Iodine"
+  },
+  {
+    "slug": "iron-panel",
+    "name": "Iron Panel (Iron, Transferrin Saturation, TIBC, UIBC)"
+  },
+  {
+    "slug": "lead",
+    "name": "Lead"
+  },
+  {
+    "slug": "lipoprotein-a-lp-a",
+    "name": "Lipoprotein(a) (Lp(a))"
+  },
+  {
+    "slug": "luteinizing-hormone-lh",
+    "name": "Luteinizing Hormone LH"
+  },
+  {
+    "slug": "magnesium",
+    "name": "Magnesium"
+  },
+  {
+    "slug": "mercury",
+    "name": "Mercury"
+  },
+  {
+    "slug": "psa-prostate-specific-antigen",
+    "name": "PSA (Prostate-Specific Antigen)"
+  },
+  {
+    "slug": "psa-total-free-percent-free",
+    "name": "PSA, Total + Free + % Free"
+  },
+  {
+    "slug": "sex-hormone-binding-globulin-shbg",
+    "name": "Sex Hormone Binding Globulin (SHBG)"
+  },
+  {
+    "slug": "testosterone-free-calculated-and-total",
+    "name": "Testosterone Free (calculated) + Total"
+  },
+  {
+    "slug": "testosterone-free-direct",
+    "name": "Testosterone, Free (Calculation)"
+  },
+  {
+    "slug": "testosterone-free-total",
+    "name": "Testosterone Free & Total"
+  },
+  {
+    "slug": "vitamin-a",
+    "name": "Vitamin A"
+  },
+  {
+    "slug": "vitamin-b12-and-folate-panel",
+    "name": "Vitamin B12 and Folate Panel"
+  },
+  {
+    "slug": "vitamin-b6",
+    "name": "Vitamin B6"
+  },
+  {
+    "slug": "zinc-red-blood-cell",
+    "name": "Zinc - Red Blood Cell"
+  }
+]

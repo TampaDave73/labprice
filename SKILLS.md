@@ -156,6 +156,16 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   normalization and header/row parsing (`cellText`/`parseWorkbookSheet`) now live in
   `apps/web/lib/xlsx.ts`, shared with the Discovered importer instead of duplicated — `lib/csv.ts` is
   gone, nothing imports it anymore.
+- **Data snapshots** (`packages/database/data/<date>-<name>/`) — the convention for a bulk import's
+  source data: commit the actual JSON the import script reads (e.g. `2026-07-27-master-tests/`'s
+  `tests.json` [246 rows], `categories.json`, `fixes.json`, `pass3-queue.json`, and
+  `orphaned-pre-existing-tests.json`), not just the script that consumes it. Introduced by the
+  2026-07-27 master biomarker list import. Why: a script alone can't be re-diffed against later — the
+  data it ran against needs to be reviewable/re-runnable from git history too, and any list of
+  "flagged for manual review" items a script produces (like the master import's orphaned-slug report,
+  otherwise only readable from an `audit_logs` row) gets its own committed JSON file so it survives as
+  a durable work list. Follow this pattern (`<date>-<short-name>/` dir, one JSON file per input/output
+  the import cares about) for the next data-expansion effort instead of inventing a new one.
 - **Audit Log** (`/admin/audit`) — the searchable audit trail: filter by action / entity type /
   actor (incl. "System" for scraper writes) / date range, 50-row pages, via
   `GET /api/v1/admin/audit`. Rows are humanized by the shared `lib/audit-describe.ts` (also used by

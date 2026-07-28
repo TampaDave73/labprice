@@ -62,6 +62,31 @@ export function describeAuditRow(log: AuditRow, entityLabel: string | null): { t
         detail: `${v.created ?? 0} created, ${v.updated ?? 0} updated, ${v.unchanged ?? 0} unchanged${cats}`,
       };
     }
+    case 'tests.master_import': {
+      // 2026-07-27 master biomarker list (246 rows), applied by apps/worker/scripts/import-master-
+      // tests.ts. `orphaned` = pre-existing tests whose slug wasn't in the master list — kept, never
+      // deleted, just flagged. That list is durably re-recorded at
+      // packages/database/data/2026-07-27-master-tests/orphaned-pre-existing-tests.json since this
+      // audit row is otherwise the only place it lives.
+      const v = json(log.newValues);
+      const orphaned = Array.isArray(v.orphaned) ? (v.orphaned as string[]) : [];
+      return {
+        title: `Master test list imported${who ? ` by ${who}` : ''}`,
+        detail: `${v.created ?? 0} created, ${v.updated ?? 0} updated${orphaned.length ? `, ${orphaned.length} existing test(s) not in the list (kept, flagged for review)` : ''}`,
+      };
+    }
+    case 'test.fix_applied': {
+      // apps/worker/scripts/apply-master-test-fixes.ts — one row per corrected field, run ahead of
+      // tests.master_import. `newValues` holds the corrected field/value alongside severity/why/source;
+      // the field name itself is dynamic (whichever key isn't one of those four).
+      const v = json(log.newValues);
+      const { severity, why, source, ...fieldChange } = v as { severity?: string; why?: string; source?: string; [k: string]: unknown };
+      const [field, newValue] = Object.entries(fieldChange)[0] ?? [null, null];
+      return {
+        title: `Fix applied — ${entityLabel ?? 'a test'}${field ? `: ${field} → "${newValue}"` : ''}`,
+        detail: [severity ? `severity: ${severity}` : null, why ?? null].filter(Boolean).join(' — ') || null,
+      };
+    }
     case 'analytics.reset': {
       const v = json(log.oldValues);
       return {

@@ -141,12 +141,16 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     every admin page with this pattern). Follow `analytics/page.tsx`'s pattern: check `res.ok`, throw
     into a `.catch()`, always resolve the loading flag in `.finally()`/`try...finally`, and show a
     retry action on failure — don't add a new bare fetch-then-chain to any admin page.
-11. **`Test.confidence` gates scraper auto-approval independently of vendor trust.** `shouldAutoApprove()`
-    (`packages/scrapers/src/catalog/persist.ts`) checks trust `LOW` *and* `confidence === 'LOW'` as two
-    separate short-circuits — a `LOW`-confidence test (sparsely-verified code from the 2026-07-27 master
-    import) never auto-publishes a scraped price even from a HIGH-trust vendor, because a cheap/reliable
-    scrape can still be a wrong-test match on shaky source data. Don't add a second, redundant
-    low-confidence gate elsewhere; this is the one place it's enforced. Relatedly: **`TestCode` (the
+11. **`Test.confidence` gates scraper auto-approval independently of vendor trust.** There are TWO
+    separate `shouldAutoApprove()` implementations — `packages/scrapers/src/catalog/persist.ts` (the
+    catalog-discovery path: web-app inline scrape + `scrape-discover` worker) and
+    `apps/worker/src/workers/scrape-execute.ts` (the per-URL path) — each with its own
+    `confidence === 'LOW'` short-circuit alongside its own trust-`LOW` check. A `LOW`-confidence test
+    (sparsely-verified code from the 2026-07-27 master import) never auto-publishes a scraped price even
+    from a HIGH-trust vendor, because a cheap/reliable scrape can still be a wrong-test match on shaky
+    source data. If you change this gate, change it in **both** files — they are not shared code today
+    (flagged as a follow-up: extract one shared function instead of two parallel implementations).
+    Relatedly: **`TestCode` (the
     `test_codes` table/model in `schema.prisma`) is confirmed dead code** — zero readers or writers
     anywhere in the app, worker, or scripts. `Test.questCode`/`Test.labcorpCode` are the sole canonical
     code fields; don't resurrect `TestCode` without re-checking this note first. Also: **`Category.isPrimary`**
