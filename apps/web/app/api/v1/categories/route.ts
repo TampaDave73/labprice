@@ -17,6 +17,7 @@ export async function GET() {
       name: c.name,
       slug: c.slug,
       displayOrder: c.displayOrder,
+      isPrimary: c.isPrimary,
       colorBg: c.colorBg,
       colorText: c.colorText,
       testCount: c._count.tests,

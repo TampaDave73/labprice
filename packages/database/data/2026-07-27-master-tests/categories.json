@@ -1,0 +1,23 @@
+[
+  { "name": "Vitamins & Minerals", "isPrimary": true },
+  { "name": "Hormones", "isPrimary": true },
+  { "name": "Metabolic", "isPrimary": true },
+  { "name": "Blood Count", "isPrimary": true },
+  { "name": "Cancer Markers", "isPrimary": true },
+  { "name": "Genetics", "isPrimary": true },
+  { "name": "Inflammation", "isPrimary": true },
+  { "name": "Heavy Metals", "isPrimary": true },
+  { "name": "Cardiovascular", "isPrimary": true },
+  { "name": "General Health", "isPrimary": true },
+  { "name": "Thyroid", "isPrimary": false },
+  { "name": "Liver", "isPrimary": false },
+  { "name": "Kidney", "isPrimary": false },
+  { "name": "Electrolytes", "isPrimary": false },
+  { "name": "Autoimmune", "isPrimary": false },
+  { "name": "Allergy", "isPrimary": false },
+  { "name": "Fertility", "isPrimary": false },
+  { "name": "Nutrition", "isPrimary": false },
+  { "name": "Coagulation", "isPrimary": false },
+  { "name": "Bone Health", "isPrimary": false },
+  { "name": "Sexual Health / STD", "isPrimary": false }
+]
