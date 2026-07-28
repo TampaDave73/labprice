@@ -220,13 +220,6 @@ export default function TestDetailClient({ test, offerings }: Props) {
         </div>
       </div>
 
-      {test.notes && (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 16, borderRadius: 10, background: 'oklch(0.97 0.03 80)', border: '1px solid oklch(0.88 0.06 80)', fontSize: 13, color: 'oklch(0.4 0.06 60)' }}>
-        <span aria-hidden="true">&#9432;</span>
-        <span>{test.notes}</span>
-        </div>
-      )}
-
       {/* Two-column layout */}
       <div className="td-grid">
         {/* Left: Accordion */}
