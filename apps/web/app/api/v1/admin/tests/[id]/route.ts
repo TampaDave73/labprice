@@ -23,6 +23,12 @@ const patchSchema = z
     isPopular: z.boolean(),
     displayOrder: z.number().int(),
     categoryIds: z.array(z.string()),
+    methodology: z.string().trim().max(200).nullable(),
+    labVariant: z.string().trim().max(100).nullable(),
+    cardioIq: z.boolean(),
+    confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+    thirdPartyOnly: z.boolean(),
+    notes: z.string().max(2000).nullable(),
   })
   .partial();
 

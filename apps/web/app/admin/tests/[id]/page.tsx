@@ -19,6 +19,12 @@ type TestData = {
   categoryIds: string[]; // additional categories (beyond the primary)
   isPopular: boolean;
   displayOrder: number;
+  methodology: string | null;
+  labVariant: string | null;
+  cardioIq: boolean;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  thirdPartyOnly: boolean;
+  notes: string | null;
 };
 
 type Category = { id: string; name: string };
@@ -37,6 +43,7 @@ const EMPTY: TestData = {
   id: '', name: '', shortName: '', slug: '', description: '', purpose: '', procedure: '',
   preparation: '', normalRange: '', questCode: '', labcorpCode: '', categoryId: '',
   categoryIds: [], isPopular: false, displayOrder: 0,
+  methodology: '', labVariant: '', cardioIq: false, confidence: 'LOW', thirdPartyOnly: false, notes: '',
 };
 
 // Text fields the "auto-fill from name" lookup populates — only when currently blank, so it never
@@ -217,6 +224,8 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
       questCode: test.questCode, labcorpCode: test.labcorpCode,
       isPopular: test.isPopular, displayOrder: Number(test.displayOrder) || 0,
       categoryIds: test.categoryIds, // full set; server derives the display pointer
+      methodology: test.methodology, labVariant: test.labVariant, cardioIq: test.cardioIq,
+      confidence: test.confidence, thirdPartyOnly: test.thirdPartyOnly, notes: test.notes,
     };
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     setSaving(false);
@@ -336,6 +345,37 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
             {codeSources.labcorpCode === 'ai' && <p className="mt-1 text-xs text-amber-700">⚠ AI-suggested — verify against the lab before saving.</p>}
             {codeSources.labcorpCode && codeSources.labcorpCode !== 'ai' && <p className="mt-1 text-xs text-success-700">✓ Matched in the {codeSources.labcorpCode} catalog, not AI-guessed.</p>}
           </div>
+        </div>
+
+        {/* Catalog-expansion fields (Task 1) — free-text lab/methodology metadata plus the
+            confidence rating on the codes above; codeVerifiedAt is system-stamped, not editable here. */}
+        <div>
+          <label className={labelCls}>Methodology</label>
+          <input type="text" className="admin-input" value={test.methodology ?? ''} onChange={(e) => handleChange('methodology', e.target.value)} placeholder="e.g. LC/MS-MS, ECLIA immunoassay" />
+        </div>
+        <div>
+          <label className={labelCls}>Lab Variant</label>
+          <input type="text" className="admin-input" value={test.labVariant ?? ''} onChange={(e) => handleChange('labVariant', e.target.value)} placeholder="e.g. standard, Cardio IQ, ultrasensitive" />
+        </div>
+        <div>
+          <label className={labelCls}>Confidence</label>
+          <select className="admin-input" value={test.confidence} onChange={(e) => handleChange('confidence', e.target.value)}>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="cardioIq" className="h-4 w-4 rounded" checked={test.cardioIq} onChange={(e) => handleChange('cardioIq', e.target.checked)} />
+          <label htmlFor="cardioIq" className="text-sm font-medium text-brand-700">Cardio IQ&reg; branded variant</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="thirdPartyOnly" className="h-4 w-4 rounded" checked={test.thirdPartyOnly} onChange={(e) => handleChange('thirdPartyOnly', e.target.checked)} />
+          <label htmlFor="thirdPartyOnly" className="text-sm font-medium text-brand-700">Third-party only (not offered by Quest/LabCorp)</label>
+        </div>
+        <div>
+          <label className={labelCls}>Notes</label>
+          <textarea className="admin-input" rows={2} value={test.notes ?? ''} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Verification caveats, region-variability notes, etc." />
         </div>
 
         <p className="text-xs font-medium uppercase tracking-wide text-brand-400">

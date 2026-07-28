@@ -28,6 +28,12 @@ type RowPlan = {
     isPopular: boolean;
     categories: string[]; // category names, order preserved from the sheet
     aliases: string[];
+    methodology: string | null;
+    labVariant: string | null;
+    cardioIq: boolean;
+    confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+    thirdPartyOnly: boolean;
+    notes: string | null;
   };
   changes?: Record<string, { from: string; to: string }>; // updates only — human-readable diff
 };
@@ -124,6 +130,12 @@ export async function POST(req: NextRequest) {
       isPopular: 'is_popular' in rec ? parseBool(rec.is_popular ?? '') : (existing?.isPopular ?? false),
       categories: catNames,
       aliases: 'aliases' in rec ? splitPipes(rec.aliases ?? '') : (existing?.aliases ?? []).map((a) => a.alias),
+      methodology: 'methodology' in rec ? (rec.methodology || null) : (existing?.methodology ?? null),
+      labVariant: 'lab_variant' in rec ? (rec.lab_variant || null) : (existing?.labVariant ?? null),
+      cardioIq: 'cardio_iq' in rec ? parseBool(rec.cardio_iq ?? '') : (existing?.cardioIq ?? false),
+      confidence: 'confidence' in rec ? (rec.confidence.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW') : (existing?.confidence ?? 'LOW'),
+      thirdPartyOnly: 'third_party_only' in rec ? parseBool(rec.third_party_only ?? '') : (existing?.thirdPartyOnly ?? false),
+      notes: 'notes' in rec ? (rec.notes || null) : (existing?.notes ?? null),
     };
 
     if (!existing) {
@@ -142,6 +154,12 @@ export async function POST(req: NextRequest) {
     cmp('quest_code', existing.questCode, fields.questCode);
     cmp('labcorp_code', existing.labcorpCode, fields.labcorpCode);
     cmp('is_popular', String(existing.isPopular), String(fields.isPopular));
+    cmp('methodology', existing.methodology, fields.methodology);
+    cmp('lab_variant', existing.labVariant, fields.labVariant);
+    cmp('cardio_iq', String(existing.cardioIq), String(fields.cardioIq));
+    cmp('confidence', existing.confidence, fields.confidence);
+    cmp('third_party_only', String(existing.thirdPartyOnly), String(fields.thirdPartyOnly));
+    cmp('notes', existing.notes, fields.notes);
     const oldCats = [...existingCatNames].sort().join('|');
     const newCats = [...fields.categories].sort().join('|');
     if (oldCats.toLowerCase() !== newCats.toLowerCase()) changes.categories = { from: oldCats, to: newCats };
@@ -192,6 +210,12 @@ export async function POST(req: NextRequest) {
         labcorpCode: plan.fields.labcorpCode,
         isPopular: plan.fields.isPopular,
         categoryId: displayCategoryId,
+        methodology: plan.fields.methodology,
+        labVariant: plan.fields.labVariant,
+        cardioIq: plan.fields.cardioIq,
+        confidence: plan.fields.confidence,
+        thirdPartyOnly: plan.fields.thirdPartyOnly,
+        notes: plan.fields.notes,
       };
 
       const testId = plan.action === 'create'

@@ -22,6 +22,12 @@ const COLUMNS = [
   { key: 'categories', header: 'categories', width: 32, note: 'Full category set, pipe-separated (e.g. "Hormones|Metabolic"). REPLACES the existing set on import — not additive. See the Categories sheet for existing names; an unrecognized name is created automatically.' },
   { key: 'aliases', header: 'aliases', width: 32, note: "Alternate names this test is matched under (vendor naming variants), pipe-separated. REPLACES the full set on import." },
   { key: 'is_popular', header: 'is_popular', width: 10, note: 'true/false (also accepts 1/0, yes/no, x).' },
+  { key: 'methodology', header: 'methodology', width: 22, note: 'Free-text lab methodology, e.g. "LC/MS-MS", "ECLIA immunoassay".' },
+  { key: 'lab_variant', header: 'lab_variant', width: 18, note: 'Free-text variant label, e.g. "standard", "Cardio IQ", "ultrasensitive".' },
+  { key: 'cardio_iq', header: 'cardio_iq', width: 10, note: 'true/false — Quest Cardio IQ branded order code.' },
+  { key: 'confidence', header: 'confidence', width: 10, note: 'High, Medium, or Low — how reliably the codes were verified.' },
+  { key: 'third_party_only', header: 'third_party_only', width: 12, note: 'true/false — not offered by Quest or LabCorp at all.' },
+  { key: 'notes', header: 'notes', width: 40, note: 'Free-text research/verification note.' },
 ] as const;
 
 const TEXT_FORMAT_COLUMNS = new Set(['quest_code', 'labcorp_code']);
@@ -88,6 +94,12 @@ export async function GET() {
       categories: catNames.join('|'),
       aliases: t.aliases.map((a) => a.alias).join('|'),
       is_popular: t.isPopular,
+      methodology: t.methodology ?? '',
+      lab_variant: t.labVariant ?? '',
+      cardio_iq: t.cardioIq,
+      confidence: t.confidence,
+      third_party_only: t.thirdPartyOnly,
+      notes: t.notes ?? '',
     });
   }
 
