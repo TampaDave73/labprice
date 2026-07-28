@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseGoodLabsProduct } from '../catalog/goodlabs-parser';
-import { matchTestToProducts, nameMatches } from '../catalog/matcher';
+import { matchTestToProducts, nameMatches, normalizeLabCode } from '../catalog/matcher';
 import type { CatalogProduct, TestKey } from '../catalog/types';
 
 const fx = (name: string) => readFileSync(join(__dirname, 'fixtures', name), 'utf8');
@@ -100,5 +100,20 @@ describe('nameMatches', () => {
     expect(nameMatches('Testosterone Total', 'Testosterone, Total, MS')).toBe(true);
     expect(nameMatches('TSH (Thyroid Stimulating Hormone)', 'TSH')).toBe(true);
     expect(nameMatches('Ferritin', 'Vitamin D, 25-Hydroxy')).toBe(false);
+  });
+});
+
+describe('normalizeLabCode', () => {
+  it('strips a trailing consumer-SKU letter suffix', () => {
+    expect(normalizeLabCode('34604M')).toBe('34604');
+  });
+  it('leaves a plain numeric code untouched', () => {
+    expect(normalizeLabCode('34604')).toBe('34604');
+  });
+  it('leaves a zero-padded LabCorp code untouched (no trailing letters)', () => {
+    expect(normalizeLabCode('004598')).toBe('004598');
+  });
+  it('strips multiple trailing letters', () => {
+    expect(normalizeLabCode('17306ABC')).toBe('17306');
   });
 });

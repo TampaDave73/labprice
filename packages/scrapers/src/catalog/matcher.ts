@@ -62,8 +62,8 @@ export function matchTestToProducts(
   if (opts.mergeCodeTiers) {
     const codeHits = flat.filter(
       (f) =>
-        (!!test.questCode && f.provider.labTestIDs.includes(test.questCode)) ||
-        (!!test.labcorpCode && f.provider.labTestIDs.includes(test.labcorpCode)),
+        (!!test.questCode && f.provider.labTestIDs.some((id) => normalizeLabCode(id) === test.questCode)) ||
+        (!!test.labcorpCode && f.provider.labTestIDs.some((id) => normalizeLabCode(id) === test.labcorpCode)),
     );
     if (codeHits.length > 0) {
       // A code can be stale/wrong and land on the wrong test (seed TSH Quest code 867 is actually
@@ -76,7 +76,10 @@ export function matchTestToProducts(
         // to stage — fall through to the name tier rather than reporting 'matched' with price:null.
         if (priced.length > 0) {
           const best = priced[0]!;
-          const tier: MatchTier = !!test.questCode && best.provider.labTestIDs.includes(test.questCode) ? 'quest' : 'labcorp';
+          const tier: MatchTier =
+            !!test.questCode && best.provider.labTestIDs.some((id) => normalizeLabCode(id) === test.questCode)
+              ? 'quest'
+              : 'labcorp';
           // The OTHER lab, if it also carries this test at a (necessarily higher, since `priced` is
           // sorted ascending) price — surfaced as a secondary option rather than silently dropped.
           const altBest = priced.find((h) => h.provider.labProvider !== best.provider.labProvider);
@@ -147,10 +150,18 @@ function tierMatches(
   anyProvider: boolean,
 ): boolean {
   if (tier === 'quest') {
-    return (anyProvider || provider.labProvider === 'quest') && !!test.questCode && provider.labTestIDs.includes(test.questCode);
+    return (
+      (anyProvider || provider.labProvider === 'quest') &&
+      !!test.questCode &&
+      provider.labTestIDs.some((id) => normalizeLabCode(id) === test.questCode)
+    );
   }
   if (tier === 'labcorp') {
-    return (anyProvider || provider.labProvider === 'labcorp') && !!test.labcorpCode && provider.labTestIDs.includes(test.labcorpCode);
+    return (
+      (anyProvider || provider.labProvider === 'labcorp') &&
+      !!test.labcorpCode &&
+      provider.labTestIDs.some((id) => normalizeLabCode(id) === test.labcorpCode)
+    );
   }
   // name: token-subset match AND a shared distinctive token (so "Vitamin B12" ≠ "Vitamin A, Serum").
   // Confirmed aliases count as the test's own name — each candidate name is tried independently.
@@ -159,6 +170,17 @@ function tierMatches(
     if (subset && (sharesStrongToken(candidate, product.name) || sharesStrongToken(candidate, provider.name))) return true;
   }
   return false;
+}
+
+/**
+ * Strip a trailing consumer-SKU letter suffix a vendor's own listing appended to a lab order code
+ * (QuestHealth DTC SKUs: "34604M"). `^(\d+)[A-Z]*$` — only strips when the whole remainder after the
+ * digits is letters; a code that isn't purely digits+letters (shouldn't happen for a real lab code)
+ * is returned unchanged rather than mangled.
+ */
+export function normalizeLabCode(code: string): string {
+  const m = /^(\d+)[A-Z]*$/i.exec(code.trim());
+  return m ? m[1]! : code.trim();
 }
 
 /** The test's own name plus its confirmed aliases — every name the matcher treats as "this test". */

@@ -89,6 +89,8 @@ export interface TestKey {
    * has been confirmed once.
    */
   aliases?: string[];
+  /** Gates automated auto-approval independently of vendor trust — see shouldAutoApprove. */
+  confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface MatchOptions {

@@ -204,7 +204,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     },
     include: {
       test: {
-        select: { id: true, name: true, questCode: true, labcorpCode: true, aliases: { select: { alias: true } } },
+        select: { id: true, name: true, questCode: true, labcorpCode: true, confidence: true, aliases: { select: { alias: true } } },
       },
     },
   });
@@ -216,6 +216,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     questCode: o.test.questCode,
     labcorpCode: o.test.labcorpCode,
     aliases: o.test.aliases.map((a) => a.alias),
+    confidence: o.test.confidence,
   }));
   const testToOffering = new Map(offerings.map((o) => [o.test.id, o]));
 
@@ -376,7 +377,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
         if (existingPrice != null && newPrice.equals(existingPrice)) continue; // unchanged, nothing to stage
         pricesChanged++;
         anyLabPriceStaged = true;
-        const autoApprove = shouldAutoApprove(existingPrice, newPrice, trust, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
+        const autoApprove = shouldAutoApprove(existingPrice, newPrice, trust, test.confidence, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
         const staged = await prisma.stagedPriceChange.create({
           data: {
             offeringId: offering.id, oldPrice: existingPrice, newPrice, scrapedAt: new Date(),
@@ -461,7 +462,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     });
     if (priceChanged) {
       pricesChanged++;
-      const autoApprove = shouldAutoApprove(offering.currentPrice, price, trust, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
+      const autoApprove = shouldAutoApprove(offering.currentPrice, price, trust, test.confidence, settings.autoApproveDecreasePercent, settings.autoApproveIncreasePercent);
       const staged = await prisma.stagedPriceChange.create({
         data: {
           offeringId: offering.id, oldPrice: offering.currentPrice, newPrice: price, scrapedAt: new Date(),
@@ -586,10 +587,11 @@ async function ingestVendorProducts(
   // Canonical tests + aliases, indexed for strict auto-match and fuzzy suggestion.
   const allTests = await prisma.test.findMany({
     where: { deletedAt: null },
-    select: { id: true, name: true, questCode: true, labcorpCode: true, aliases: { select: { alias: true } } },
+    select: { id: true, name: true, questCode: true, labcorpCode: true, confidence: true, aliases: { select: { alias: true } } },
   });
   const keys: TestKey[] = allTests.map((t) => ({
     id: t.id, name: t.name, questCode: t.questCode, labcorpCode: t.labcorpCode, aliases: t.aliases.map((a) => a.alias),
+    confidence: t.confidence,
   }));
   const byQuest = new Map<string, TestKey[]>();
   const byLabcorp = new Map<string, TestKey[]>();
@@ -731,8 +733,18 @@ async function priceFromPinnedUrl(
 }
 
 /** Same trust-modulated auto-approve rules as scrape-execute (BR-6..BR-9). */
-function shouldAutoApprove(oldPrice: Prisma.Decimal | null, newPrice: Prisma.Decimal, trust: TrustLevel, baseDecrease: number, baseIncrease: number): boolean {
+function shouldAutoApprove(
+  oldPrice: Prisma.Decimal | null,
+  newPrice: Prisma.Decimal,
+  trust: TrustLevel,
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
+  baseDecrease: number,
+  baseIncrease: number,
+): boolean {
   if (trust === 'LOW') return false;
+  // Low-confidence tests (Task 1: sparsely-verified imports) never auto-approve regardless of vendor
+  // trust — a cheap/high-trust vendor scrape can still be a wrong-test match on shaky data.
+  if (confidence === 'LOW') return false;
   if (!oldPrice) return true;
   const old = oldPrice.toNumber();
   const nw = newPrice.toNumber();

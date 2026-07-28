@@ -41,10 +41,15 @@ function shouldAutoApprove(
   oldPrice: Decimal | null,
   newPrice: Decimal,
   trust: TrustLevel,
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | undefined,
   baseDecrease: number,
   baseIncrease: number,
 ): boolean {
   if (trust === 'LOW') return false;
+
+  // Low-confidence tests (Task 1: sparsely-verified imports) never auto-approve regardless of vendor
+  // trust — a cheap/high-trust vendor scrape can still be a wrong-test match on shaky data.
+  if (confidence === 'LOW') return false;
 
   if (!oldPrice) return true; // BR-8
 
@@ -190,6 +195,7 @@ export function createExecuteWorker() {
           offering.currentPrice,
           scrapedPrice,
           trust,
+          offering.test.confidence,
           settings.autoApproveDecreasePercent,
           settings.autoApproveIncreasePercent,
         );
