@@ -1,0 +1,974 @@
+[
+  {
+    "name": "ACTH",
+    "slug": "acth",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "004440",
+    "categories": "Hormones",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Activated Partial Thromboplastin Time",
+    "slug": "activated-partial-thromboplastin-time",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Coagulation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Aldolase",
+    "slug": "aldolase",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Aldosterone",
+    "slug": "aldosterone",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "004374",
+    "categories": "Hormones",
+    "notes": "Quest 13817 = aldosterone/renin reflex"
+  },
+  {
+    "name": "Alkaline Phosphatase",
+    "slug": "alkaline-phosphatase",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001107",
+    "categories": "Liver|Bone Health",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Alpha-1 Antitrypsin",
+    "slug": "alpha-1-antitrypsin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Liver|General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "ALT (SGPT)",
+    "slug": "alt-sgpt",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001545",
+    "categories": "Liver",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Aluminum",
+    "slug": "aluminum",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "071548",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Amino Acid Profile, Plasma",
+    "slug": "amino-acid-profile-plasma",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Androstenedione",
+    "slug": "androstenedione",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Angiotensin Converting Enzyme",
+    "slug": "angiotensin-converting-enzyme",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Anti-Mullerian Hormone",
+    "slug": "anti-mullerian-hormone",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "500183",
+    "categories": "Hormones|Fertility",
+    "notes": "Labcorp = Endocrine Sciences. PASS 3: Quest code"
+  },
+  {
+    "name": "Antimony",
+    "slug": "antimony",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Antithrombin III",
+    "slug": "antithrombin-iii",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Coagulation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "AST (SGOT)",
+    "slug": "ast-sgot",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001123",
+    "categories": "Liver",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Beta-2 Microglobulin",
+    "slug": "beta-2-microglobulin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Kidney|Cancer Markers",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Beta-Carotene",
+    "slug": "beta-carotene",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "Labcorp A/E/beta-carotene combo 144057"
+  },
+  {
+    "name": "Blood Type & Rh",
+    "slug": "blood-type-rh",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "BNP",
+    "slug": "bnp",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "140889",
+    "categories": "Cardiovascular",
+    "notes": ""
+  },
+  {
+    "name": "BUN (Urea Nitrogen)",
+    "slug": "bun-urea-nitrogen",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001040",
+    "categories": "Kidney",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "C-Reactive Protein (standard)",
+    "slug": "c-reactive-protein-standard",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "006627",
+    "categories": "Inflammation",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "C-Telopeptide (CTx)",
+    "slug": "c-telopeptide-ctx",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Bone Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Cadmium, Blood",
+    "slug": "cadmium-blood",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "085340",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Cardio IQ Lipoprotein Fractionation (Ion Mobility)",
+    "slug": "cardio-iq-lipoprotein-fractionation-ion-mobility",
+    "missing": "Labcorp",
+    "quest_code": "91604",
+    "labcorp_code": "",
+    "categories": "Cardiovascular",
+    "notes": "Quest LDL-P / particle size. Distinct methodology from NMR"
+  },
+  {
+    "name": "Carnitine, Free & Total",
+    "slug": "carnitine-free-total",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "CEA",
+    "slug": "cea",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "002139",
+    "categories": "Cancer Markers",
+    "notes": "PASS 3: Quest code NOT confirmed on live directory - do not guess"
+  },
+  {
+    "name": "Ceramides (Cardio IQ)",
+    "slug": "ceramides-cardio-iq",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Cardiovascular",
+    "notes": "PASS 3: Quest code unverified"
+  },
+  {
+    "name": "Chloride",
+    "slug": "chloride",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001206",
+    "categories": "Electrolytes",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Choline",
+    "slug": "choline",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Chromium",
+    "slug": "chromium",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "CO2 (Bicarbonate)",
+    "slug": "co2-bicarbonate",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001578",
+    "categories": "Electrolytes",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Complement C3 + C4 + CH50",
+    "slug": "complement-c3-c4-ch50",
+    "missing": "Labcorp",
+    "quest_code": "37859",
+    "labcorp_code": "",
+    "categories": "Autoimmune",
+    "notes": ""
+  },
+  {
+    "name": "Cortisol, Free, 24-Hour Urine",
+    "slug": "cortisol-free-24-hour-urine",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Cortisol, PM",
+    "slug": "cortisol-pm",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Cortisol, Salivary",
+    "slug": "cortisol-salivary",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Creatinine Clearance",
+    "slug": "creatinine-clearance",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Kidney",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Deamidated Gliadin Peptide Ab",
+    "slug": "deamidated-gliadin-peptide-ab",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Autoimmune",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "DHEA (unconjugated)",
+    "slug": "dhea-unconjugated",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Endomysial Antibody",
+    "slug": "endomysial-antibody",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Autoimmune",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Erythropoietin",
+    "slug": "erythropoietin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Blood Count",
+    "notes": "PED/biohacker interest. PASS 3: codes"
+  },
+  {
+    "name": "Estrone",
+    "slug": "estrone",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Fecal Calprotectin",
+    "slug": "fecal-calprotectin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Inflammation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "G6PD",
+    "slug": "g6pd",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Genetics|Blood Count",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Galectin-3",
+    "slug": "galectin-3",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Inflammation|Cardiovascular",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "GDF-15",
+    "slug": "gdf-15",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health|Inflammation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Glutathione",
+    "slug": "glutathione",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Growth Hormone",
+    "slug": "growth-hormone",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "H. pylori Antibody",
+    "slug": "h-pylori-antibody",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "H. pylori Stool Antigen",
+    "slug": "h-pylori-stool-antigen",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Haptoglobin",
+    "slug": "haptoglobin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Blood Count|Inflammation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Heavy Metals Profile I, Whole Blood",
+    "slug": "heavy-metals-profile-i-whole-blood",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "042580",
+    "categories": "Heavy Metals",
+    "notes": ""
+  },
+  {
+    "name": "Hematocrit",
+    "slug": "hematocrit",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Blood Count",
+    "notes": "Ordered standalone by PED users (blood viscosity on cycle/TRT). PASS 3: codes"
+  },
+  {
+    "name": "Hemoglobin",
+    "slug": "hemoglobin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Blood Count",
+    "notes": "Ordered standalone by PED users. PASS 3: codes"
+  },
+  {
+    "name": "Hepatitis B Surface Antigen",
+    "slug": "hepatitis-b-surface-antigen",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Sexual Health / STD|Liver",
+    "notes": "PASS 3: both codes unverified. Regional sheet listed Labcorp 006395 but that conflicts with anti-HBs"
+  },
+  {
+    "name": "Homocysteine, Cardio IQ",
+    "slug": "homocysteine-cardio-iq",
+    "missing": "Labcorp",
+    "quest_code": "91733",
+    "labcorp_code": "",
+    "categories": "Cardiovascular|Inflammation",
+    "notes": "Same analyte as 31789, Cardio IQ branded variant"
+  },
+  {
+    "name": "IGFBP-3",
+    "slug": "igfbp-3",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "140152",
+    "categories": "Hormones",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Immunoglobulins IgA, IgG, IgM",
+    "slug": "immunoglobulins-iga-igg-igm",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001768",
+    "categories": "Autoimmune|General Health",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Iron & TIBC",
+    "slug": "iron-tibc",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001321",
+    "categories": "Vitamins & Minerals|Blood Count",
+    "notes": "CORRECTION: Labcorp 001321 is Iron + TIBC, NOT standalone serum iron"
+  },
+  {
+    "name": "Iron, Ferritin & TIBC Panel",
+    "slug": "iron-ferritin-tibc-panel",
+    "missing": "Labcorp",
+    "quest_code": "5616",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals|Blood Count",
+    "notes": "Quest-only bundled code"
+  },
+  {
+    "name": "Iron, Serum",
+    "slug": "iron-serum",
+    "missing": "Labcorp",
+    "quest_code": "571",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals|Blood Count",
+    "notes": "Labcorp standalone iron code unverified; 001321 is Iron+TIBC"
+  },
+  {
+    "name": "Lipoprotein(a), Cardio IQ",
+    "slug": "lipoprotein-a-cardio-iq",
+    "missing": "Labcorp",
+    "quest_code": "91729",
+    "labcorp_code": "",
+    "categories": "Cardiovascular|Genetics",
+    "notes": "Same analyte as 34604, Cardio IQ branded variant. NOT a conflict"
+  },
+  {
+    "name": "Lithium Level",
+    "slug": "lithium-level",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Lp-PLA2 Activity, Cardio IQ",
+    "slug": "lp-pla2-activity-cardio-iq",
+    "missing": "Labcorp",
+    "quest_code": "94218",
+    "labcorp_code": "",
+    "categories": "Cardiovascular|Inflammation",
+    "notes": "NOT an error; Cardio IQ branded variant of 94267"
+  },
+  {
+    "name": "Lymphocyte Subsets (CD4/CD8)",
+    "slug": "lymphocyte-subsets-cd4-cd8",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Manganese",
+    "slug": "manganese",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Methylmalonic Acid",
+    "slug": "methylmalonic-acid",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "706961",
+    "categories": "Vitamins & Minerals",
+    "notes": "Early B12-deficiency marker. PASS 3: Quest code"
+  },
+  {
+    "name": "Microalbumin / Albumin:Creatinine Ratio, Urine",
+    "slug": "microalbumin-albumin-creatinine-ratio-urine",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "140285",
+    "categories": "Kidney",
+    "notes": ""
+  },
+  {
+    "name": "Molybdenum",
+    "slug": "molybdenum",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Myoglobin",
+    "slug": "myoglobin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Cardiovascular|General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "N-Telopeptide (NTx)",
+    "slug": "n-telopeptide-ntx",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Bone Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Nickel",
+    "slug": "nickel",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "NMR LipoProfile (LDL-P)",
+    "slug": "nmr-lipoprofile-ldl-p",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "123810",
+    "categories": "Cardiovascular",
+    "notes": "CPT 83704. Quest analog = ion mobility 91604, NOT interchangeable"
+  },
+  {
+    "name": "Omega-3 & 6 Fatty Acids",
+    "slug": "omega-3-6-fatty-acids",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition",
+    "notes": "Labcorp regional code 2005877"
+  },
+  {
+    "name": "OmegaCheck (Quest)",
+    "slug": "omegacheck-quest",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition|Cardiovascular",
+    "notes": "PASS 3: Quest code unverified"
+  },
+  {
+    "name": "Osteocalcin",
+    "slug": "osteocalcin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Bone Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Parathyroid Hormone, Intact",
+    "slug": "parathyroid-hormone-intact",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Bone Health|Hormones",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Potassium",
+    "slug": "potassium",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001180",
+    "categories": "Electrolytes",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Prealbumin",
+    "slug": "prealbumin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Nutrition|Liver",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Proinsulin",
+    "slug": "proinsulin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Hormones|Metabolic",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Protein C",
+    "slug": "protein-c",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Coagulation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Protein S",
+    "slug": "protein-s",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Coagulation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Prothrombin (Factor II) G20210A",
+    "slug": "prothrombin-factor-ii-g20210a",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "511162",
+    "categories": "Genetics|Coagulation",
+    "notes": "Quest panel 17904 includes it. PASS 3: Quest standalone"
+  },
+  {
+    "name": "PSA, Ultrasensitive",
+    "slug": "psa-ultrasensitive",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "140731",
+    "categories": "Cancer Markers",
+    "notes": "Labcorp 480145 = serial monitor variant"
+  },
+  {
+    "name": "Renin Activity, Plasma",
+    "slug": "renin-activity-plasma",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "002006",
+    "categories": "Hormones",
+    "notes": ""
+  },
+  {
+    "name": "Serum Amyloid A",
+    "slug": "serum-amyloid-a",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Inflammation",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Serum Protein Electrophoresis",
+    "slug": "serum-protein-electrophoresis",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "General Health",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Sodium",
+    "slug": "sodium",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001198",
+    "categories": "Electrolytes",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "STI Profile (multi-analyte)",
+    "slug": "sti-profile-multi-analyte",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "144011",
+    "categories": "Sexual Health / STD",
+    "notes": "CT/NG variant 144082; +Trich variant 144027"
+  },
+  {
+    "name": "Syphilis RPR",
+    "slug": "syphilis-rpr",
+    "missing": "Labcorp",
+    "quest_code": "36126",
+    "labcorp_code": "",
+    "categories": "Sexual Health / STD",
+    "notes": "PASS 3: Labcorp code"
+  },
+  {
+    "name": "T3, Free by Dialysis LC/MS-MS",
+    "slug": "t3-free-by-dialysis-lc-ms-ms",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "503600",
+    "categories": "Thyroid",
+    "notes": "Quest code unverified"
+  },
+  {
+    "name": "T4, Free by Dialysis",
+    "slug": "t4-free-by-dialysis",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Thyroid",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Testosterone, Free (Dialysis) + Total + SHBG",
+    "slug": "testosterone-free-dialysis-total-shbg",
+    "missing": "Labcorp",
+    "quest_code": "37073",
+    "labcorp_code": "",
+    "categories": "Hormones",
+    "notes": ""
+  },
+  {
+    "name": "Testosterone, Free (Ultrafiltration) & Total",
+    "slug": "testosterone-free-ultrafiltration-total",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "070038",
+    "categories": "Hormones",
+    "notes": "NON-EQUIVALENT to Quest 36170 (dialysis vs ultrafiltration)"
+  },
+  {
+    "name": "Thallium",
+    "slug": "thallium",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Thyroglobulin",
+    "slug": "thyroglobulin",
+    "missing": "Labcorp",
+    "quest_code": "90810",
+    "labcorp_code": "",
+    "categories": "Thyroid|Cancer Markers",
+    "notes": "PASS 3: Labcorp standalone unconfirmed"
+  },
+  {
+    "name": "Tissue Transglutaminase IgA (Celiac)",
+    "slug": "tissue-transglutaminase-iga-celiac",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "164640",
+    "categories": "Autoimmune",
+    "notes": "Combo celiac screen = Labcorp 164107"
+  },
+  {
+    "name": "Total Protein",
+    "slug": "total-protein",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "001073",
+    "categories": "Liver|Metabolic",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Total Protein & Albumin",
+    "slug": "total-protein-albumin",
+    "missing": "Labcorp",
+    "quest_code": "7577",
+    "labcorp_code": "",
+    "categories": "Liver",
+    "notes": ""
+  },
+  {
+    "name": "Transferrin",
+    "slug": "transferrin",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "004481",
+    "categories": "Vitamins & Minerals|Blood Count",
+    "notes": "PASS 3: Quest code"
+  },
+  {
+    "name": "Trichomonas NAA",
+    "slug": "trichomonas-naa",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Sexual Health / STD",
+    "notes": "PASS 3: codes unverified. Labcorp 144027 = STI panel incl Trich"
+  },
+  {
+    "name": "Troponin T, High Sensitivity",
+    "slug": "troponin-t-high-sensitivity",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "140150",
+    "categories": "Cardiovascular",
+    "notes": ""
+  },
+  {
+    "name": "Uranium",
+    "slug": "uranium",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Heavy Metals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Vitamin B1 (Thiamine)",
+    "slug": "vitamin-b1-thiamine",
+    "missing": "Labcorp",
+    "quest_code": "5042",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "Quest 90353 = plasma variant. PASS 3: Labcorp code"
+  },
+  {
+    "name": "Vitamin B3 (Niacin)",
+    "slug": "vitamin-b3-niacin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Vitamin B5 (Pantothenic Acid)",
+    "slug": "vitamin-b5-pantothenic-acid",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Vitamin B7 (Biotin)",
+    "slug": "vitamin-b7-biotin",
+    "missing": "Quest + Labcorp",
+    "quest_code": "",
+    "labcorp_code": "",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: codes unverified"
+  },
+  {
+    "name": "Vitamin D, 1,25-Dihydroxy",
+    "slug": "vitamin-d-1-25-dihydroxy",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "081091",
+    "categories": "Vitamins & Minerals|Bone Health",
+    "notes": "Much lower consumer demand"
+  },
+  {
+    "name": "Vitamin K1",
+    "slug": "vitamin-k1",
+    "missing": "Quest",
+    "quest_code": "",
+    "labcorp_code": "121200",
+    "categories": "Vitamins & Minerals",
+    "notes": "PASS 3: Quest code"
+  }
+]

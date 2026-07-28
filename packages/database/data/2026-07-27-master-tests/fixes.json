@@ -1,0 +1,101 @@
+[
+  {
+    "existing_test_name": "TSH (Thyroid Stimulating Hormone)",
+    "field": "quest_code",
+    "current_value": "867",
+    "corrected_value": "899",
+    "severity": "HIGH",
+    "why": "867 is Total T4, not TSH. Quest directory confirms 899 (CPT 84443).",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/899"
+  },
+  {
+    "existing_test_name": "Estradiol Sensitive, LC/MS",
+    "field": "labcorp_code",
+    "current_value": "004515",
+    "corrected_value": "140244",
+    "severity": "HIGH",
+    "why": "004515 is standard ECLIA immunoassay estradiol. Sensitive LC/MS-MS is 140244 (CPT 82670).",
+    "source": "labcorp.com/tests/140244"
+  },
+  {
+    "existing_test_name": "PSA (Prostate-Specific Antigen)",
+    "field": "labcorp_code",
+    "current_value": "070234",
+    "corrected_value": "010322",
+    "severity": "HIGH",
+    "why": "070234 has no Labcorp directory page - suspect vendor SKU, retired code, or transcription error. Total PSA is 010322 (CPT 84153).",
+    "source": "labcorp.com/tests/010322"
+  },
+  {
+    "existing_test_name": "PSA (Prostate-Specific Antigen)",
+    "field": "quest_code",
+    "current_value": "34",
+    "corrected_value": "5363",
+    "severity": "HIGH",
+    "why": "Quest total PSA ordering code is 5363 (CPT 84153). Prior value 34 appears to be a truncated/incorrect entry.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/5363"
+  },
+  {
+    "existing_test_name": "Homocysteine",
+    "field": "quest_code",
+    "current_value": "91733",
+    "corrected_value": "31789",
+    "severity": "HIGH",
+    "why": "31789 is the standard Homocysteine order code (CPT 83090). 91733 is Cardio IQ Homocysteine - same analyte, branded variant. Keep both as separate rows.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/31789"
+  },
+  {
+    "existing_test_name": "Lp-PLA2 Activity",
+    "field": "quest_code",
+    "current_value": "94267",
+    "corrected_value": "94267",
+    "severity": "NO CHANGE",
+    "why": "94267 was CORRECT. 94218 is the Cardio IQ branded variant, not an error. Pass 1 flagged this incorrectly.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/94267"
+  },
+  {
+    "existing_test_name": "Lipoprotein(a) (Lp(a))",
+    "field": "quest_code",
+    "current_value": "34604",
+    "corrected_value": "34604",
+    "severity": "NO CHANGE",
+    "why": "34604 is correct and is what DTC vendors sell (immunoturbidimetric, nmol/L). 91729 is the Cardio IQ variant - add as a separate row, do not replace.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/34604"
+  },
+  {
+    "existing_test_name": "Testosterone Free (calculated) + Total",
+    "field": "labcorp_code",
+    "current_value": "(blank)",
+    "corrected_value": "140103",
+    "severity": "MEDIUM",
+    "why": "Quest 14966 = Free/Bioavailable/Total by MS. Closest Labcorp analog is 140103 (Free Direct w/ Total). Methodologies differ - flag in UI.",
+    "source": "labcorp.com/tests/140103"
+  },
+  {
+    "existing_test_name": "Testosterone Free Direct",
+    "field": "labcorp_code",
+    "current_value": "(blank)",
+    "corrected_value": "070195",
+    "severity": "MEDIUM",
+    "why": "Quest 18944 is calculated free (CPT 84402), NOT direct - the row label is wrong. Labcorp has no pure free-calc standalone; 070195 is closest.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/18944"
+  },
+  {
+    "existing_test_name": "Testosterone Free Direct",
+    "field": "name",
+    "current_value": "Testosterone Free Direct",
+    "corrected_value": "Testosterone, Free (Calculation)",
+    "severity": "HIGH",
+    "why": "Rename: Quest 18944 is a calculated free testosterone, not a direct immunoassay.",
+    "source": "testdirectory.questdiagnostics.com/test/test-detail/18944"
+  },
+  {
+    "existing_test_name": "Iron Panel (Iron, Transferrin Saturation, TIBC, UIBC)",
+    "field": "labcorp_code",
+    "current_value": "001321",
+    "corrected_value": "001321",
+    "severity": "LABEL FIX",
+    "why": "001321 is Iron + TIBC, NOT standalone serum iron. If any row labels it 'serum iron', correct the label.",
+    "source": "labcorp.com/tests/001321"
+  }
+]
