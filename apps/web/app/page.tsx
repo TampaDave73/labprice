@@ -16,12 +16,14 @@ import PageViewTracker from './components/PageViewTracker';
 // always get real, resolvable links; the demo fallback only appears during a genuine DB outage.
 export const dynamic = 'force-dynamic';
 
+// Demo set mirrors the original 10 primary categories, so all are isPrimary: true here — the
+// secondary-facet "More filters" disclosure just won't have anything in it during a DB outage.
 const DEMO_CATEGORIES = [
-  { name: 'Vitamins & Minerals', slug: 'vitamins-minerals' },
-  { name: 'Hormones', slug: 'hormones' },
-  { name: 'Metabolic', slug: 'metabolic' },
-  { name: 'Blood Count', slug: 'blood-count' },
-  { name: 'Cancer Markers', slug: 'cancer-markers' },
+  { name: 'Vitamins & Minerals', slug: 'vitamins-minerals', isPrimary: true },
+  { name: 'Hormones', slug: 'hormones', isPrimary: true },
+  { name: 'Metabolic', slug: 'metabolic', isPrimary: true },
+  { name: 'Blood Count', slug: 'blood-count', isPrimary: true },
+  { name: 'Cancer Markers', slug: 'cancer-markers', isPrimary: true },
 ];
 
 const DEMO_TESTS = [
@@ -90,7 +92,7 @@ async function getHomeData() {
       });
 
     return {
-      categories: categories.map((c) => ({ name: c.name, slug: c.slug })),
+      categories: categories.map((c) => ({ name: c.name, slug: c.slug, isPrimary: c.isPrimary })),
       popularTests: withMinPrice(popularTests),
       allTests: withMinPrice(allTests),
       testCount: allTests.length,

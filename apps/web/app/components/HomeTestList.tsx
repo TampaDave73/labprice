@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import CategoryTabs from './CategoryTabs';
+import CategoryFilters from './CategoryFilters';
 
 const CAT_COLORS: Record<string, { bg: string; color: string }> = {
   'Vitamins & Minerals': { bg: 'oklch(0.95 0.06 155)', color: 'oklch(0.35 0.14 155)' },
@@ -28,26 +28,44 @@ interface TestRow {
 
 interface Props {
   tests: TestRow[];
-  categories: { name: string; slug: string }[];
+  categories: { name: string; slug: string; isPrimary: boolean }[];
   testCount: number;
 }
 
 export default function HomeTestList({ tests, categories, testCount }: Props) {
-  const [activeCategory, setActiveCategory] = useState('all');
+  // Two independent multi-select facets: OR within a facet, AND across facets. An empty Set means
+  // that facet doesn't constrain the result (not "match nothing") — see the primaryOk/secondaryOk
+  // fallback below.
+  const [activePrimary, setActivePrimary] = useState<Set<string>>(new Set());
+  const [activeSecondary, setActiveSecondary] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'name' | 'price'>('name');
   const [showAll, setShowAll] = useState(false);
 
+  const togglePrimary = (slug: string) => setActivePrimary((prev) => {
+    const next = new Set(prev);
+    next.has(slug) ? next.delete(slug) : next.add(slug);
+    return next;
+  });
+  const toggleSecondary = (slug: string) => setActiveSecondary((prev) => {
+    const next = new Set(prev);
+    next.has(slug) ? next.delete(slug) : next.add(slug);
+    return next;
+  });
+
   const filtered = useMemo(() => {
-    let list = activeCategory === 'all'
-      ? tests
-      : tests.filter((t) => (t.categorySlugs ?? [t.categorySlug]).includes(activeCategory));
+    let list = tests.filter((t) => {
+      const slugs = t.categorySlugs ?? [t.categorySlug];
+      const primaryOk = activePrimary.size === 0 || slugs.some((s) => activePrimary.has(s));
+      const secondaryOk = activeSecondary.size === 0 || slugs.some((s) => activeSecondary.has(s));
+      return primaryOk && secondaryOk;
+    });
     if (sortBy === 'price') {
       list = [...list].sort((a, b) => (a.minPrice ?? 9999) - (b.minPrice ?? 9999));
     } else {
       list = [...list].sort((a, b) => a.name.localeCompare(b.name));
     }
     return list;
-  }, [tests, activeCategory, sortBy]);
+  }, [tests, activePrimary, activeSecondary, sortBy]);
 
   const visible = showAll ? filtered : filtered.slice(0, BROWSE_LIMIT);
   const showMoreVisible = filtered.length > BROWSE_LIMIT;
@@ -66,7 +84,13 @@ export default function HomeTestList({ tests, categories, testCount }: Props) {
           </p>
         </div>
         <div className="flex items-center flex-wrap" style={{ gap: 10 }}>
-          <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
+          <CategoryFilters
+            categories={categories}
+            activePrimary={activePrimary}
+            activeSecondary={activeSecondary}
+            onTogglePrimary={togglePrimary}
+            onToggleSecondary={toggleSecondary}
+          />
           <div
             className="flex"
             style={{
