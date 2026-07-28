@@ -108,6 +108,11 @@ export default async function TestDetailPage({ params }: Props) {
           normalRange: test.normalRange,
           questCode,
           labcorpCode,
+          thirdPartyOnly: test.thirdPartyOnly,
+          confidence: test.confidence,
+          notes: test.notes,
+          cardioIq: test.cardioIq,
+          labVariant: test.labVariant,
         }}
         offerings={offerings}
       />

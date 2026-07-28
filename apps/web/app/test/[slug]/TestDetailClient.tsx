@@ -34,6 +34,11 @@ interface TestInfo {
   normalRange: string | null;
   questCode: string | null;
   labcorpCode: string | null;
+  thirdPartyOnly: boolean;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  notes: string | null;
+  cardioIq: boolean;
+  labVariant: string | null;
 }
 
 interface Props {
@@ -192,6 +197,16 @@ export default function TestDetailClient({ test, offerings }: Props) {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.25 0.04 260)' }}>#{test.labcorpCode}</span>
             </div>
           )}
+          {test.cardioIq && (
+            <div style={{ padding: '4px 12px', background: 'oklch(0.95 0.05 300)', borderRadius: 20, border: '1px solid oklch(0.85 0.08 300)', fontSize: 12, fontWeight: 600, color: 'oklch(0.4 0.1 300)' }}>
+              Cardio IQ&reg; branded variant{test.labVariant ? ` — ${test.labVariant}` : ''}
+            </div>
+          )}
+          {test.confidence !== 'HIGH' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', background: 'oklch(0.97 0.05 80)', borderRadius: 20, border: '1px solid oklch(0.88 0.08 80)', fontSize: 12, fontWeight: 600, color: 'oklch(0.45 0.1 60)' }}>
+              &#9888; {test.confidence === 'MEDIUM' ? 'Partially verified' : 'Unverified'} — codes may need confirmation
+            </div>
+          )}
           <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 260)' }}>{offerings.length} ordering services compared</span>
           {lastChecked && (
             <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'oklch(0.55 0.04 260)' }}>
@@ -204,6 +219,13 @@ export default function TestDetailClient({ test, offerings }: Props) {
           )}
         </div>
       </div>
+
+      {test.notes && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', marginBottom: 16, borderRadius: 10, background: 'oklch(0.97 0.03 80)', border: '1px solid oklch(0.88 0.06 80)', fontSize: 13, color: 'oklch(0.4 0.06 60)' }}>
+        <span aria-hidden="true">&#9432;</span>
+        <span>{test.notes}</span>
+        </div>
+      )}
 
       {/* Two-column layout */}
       <div className="td-grid">
@@ -344,67 +366,77 @@ export default function TestDetailClient({ test, offerings }: Props) {
               <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Price</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Order</span>
             </div>
-            {sorted.map((row) => {
-              const isBest = cheapest != null && row.price === cheapest.price;
-              return (
-                <div
-                  key={row.id}
-                  className={isBest ? 'td-row-best' : 'td-row'}
-                  style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid oklch(0.96 0.01 260)', transition: 'background 0.1s', background: isBest ? BEST.rowBg : '#fff' }}
-                >
-                  <div>
-                    <div style={{ fontSize: 15, fontWeight: isBest ? 700 : 500, color: isBest ? BEST.label : 'oklch(0.2 0.04 260)' }}>
-                      {row.vendorName}
+            {offerings.length === 0 && test.thirdPartyOnly ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', fontSize: 14, color: 'oklch(0.5 0.04 260)' }}>
+                Not offered by Quest or LabCorp — this is a specialty/third-party test.
+              </div>
+            ) : offerings.length === 0 ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center', fontSize: 14, color: 'oklch(0.5 0.04 260)' }}>
+                No ordering services currently list this test.
+              </div>
+            ) : (
+              sorted.map((row) => {
+                const isBest = cheapest != null && row.price === cheapest.price;
+                return (
+                  <div
+                    key={row.id}
+                    className={isBest ? 'td-row-best' : 'td-row'}
+                    style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid oklch(0.96 0.01 260)', transition: 'background 0.1s', background: isBest ? BEST.rowBg : '#fff' }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: isBest ? 700 : 500, color: isBest ? BEST.label : 'oklch(0.2 0.04 260)' }}>
+                        {row.vendorName}
+                      </div>
+                      {isBest && (
+                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
+                          &#10003; Best Price
+                        </div>
+                      )}
+                      {row.checkedAt && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                          <span
+                            style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
+                            aria-hidden="true"
+                          />
+                          <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
+                        </div>
+                      )}
                     </div>
-                    {isBest && (
-                      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
-                        &#10003; Best Price
-                      </div>
-                    )}
-                    {row.checkedAt && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
-                        <span
-                          style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
-                          aria-hidden="true"
-                        />
-                        <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
-                      </div>
-                    )}
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.112 260)' }}>
+                        ${row.price.toFixed(2)}
+                      </span>
+                      {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
+                          above is the compared/ranked one; this is the discounted member alternative. */}
+                      {row.memberPrice != null && row.memberPrice < row.price && (
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                          ${row.memberPrice.toFixed(2)} for members
+                          {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 260)' }}> ({row.membershipNote})</span> : null}
+                        </div>
+                      )}
+                      {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
+                          LabCorp — the price above is the cheaper; the other lab is still an option. */}
+                      {row.altLabPrice != null && (
+                        <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                          ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <a
+                        href={`/api/v1/go/${row.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => trackEvent('vendor_click', { test_name: test.name, vendor_name: row.vendorName, price: row.price })}
+                        style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.087 260)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 260)' }}
+                      >
+                        Order
+                      </a>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.112 260)' }}>
-                      ${row.price.toFixed(2)}
-                    </span>
-                    {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
-                        above is the compared/ranked one; this is the discounted member alternative. */}
-                    {row.memberPrice != null && row.memberPrice < row.price && (
-                      <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
-                        ${row.memberPrice.toFixed(2)} for members
-                        {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 260)' }}> ({row.membershipNote})</span> : null}
-                      </div>
-                    )}
-                    {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
-                        LabCorp — the price above is the cheaper; the other lab is still an option. */}
-                    {row.altLabPrice != null && (
-                      <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
-                        ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <a
-                      href={`/api/v1/go/${row.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => trackEvent('vendor_click', { test_name: test.name, vendor_name: row.vendorName, price: row.price })}
-                      style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.087 260)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 260)' }}
-                    >
-                      Order
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Disclaimer */}
