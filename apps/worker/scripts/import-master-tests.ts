@@ -31,7 +31,13 @@ async function main() {
   // file, not a partial apply.
   const unknown = new Set<string>();
   for (const row of rows) {
-    for (const catName of splitPipes(row.categories)) {
+    const catNames = splitPipes(row.categories);
+    // A row with zero categories would otherwise only surface as a runtime TypeError on the `[0]!`
+    // non-null assertion below, mid-write-loop — i.e. a partial apply, not the clean whole-file abort
+    // this script promises. Catch it here, in the same pre-write validation pass as the other
+    // unknown-value checks, so it fails before any row is touched.
+    if (catNames.length === 0) unknown.add(`no categories (row: ${row.name})`);
+    for (const catName of catNames) {
       if (!categoryByName.has(catName)) unknown.add(`${catName} (row: ${row.name})`);
     }
     if (!CONFIDENCE.has(row.confidence)) unknown.add(`confidence="${row.confidence}" (row: ${row.name})`);
