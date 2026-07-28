@@ -26,11 +26,19 @@ const FIELD_MAP: Record<string, 'questCode' | 'labcorpCode' | 'name'> = {
   name: 'name',
 };
 
+// Ordering constraint on fixes.json: each fix row is matched independently, by an exact lookup of
+// `existing_test_name` against the CURRENT `tests.name` at the moment that row is processed (rows run
+// top-to-bottom, no batching by test). So any fix that renames a test (`field: 'name'`) must be the
+// LAST fix row for that test's original name in fixes.json — a later row keyed on the pre-rename name
+// would look up a name that no longer exists and silently report SKIP (no matching test), not an
+// error. (Today's fixes.json already satisfies this for "Testosterone Free Direct": its labcorp_code
+// fix precedes its name-rename fix.) This is a data-ordering rule to preserve when editing fixes.json,
+// not a reason to restructure the matching logic — independent per-row lookup-by-name is intentional.
 async function main() {
   const apply = process.argv.includes('--apply');
   const rows = fixes as Fix[];
 
-  let applied = 0, skippedNoMatch = 0, skippedNoOp = 0;
+  let applied = 0, skippedNoMatch = 0, skippedNoOp = 0, skippedUnrecognized = 0;
 
   for (const fix of rows) {
     if (fix.severity === 'NO CHANGE') { skippedNoOp++; console.log(`NO-OP  (${fix.severity}) ${fix.existing_test_name} — ${fix.why}`); continue; }
@@ -39,7 +47,10 @@ async function main() {
     if (!test) { skippedNoMatch++; console.log(`SKIP   no test named "${fix.existing_test_name}" exists in the database`); continue; }
 
     const field = FIELD_MAP[fix.field];
-    if (!field) { console.log(`SKIP   unrecognized field "${fix.field}" on ${fix.existing_test_name}`); continue; }
+    // Not a live case against today's fixes.json (every row's field is quest_code/labcorp_code/name),
+    // but counted separately so the summary line's counters always sum to the total row count even if
+    // a future fixes.json row has a typo'd/new field name.
+    if (!field) { skippedUnrecognized++; console.log(`SKIP   unrecognized field "${fix.field}" on ${fix.existing_test_name}`); continue; }
 
     const before = (test as unknown as Record<string, string | null>)[field];
     const after = fix.corrected_value;
@@ -64,7 +75,7 @@ async function main() {
     ]);
   }
 
-  console.log(`\n${applied} ${apply ? 'applied' : 'would apply'}, ${skippedNoMatch} skipped (no matching test), ${skippedNoOp} no-op.`);
+  console.log(`\n${applied} ${apply ? 'applied' : 'would apply'}, ${skippedNoMatch} skipped (no matching test), ${skippedNoOp} no-op, ${skippedUnrecognized} skipped (unrecognized field).`);
   if (!apply) console.log('Dry run only — re-run with --apply to write.');
 }
 
