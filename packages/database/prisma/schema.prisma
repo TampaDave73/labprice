@@ -41,6 +41,12 @@ enum TrustLevel {
   HIGH
 }
 
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum PriceSource {
   SCRAPE
   MANUAL
@@ -196,6 +202,10 @@ model Category {
   name         String   @unique
   slug         String   @unique
   displayOrder Int      @default(0) @map("display_order")
+  // The original 10-category taxonomy renders as primary filter chips on the homepage; anything added
+  // later (the 2026-07-27 taxonomy expansion's 11 new categories, or any future admin-created one
+  // this flag is left true for unless explicitly demoted) renders in the secondary/expandable facet.
+  isPrimary    Boolean  @default(true) @map("is_primary")
   colorBg      String?  @map("color_bg")
   colorText    String?  @map("color_text")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -222,6 +232,33 @@ model Test {
   normalRange  String?   @map("normal_range")
   questCode    String?   @map("quest_code")
   labcorpCode  String?   @map("labcorp_code")
+  // Free-text lab methodology ("LC/MS-MS", "ECLIA immunoassay", "equilibrium dialysis + LC/MS-MS").
+  // Two tests with the same analyte but different methodology are NEVER the same product — this is
+  // what stops the matcher from comparing a $29 immunoassay total-T next to an $89 dialysis free+total.
+  methodology  String?   @map("methodology")
+  // Free-text variant label ("standard", "Cardio IQ", "ultrasensitive", "dialysis") — human-readable
+  // sibling of `cardioIq` below; not matched on, purely descriptive/UI.
+  labVariant   String?   @map("lab_variant")
+  // Quest routes advanced-CV analytes through branded order codes (Cardio IQ®). A cardioIq=true row
+  // is a SIBLING SKU of a standard-code row for the same analyte, never a duplicate to merge and
+  // never a conflict to flag — see packages/scrapers/src/catalog/matcher.ts, unaffected either way
+  // since each is its own Test row with its own code.
+  cardioIq     Boolean   @default(false) @map("cardio_iq")
+  // How reliably this test's codes were verified against the labs' own directories. Gates automated
+  // scraper matching (LOW never auto-approves a price — see shouldAutoApprove in persist.ts /
+  // scrape-execute.ts) independently of vendor trust.
+  confidence   Confidence @default(LOW)
+  // True for tests with no standard Quest/LabCorp order code at all (specialty-only: Omega-3 Index,
+  // Zonulin, Biological Age, Telomere Length, NAD+, GlycanAge, Klotho). Drives the "Not offered by
+  // Quest or Labcorp" empty state instead of a blank price table.
+  thirdPartyOnly Boolean @default(false) @map("third_party_only")
+  // Free-text research note — verification caveats, "PASS 3: codes unverified", region-variable code
+  // callouts ("Quest gates this by service area — verify locally"). Rendered as a small UI callout
+  // when present; not otherwise machine-read.
+  notes        String?   @map("notes")
+  // Stamped NOW() only when confidence is promoted to HIGH (by the import script or a future manual
+  // admin action) — when a code was actually last confirmed against the lab's own directory.
+  codeVerifiedAt DateTime? @map("code_verified_at")
   isPopular    Boolean   @default(false) @map("is_popular")
   displayOrder Int       @default(0) @map("display_order")
   // search_vector tsvector is a GENERATED ALWAYS column in ddl.sql; Prisma cannot model it.
@@ -248,6 +285,8 @@ model Test {
   @@index([categoryId])
   @@index([isPopular])
   @@index([displayOrder])
+  @@index([questCode])
+  @@index([labcorpCode])
   @@map("tests")
 }
 

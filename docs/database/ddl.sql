@@ -217,6 +217,15 @@ CREATE UNIQUE INDEX tests_slug_active
     ON tests (slug)
     WHERE deleted_at IS NULL;
 
+-- Partial indexes for the two lab-code lookups (Prisma's db:push can't express a WHERE clause on
+-- @@index, so these are applied here as raw SQL directly against production once — see Step 6).
+-- The plain non-partial equivalents from schema.prisma cover every environment already; these two
+-- are a production-only refinement.
+CREATE INDEX IF NOT EXISTS idx_tests_quest_code
+    ON tests (quest_code) WHERE quest_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_tests_labcorp_code
+    ON tests (labcorp_code) WHERE labcorp_code IS NOT NULL;
+
 -- ============================================================================
 -- 7. PARTITION MAINTENANCE TEMPLATE
 -- ============================================================================
