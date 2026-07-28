@@ -41,6 +41,24 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   expose `methodology`/`lab_variant`/`cardio_iq`/`confidence`/`third_party_only`/`notes` for editing;
   `codeVerifiedAt` stays read-only everywhere (system-stamped, not admin-editable).
 
+### Fixed (2026-07-27, reconciled 29 duplicate tests created by the master import — 278 → 249 tests)
+- The upsert-by-slug master import (above) created **29 new, empty-offering duplicate rows** for
+  tests that already existed in production under a different slug — the master research had
+  re-slugged/relabeled them, so the import couldn't match them by slug even though their
+  `questCode`/`labcorpCode` matched exactly. Each pair was merged: the **pre-existing row is kept**
+  (it holds the real `Offering`/`PriceHistory` data), updated with the master row's researched
+  `methodology`/`labVariant`/`cardioIq`/`confidence`/`thirdPartyOnly`/`notes` plus a full
+  `TestCategory`/`TestAlias` replace, `isPopular` OR'd (never lost), `codeVerifiedAt` stamped only on
+  `HIGH` confidence; the empty duplicate is **soft-deleted** (`deletedAt`, never hard-deleted). One
+  `AuditLog` row per merge (`action: 'test.merge_duplicate'`). Script:
+  `apps/worker/scripts/merge-duplicate-tests.ts`. Net effect: non-deleted test count **278 → 249**;
+  confidence split moves from 145 HIGH / 33 MEDIUM / 100 LOW to **145 HIGH / 33 MEDIUM / 71 LOW** (the
+  29 kept rows inherited real research instead of sitting at the default LOW). Three further
+  orphaned slugs were deliberately **left alone** pending real research/product decisions —
+  `apolipoprotein-b-apob`, `iron-panel`, `testosterone-free-total` — see the `note` field on each in
+  `packages/database/data/2026-07-27-master-tests/orphaned-pre-existing-tests.json` (now holding only
+  these 3, down from the original 32 flagged tests).
+
 ### Fixed (2026-07-27, master-list corrections applied to production)
 - Applied 8 of 11 corrections from the master-list research pass to production tests (the other 3
   targeted rows that no longer existed, or were `NO CHANGE`-severity by design) — audit-logged via the

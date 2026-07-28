@@ -87,6 +87,19 @@ export function describeAuditRow(log: AuditRow, entityLabel: string | null): { t
         detail: [severity ? `severity: ${severity}` : null, why ?? null].filter(Boolean).join(' — ') || null,
       };
     }
+    case 'test.merge_duplicate': {
+      // apps/worker/scripts/merge-duplicate-tests.ts (2026-07-27) — reconciles a duplicate Test row the
+      // master-list import created under a new slug for a test that already existed under a different
+      // slug (same questCode/labcorpCode). The pre-existing row (with real Offering/PriceHistory data)
+      // is kept and updated with the master row's researched fields; the empty duplicate is soft-
+      // deleted. `entityLabel` here is the KEPT row's current name.
+      const v = json(log.newValues);
+      const old = json(log.oldValues);
+      return {
+        title: `Duplicate test merged — ${entityLabel ?? (v.keptSlug as string) ?? 'a test'}${who ? ` by ${who}` : ''}`,
+        detail: `merged from "${v.mergedFromSlug ?? '?'}" (now removed); confidence ${old.confidence ?? '?'} → ${v.confidence ?? '?'}`,
+      };
+    }
     case 'analytics.reset': {
       const v = json(log.oldValues);
       return {
