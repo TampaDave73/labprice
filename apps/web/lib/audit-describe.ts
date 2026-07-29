@@ -100,6 +100,16 @@ export function describeAuditRow(log: AuditRow, entityLabel: string | null): { t
         detail: `merged from "${v.mergedFromSlug ?? '?'}" (now removed); confidence ${old.confidence ?? '?'} → ${v.confidence ?? '?'}`,
       };
     }
+    case 'offerings.audit_import': {
+      // apps/api/v1/admin/offerings/import — the cross-vendor Offerings audit round-trip
+      // (Export/Import Excel on /admin/offerings). Bulk external_url fixes and "deactivate" actions
+      // in one file, across every vendor at once.
+      const v = json(log.newValues);
+      return {
+        title: `Offerings audit import${who ? ` by ${who}` : ''}`,
+        detail: `${v.updated ?? 0} updated, ${v.unchanged ?? 0} unchanged`,
+      };
+    }
     case 'analytics.reset': {
       const v = json(log.oldValues);
       return {

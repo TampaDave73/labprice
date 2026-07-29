@@ -9,6 +9,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-07-29, cross-vendor Offerings audit Excel round-trip)
+- **`/admin/offerings` gets Export/Import Excel** for bulk-auditing every live test↔vendor price link
+  across all 17 vendors at once — one row per offering, sorted by test then vendor, with the vendor's
+  own product name (from the `VendorProduct` ingest layer) next to our test name, so a wrong match is
+  visible without opening the URL. `external_url` is editable; an `action` column (`deactivate`)
+  soft-unlinks a wrong offering in bulk. Same dry-run-diff-then-apply contract as the Tests/Discovered/
+  Vendor-Catalog round-trips; audit-logged (`offerings.audit_import`). Verified live against
+  production: round-tripped an unmodified export (0 changes), then a real URL fix + deactivate (both
+  applied and confirmed, then reverted).
+
 ### Added (2026-07-27, master test catalog expansion — 66 → 278 tests)
 - **Imported a 246-row master biomarker list, growing the production catalog from 66 to 278 tests**
   (212 created, 34 updated by slug match; 32 pre-existing tests not on the master list were kept, not

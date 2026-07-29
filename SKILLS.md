@@ -217,8 +217,19 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     delete-by-sheet; use the ✕ button in the one-by-one table to unlink. A blank `offering_id` row
     with both URL and price still blank is just an untouched reference row (`skippedBlank` in the
     response), not an error.
-- **Offerings** — read-only, filterable overview of every test↔vendor price link; vendor names link
-  to the vendor editor. (Links are *managed* per-vendor in the Catalog.)
+- **Offerings** — filterable overview of every test↔vendor price link; vendor names link to the
+  vendor editor. Links are *created* per-vendor in the Catalog (or by the scraper); this page bulk-
+  *audits and fixes* them across every vendor at once via **Export/Import Excel**
+  (`GET`/`POST /api/v1/admin/offerings/export|import`) — one row per live offering, sorted by test
+  then vendor so every vendor's link for the same test sits together, with the vendor's OWN product
+  name (from the last catalog crawl that matched it, via `VendorProduct`) sitting next to our test
+  name — a wrong match (e.g. a vendor's "Iron" link actually pointing at a Testosterone page) is
+  visible without opening the URL. `external_url` is editable (fix a wrong link); an `action` column
+  (blank / `deactivate`) bulk-unlinks a wrong offering — soft (`isActive:false`), never deletes data
+  or price history, same as the ✕ button in the per-vendor Catalog table. `vendor_product_name` and
+  `current_price` are reference-only (not imported back — prices come from the scraper, names come
+  from the vendor). Same dry-run-diff-then-apply contract as every other admin workbook here;
+  transactional + audit-logged (`offerings.audit_import`).
 - **Change Queue** (cursor-paginated, 25/page) — review staged price changes (Approve/Reject); has an
   in-UI workflow explainer. **Reject is a pure no-op** — nothing on `Offering` is touched until
   Approve; the live price just stays whatever it already was. **New Price is editable** before
