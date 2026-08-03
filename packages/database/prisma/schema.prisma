@@ -557,6 +557,13 @@ model ScrapeJob {
   startedAt    DateTime?  @map("started_at")
   completedAt  DateTime?  @map("completed_at")
   errorMessage String?    @map("error_message")
+  // True when this catalog run was aimed at a hand-picked subset of the vendor's offerings
+  // (requeue-on-add prices just the one newly-linked test) rather than the whole vendor. Such a run
+  // is NOT the vendor's "last scrape": the weekly digest would report the vendor's health from a
+  // single test, and the daily scheduler would treat the vendor as freshly scraped and push its real
+  // run out by a full cycle. Per-URL (scrape-execute) jobs stay false — one job per offering IS the
+  // unit of work there, so every job is a complete one.
+  partial      Boolean    @default(false)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 

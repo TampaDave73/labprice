@@ -41,10 +41,12 @@ export function createScheduleWorker() {
 
       // Latest job per vendor (any trigger/status — a failed run still counts as an attempt; BullMQ
       // retries cover transient failures, and persistent ones surface in the report, not by hammering
-      // the vendor daily).
+      // the vendor daily). `partial: false` excludes requeue-on-add runs: pricing one newly-linked
+      // test is not a scrape of the vendor, and counting it would silently postpone the vendor's real
+      // run by a full cycle (adding one test to 17 vendors reset every clock on 2026-07-28).
       const lastJobs = await prisma.scrapeJob.groupBy({
         by: ['vendorId'],
-        where: { vendorId: { in: configs.map((c) => c.vendorId) } },
+        where: { vendorId: { in: configs.map((c) => c.vendorId) }, partial: false },
         _max: { createdAt: true },
       });
       const lastByVendor = new Map(lastJobs.map((j) => [j.vendorId, j._max.createdAt]));

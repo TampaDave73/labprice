@@ -337,11 +337,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Automatic scheduling** (`workers/scrape-schedule.ts`): the worker registers a **daily tick**
   (06:00 UTC, BullMQ job scheduler in `index.ts`). Each tick scrapes vendors that are *due* per
   `ScrapeVendorConfig.frequencyDays` (admin vendor page → "Scrape frequency"; default 7 = weekly,
-  0 = manual only). ANY prior ScrapeJob resets the clock (manual runs count). Master switch:
-  `scrape_enabled` on admin Settings.
+  0 = manual only). ANY prior **non-partial** ScrapeJob resets the clock (full manual runs count;
+  `partial` requeue-on-add runs do not — see the `ScrapeJob.partial` note under Gotchas in CLAUDE.md).
+  Master switch: `scrape_enabled` on admin Settings.
 - **Status emails** (`apps/worker/src/report.ts`, `workers/scrape-report.ts`): weekly digest to all
-  admins (Mondays 12:00 UTC) — per-vendor last-run status, unpriced tests (UNMATCHED results),
-  overdue detection, pending change count, weekly error count. Scheduled-run failures also alert
+  admins (Mondays 12:00 UTC) — per-vendor last-run status (newest non-`partial` job), unpriced tests
+  (UNMATCHED results), overdue detection, pending change count, weekly error count. "Priced X of Y" is
+  `testsFound - unpriced` of `testsFound` — `ScrapeRun.testsFound` is tests **attempted**, not priced.
+  Scheduled-run failures also alert
   immediately (throttled 1/vendor/day). Needs `RESEND_API_KEY` on the worker; without it the email
   body is logged to the worker console instead (handy for local dry-runs).
 - **Price-range chart**: test detail pages chart the last 12 months of `PriceHistory` as a single
@@ -665,6 +668,28 @@ What it does **not** check — do these by hand in the admin UI before calling a
 - If anything came back `FAILED` or with unexpected errors, read the message directly in **Recent Runs**
   (`ScrapeError.message`, e.g. `"HTTP 403 for https://..."`) before guessing — the actual cause is
   usually right there.
+
+### Triaging a digest full of "Failed" vendors
+
+`"catalog crawl returned 0 products … likely blocked (WAF/challenge page)"` is a real signal but was
+historically over-eager (see the 2026-08-03 CHANGELOG entry). Before concluding a vendor is blocked:
+
+```bash
+# From apps/worker — read-only, no writes; per vendor: recent jobs, run coverage, live trust score.
+DOTENV_CONFIG_PATH=../../.env npx tsx scripts/audit-scrape-failures.ts
+DOTENV_CONFIG_PATH=../../.env npx tsx scripts/audit-scrape-failures.ts --days=30 --vendor=<slug>
+```
+
+Read the pattern before reading any single row:
+- **Several unrelated vendors failing in the same hour is almost never a WAF.** Different sites sit
+  behind different WAFs; they don't coordinate. Look for what those vendors share in OUR code instead.
+- **Which vendors are healthy is the clue.** The 4 API vendors (`fetchAll`: Dirt Cheap Labs, MitoHealth,
+  DirectLabs, Jason Health) skip catalog narrowing entirely, so an "everything page-based failed, every
+  API vendor is fine" split points at the narrowing/crawl path, not at the vendor sites.
+- **Check what the failing run covered.** A `partial` run (or one covering a couple of offerings out of
+  hundreds) is a requeue-on-add run for one newly-linked test — a poor basis for judging vendor health.
+- **A genuine block fails the catalog fetch itself**, usually as `HTTP 403 for …` from `httpFetchHtml`,
+  or as a catalog that parses to zero *entries*. Confirm with `verify-vendor.ts` against the live site.
 
 ### Verifying UI
 Use the preview tools (`preview_start`, `preview_eval`, `preview_screenshot`) with the admin

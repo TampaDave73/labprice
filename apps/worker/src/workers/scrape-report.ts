@@ -159,8 +159,10 @@ export function createReportWorker() {
           continue;
         }
 
+        // `partial: false` — a requeue-on-add run prices a single newly-linked test, so reporting the
+        // vendor's health from it is meaningless ("priced 0 of 1" for a vendor with 200 offerings).
         const lastJob = await prisma.scrapeJob.findFirst({
-          where: { vendorId: config.vendorId },
+          where: { vendorId: config.vendorId, partial: false },
           orderBy: { createdAt: 'desc' },
           include: { runs: { orderBy: { createdAt: 'desc' }, take: 1 } },
         });
@@ -193,8 +195,12 @@ export function createReportWorker() {
         });
         const unmatchedNames = unmatched.map((u) => u.test.name);
 
-        const pricedCount = run?.testsFound ?? 0;
-        const totalLinked = pricedCount + unmatchedNames.length;
+        // `ScrapeRun.testsFound` is tests ATTEMPTED, not tests priced (persist.ts sets it to
+        // `matches.length`), so the priced count is what's left after the ones we couldn't price.
+        // Adding the two together double-counted: a run that attempted 1 test and failed to price it
+        // reported "1 of 2" — claiming a success that never happened, on a total that never existed.
+        const totalLinked = run?.testsFound ?? 0;
+        const pricedCount = Math.max(0, totalLinked - unmatchedNames.length);
         const state: State = overdue ? 'overdue' : unmatchedNames.length > 0 ? 'gaps' : 'ok';
         rows.push({
           name,

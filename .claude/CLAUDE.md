@@ -153,8 +153,23 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     Relatedly: **`TestCode` (the
     `test_codes` table/model in `schema.prisma`) is confirmed dead code** — zero readers or writers
     anywhere in the app, worker, or scripts. `Test.questCode`/`Test.labcorpCode` are the sole canonical
-    code fields; don't resurrect `TestCode` without re-checking this note first. Also: **`Category.isPrimary`**
-    (added with the master import, 21-category taxonomy) drives the homepage's primary/secondary filter
+    code fields; don't resurrect `TestCode` without re-checking this note first.
+12. **Zero products from a catalog crawl is NOT proof of a block.** Catalog runs narrow by name
+    (`narrow: true` by default): only catalog entries whose name overlaps a test being priced get a
+    detail-page fetch. A run for one unusual test the vendor doesn't sell therefore selects **zero**
+    pages and yields zero products from a perfectly healthy crawl. The old guard failed such runs with
+    *"likely blocked (WAF/challenge page)"* — on 2026-07-28 linking one test (Choline) to every vendor
+    turned all 11 page-based vendors "Failed" in one hour, while the 4 `fetchAll` API vendors (which
+    skip narrowing) correctly showed it as unmatched. The guard now keys off the **full catalog listing**
+    (`catalogEntries`), plus a separate check for `selectedCount > 0 && products === 0` (pages chosen,
+    none parsed). If you touch the guards in `persist.ts`, keep that distinction — and remember several
+    unrelated vendors failing at once points at our shared code, not at their WAFs. Related:
+    **`ScrapeJob.partial`** marks a run aimed at a hand-picked `offeringIds` subset (requeue-on-add).
+    The weekly digest and the daily scheduler both filter `partial: false` — a one-test run must not
+    stand in for the vendor's health, nor reset its scrape clock. Per-URL `scrape-execute` jobs stay
+    `false` (one job per offering IS the whole unit of work there). Also: **`ScrapeRun.testsFound` is
+    tests *attempted*, not tests priced** — don't add the unpriced count on top of it to get a total.
+13. **`Category.isPrimary`** (added with the master import, 21-category taxonomy) drives the homepage's primary/secondary filter
     split (`CategoryFilters.tsx`) — it's a real column, not a hardcoded category-name list, so a newly
     added category defaults to secondary (`isPrimary=false`) unless set otherwise.
 

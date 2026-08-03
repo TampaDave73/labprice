@@ -226,7 +226,15 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   const settings = await getScrapeSettings();
 
   const job = await prisma.scrapeJob.create({
-    data: { vendorId: opts.vendorId, triggeredBy: opts.triggeredBy ?? 'MANUAL', status: 'RUNNING', startedAt: new Date() },
+    // `partial` when we were handed a specific offering list (requeue-on-add) — this run says nothing
+    // about the vendor's overall health, so the digest and scheduler skip it. See ScrapeJob.partial.
+    data: {
+      vendorId: opts.vendorId,
+      triggeredBy: opts.triggeredBy ?? 'MANUAL',
+      status: 'RUNNING',
+      startedAt: new Date(),
+      partial: !!opts.offeringIds,
+    },
   });
   const run = await prisma.scrapeRun.create({
     data: { jobId: job.id, vendorId: opts.vendorId, status: 'RUNNING', startedAt: new Date() },
@@ -241,13 +249,30 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     matches = result.matches;
     catalogProducts = result.products;
     catalogEntries = result.entries;
-    // A real catalog is never empty — 0 products means the crawl was silently blocked (an
-    // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
-    // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
-    // scrape that matched nothing.
-    if (catalogProducts.length === 0) {
+    // Health checks on the CRAWL itself, before we judge the matching. Both must key off the full
+    // catalog listing, NOT the narrowed detail-page subset — see the 2026-07-28 incident below.
+    //
+    // A real catalog is never empty: 0 entries means the crawl was silently blocked (an unresolved
+    // WAF challenge page parses as "no products") or the site layout changed. Fail the run so it
+    // alerts/digests as a failure instead of masquerading as a successful scrape that matched nothing.
+    if (catalogEntries.length === 0) {
       throw new Error(`catalog crawl returned 0 products for ${vendor.name} — likely blocked (WAF/challenge page) or the site layout changed`);
     }
+    // The catalog listed products but every detail page we chose to fetch came back unparseable —
+    // per-page blocking or a product-template change. Still a real failure, just a later one.
+    if (result.selectedCount > 0 && catalogProducts.length === 0) {
+      throw new Error(
+        `all ${result.selectedCount} product page(s) failed to parse for ${vendor.name} (catalog listed ${catalogEntries.length}) — likely blocked or the product-page layout changed`,
+      );
+    }
+    // WHY there is no `catalogProducts.length === 0` check here (regression guard): this check used
+    // to be exactly that, and it misfired badly on 2026-07-28. Narrowing (`narrow: true`) only fetches
+    // detail pages whose NAME overlaps one of the tests being priced, so a run for a single unusual
+    // test the vendor doesn't sell legitimately selects ZERO pages and yields zero products with a
+    // perfectly healthy crawl. Adding one such test (Choline) to every vendor turned all 11
+    // page-based vendors FAILED with a bogus "likely blocked (WAF)" message in the same hour, while
+    // the 4 API vendors — which skip narrowing entirely — correctly reported it as simply unmatched.
+    // Zero products is only evidence of breakage when we actually asked for pages and got nothing.
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await prisma.scrapeRun.update({ where: { id: run.id }, data: { status: 'FAILED', errorsCount: 1, completedAt: new Date(), durationMs: Date.now() - started } });

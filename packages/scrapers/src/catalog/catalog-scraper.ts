@@ -92,19 +92,30 @@ export async function buildCatalogIndex(
  * the vendor sells, not just the narrowed/detail-fetched subset. The ingest layer (VendorProduct)
  * persists all of them, so nothing the crawl saw is discarded even on a narrow run. For API vendors
  * the products ARE the full catalog, so entries is derived from them.
+ *
+ * `selectedCount` is how many detail pages the narrowing actually chose to fetch. Callers need it to
+ * tell apart the two very different reasons `products` can come back empty: narrowing picked nothing
+ * (normal — none of the tests we asked about look like anything this vendor sells) versus every
+ * chosen page failing to fetch/parse (a real breakage). See the guards in `persist.ts`.
  */
 export async function buildCatalogIndexDetailed(
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
   candidateTests?: TestKey[],
-): Promise<{ products: CatalogProduct[]; entries: CatalogEntry[] }> {
+): Promise<{ products: CatalogProduct[]; entries: CatalogEntry[]; selectedCount: number }> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
 
   // API vendors (Dirt Cheap Labs): one fetch returns the whole priced catalog — no per-product pages,
   // and no name-narrowing (matching is by code, so we keep every product).
   if (adapter.fetchAll) {
     const products = await adapter.fetchAll(deps, cfg);
-    return { products, entries: products.map((p) => ({ name: p.name, slug: p.slug, url: p.url })) };
+    return {
+      products,
+      entries: products.map((p) => ({ name: p.name, slug: p.slug, url: p.url })),
+      // No detail-page step for API vendors, so "selected" is just what the API returned — keeps the
+      // caller's `selectedCount > 0 && products === 0` breakage check inert for this path.
+      selectedCount: products.length,
+    };
   }
 
   const entries = await fetchCatalogEntries(deps, cfg);
@@ -133,7 +144,7 @@ export async function buildCatalogIndexDetailed(
     if (i < selected.length - 1 && delay > 0) await sleep(delay);
   }
   deps.onLog?.(`indexed ${products.length}/${selected.length} product page(s)`);
-  return { products, entries };
+  return { products, entries, selectedCount: selected.length };
 }
 
 /** Match each of our tests against an already-built product index. */
@@ -151,11 +162,11 @@ export async function discover(
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
   opts: { narrow?: boolean } = {},
-): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[]; entries: CatalogEntry[] }> {
+): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[]; entries: CatalogEntry[]; selectedCount: number }> {
   const narrow = opts.narrow ?? true;
-  const { products, entries } = await buildCatalogIndexDetailed(deps, cfg, narrow ? tests : undefined);
+  const { products, entries, selectedCount } = await buildCatalogIndexDetailed(deps, cfg, narrow ? tests : undefined);
   const matches = matchOfferings(tests, products, cfg.matchOptions);
-  return { products, matches, entries };
+  return { products, matches, entries, selectedCount };
 }
 
 /** Default HTTP fetcher: plain GET with a browser-ish UA and a timeout. No JS execution needed. */

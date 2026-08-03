@@ -9,6 +9,34 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-08-03, false "blocked (WAF)" scrape failures on 11 vendors)
+- **The empty-catalog guard no longer misreads a narrowed crawl as a block.** `runVendorDiscovery`
+  failed any run that produced 0 *products*, but with name-narrowing on (`narrow: true`, the default)
+  products only exist for catalog entries whose name overlaps a test being priced. A run for a single
+  test the vendor doesn't sell legitimately selects zero detail pages — so a healthy crawl was recorded
+  as `FAILED` with the message *"catalog crawl returned 0 products … likely blocked (WAF/challenge
+  page)"*. Linking one unusual test (Choline) to every vendor on 2026-07-28 did exactly that to all 11
+  page-based vendors in one hour, while the 4 API vendors (which skip narrowing) correctly reported it
+  as a plain unmatched test. The guard now keys off the **full catalog listing** (`entries`), with a
+  second, separate check for "pages were selected and every one failed to parse" — so genuine blocks
+  and genuine product-template breakage still fail loudly, and narrowing-found-nothing doesn't.
+  `buildCatalogIndexDetailed`/`discover` return `selectedCount` to make the distinction available.
+  6 regression tests (`__tests__/catalog-scraper.test.ts`; 210 total).
+- **A requeue-on-add run is no longer treated as the vendor's last scrape** (new `ScrapeJob.partial`,
+  set when `runVendorDiscovery` is handed an explicit `offeringIds` list — the add-a-vendor-to-a-test
+  path). It was distorting two things: the weekly digest reported each vendor's health from a run that
+  covered one test, and the daily scheduler counts ANY prior job as "scraped", so adding one test to 17
+  vendors silently pushed every vendor's real weekly run out by a full cycle. Both now filter
+  `partial: false`. Per-URL (`scrape-execute`) jobs stay `false` — one job per offering is a complete
+  unit of work there. **Needs `prisma db push` against production.**
+- **Weekly digest "Priced X of Y" was double-counting.** `ScrapeRun.testsFound` is tests *attempted*,
+  not tests priced, and the report added the unpriced count on top of it — a run that attempted 1 test
+  and priced none reported "1 of 2". Priced is now `testsFound - unpriced` out of `testsFound`.
+- **New read-only forensics script** `apps/worker/scripts/audit-scrape-failures.ts` — per vendor, the
+  recent scrape jobs with what each run covered, the vendor's live trust score, and an explicit
+  suspect-vs-genuine verdict on each failure. Written to tell a narrowing misfire from a real block on
+  the live database.
+
 ### Added (2026-07-29, cross-vendor Offerings audit Excel round-trip)
 - **`/admin/offerings` gets Export/Import Excel** for bulk-auditing every live test↔vendor price link
   across all 17 vendors at once — one row per offering, sorted by test then vendor, with the vendor's
