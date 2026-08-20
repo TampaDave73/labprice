@@ -19,7 +19,10 @@ async function getTest(slug: string) {
       category: true,
       codes: true,
       offerings: {
-        where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+        // vendor filter: offering.isActive/deletedAt don't auto-follow the vendor being
+        // deactivated/deleted (e.g. Dirt Cheap Labs going out of business) — without this a
+        // removed vendor keeps showing here.
+        where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
         include: { vendor: true },
         orderBy: { currentPrice: 'asc' },
       },

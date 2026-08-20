@@ -9,6 +9,26 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-08-20, removed vendor kept showing on public pages + stale codes from its dead catalog)
+- **Offerings from a deactivated/deleted vendor still appeared everywhere** (search, category pages,
+  homepage stats, test detail, price trends) — `Offering.isActive`/`deletedAt` are independent columns
+  that never auto-followed `Vendor.isActive`/`deletedAt`, so removing a vendor (e.g. Dirt Cheap Labs
+  going out of business) left its price rows live. Every public query that reads `offerings` now also
+  requires `vendor: { isActive: true, deletedAt: null }` (`test-service.ts`, `search-service.ts`,
+  `offering-service.ts`, `test/[slug]/page.tsx`, `category/[slug]/page.tsx`, `page.tsx`,
+  `api/v1/trends/[testId]/route.ts`). The admin vendor `PATCH` (isActive→false) and `DELETE` routes
+  (`api/v1/admin/vendors/[id]/route.ts`) now cascade — deactivating/soft-deleting the vendor also
+  deactivates/soft-deletes its offerings — so the underlying data stays consistent going forward, not
+  just query-filtered.
+- **Admin Add-Test auto-fill (`/api/v1/admin/tests/lookup`) kept "matching" codes against the Dirt
+  Cheap Labs catalog after that vendor was removed** — `lookupCodesFromCatalogs()`
+  (`packages/scrapers/src/catalog/code-lookup.ts`) fetched `dirtcheaplabs.com` live regardless of our
+  own vendor status, so a since-out-of-business site's stale/parked content could still surface as an
+  "authoritative, non-hallucinated" code match (source of the "Matched '...' in the dirtcheaplabs
+  catalog" note admins were seeing). Now gated on the `dirt-cheap-labs` `Vendor` row being
+  active/undeleted in our DB first; skips straight to the AI-fallback path (still flagged "AI-suggested
+  — verify against the lab") when it isn't.
+
 ### Added (2026-07-29, cross-vendor Offerings audit Excel round-trip)
 - **`/admin/offerings` gets Export/Import Excel** for bulk-auditing every live test↔vendor price link
   across all 17 vendors at once — one row per offering, sorted by test then vendor, with the vendor's

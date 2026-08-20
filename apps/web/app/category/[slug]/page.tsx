@@ -22,7 +22,9 @@ async function getCategory(slug: string) {
           test: {
             include: {
               offerings: {
-                where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+                // vendor filter: excludes offerings left behind by a removed vendor (offering
+                // status doesn't auto-follow vendor status).
+                where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
                 select: { currentPrice: true },
               },
             },

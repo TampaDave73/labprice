@@ -59,7 +59,10 @@ export async function getTests(params: GetTestsParams) {
         select: { codeType: true, codeValue: true },
       },
       offerings: {
-        where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+        // Also require the vendor itself to still be active/undeleted — an offering row can
+        // outlive a vendor that was removed (e.g. Dirt Cheap Labs going out of business), and
+        // without this a dead vendor's price kept counting toward minPrice/vendorCount.
+        where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
         select: { currentPrice: true },
         orderBy: { currentPrice: 'asc' },
       },
@@ -105,7 +108,9 @@ export async function getTestBySlug(slug: string) {
         },
       },
       offerings: {
-        where: { isActive: true, deletedAt: null },
+        // See the vendor filter note in getTests() above — same dead-vendor leak, worse here
+        // since this is the actual test detail page.
+        where: { isActive: true, deletedAt: null, vendor: { isActive: true, deletedAt: null } },
         include: {
           vendor: {
             select: { id: true, name: true, slug: true, websiteUrl: true, logoUrl: true },
@@ -132,7 +137,7 @@ export async function getPopularTests(limit = 6) {
         select: { codeType: true, codeValue: true },
       },
       offerings: {
-        where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+        where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
         select: { currentPrice: true },
         orderBy: { currentPrice: 'asc' },
       },

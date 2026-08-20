@@ -129,7 +129,9 @@ const cachedAutocomplete = unstable_cache(
       include: {
         category: { select: { name: true } },
         offerings: {
-          where: { isActive: true, deletedAt: null, currentPrice: { not: null } },
+          // Exclude offerings from vendors that were removed (e.g. gone-out-of-business) —
+          // isActive/deletedAt live on the offering row and don't auto-follow the vendor's.
+          where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
           select: { currentPrice: true },
         },
       },

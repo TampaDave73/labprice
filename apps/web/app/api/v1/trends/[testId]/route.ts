@@ -28,7 +28,8 @@ export async function GET(
 
   const history = await prisma.priceHistory.findMany({
     where: {
-      offering: { testId, isActive: true, deletedAt: null, test: { deletedAt: null } },
+      // vendor filter: don't chart price history for a vendor that's since been removed.
+      offering: { testId, isActive: true, deletedAt: null, test: { deletedAt: null }, vendor: { isActive: true, deletedAt: null } },
       observedAt: { gte: since },
     },
     include: {

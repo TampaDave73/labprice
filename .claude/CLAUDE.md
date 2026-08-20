@@ -157,6 +157,16 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     (added with the master import, 21-category taxonomy) drives the homepage's primary/secondary filter
     split (`CategoryFilters.tsx`) — it's a real column, not a hardcoded category-name list, so a newly
     added category defaults to secondary (`isPrimary=false`) unless set otherwise.
+12. **`Offering.isActive`/`deletedAt` never auto-follow `Vendor.isActive`/`deletedAt`.** They're
+    independent columns, so removing a vendor from the admin panel (uncheck Active, or Delete) used to
+    leave its offerings live — dead prices kept showing on search/category/homepage/test-detail/trends
+    (fixed 2026-08-20: every public offerings query now also filters `vendor: { isActive: true,
+    deletedAt: null }`, and the admin vendor `PATCH`/`DELETE` routes cascade the deactivation/soft-delete
+    to offerings). If you add a new query that reads `offerings` with a raw `where`, add the vendor
+    filter too — it won't come for free. Same lesson bit the Add-Test auto-fill: `code-lookup.ts`
+    (catalog code matching) fetched Dirt Cheap Labs' live site regardless of our own vendor status, so a
+    since-out-of-business vendor's stale site kept "confidently" matching codes; it's now gated on the
+    `dirt-cheap-labs` `Vendor` row being active in our DB first.
 
 ## Verifying changes
 

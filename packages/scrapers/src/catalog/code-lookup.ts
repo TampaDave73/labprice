@@ -1,11 +1,16 @@
 // Name → lab-code lookup against our live vendor catalogs.
 //
 // WHY: when an admin adds a test, we want to auto-fill its Quest/LabCorp order codes. Our vendor
-// catalogs already carry those codes keyed by product name (Dirt Cheap Labs' API is the richest
-// source — it lists every à la carte test with both a Quest and a LabCorp order code). So we match
+// catalogs already carry those codes keyed by product name (Dirt Cheap Labs' API was the richest
+// source — it listed every à la carte test with both a Quest and a LabCorp order code). So we match
 // the test name into the DCL catalog and read the codes off the matched product. This is the
-// authoritative, non-hallucinated source; the AI fallback only fills gaps the catalog can't.
+// authoritative, non-hallucinated source when the vendor is actually live; the AI fallback only
+// fills gaps the catalog can't. Gated on the Dirt Cheap Labs `Vendor` row being active — if it's
+// been removed (e.g. gone out of business), we skip the live fetch rather than trust whatever its
+// dead/parked site still returns.
+import { prisma } from '@labprice/database';
 import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
+import { DIRTCHEAPLABS_SLUG } from '../configs/dirtcheaplabs';
 import { nameTokens } from './matcher';
 import type { CatalogProduct } from './types';
 
@@ -69,6 +74,19 @@ export async function lookupCodesFromCatalogs(
 ): Promise<CodeLookupResult | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
+
+  // WHY: don't quote codes from a vendor we no longer carry (e.g. Dirt Cheap Labs going out of
+  // business) — its site can keep serving stale/parked content indefinitely, which would surface
+  // as a false "authoritative" match here. Skip the live fetch entirely unless the vendor is still
+  // active (not soft-deleted) in our own DB.
+  const vendor = await prisma.vendor.findFirst({
+    where: { slug: DIRTCHEAPLABS_SLUG, isActive: true, deletedAt: null },
+    select: { id: true },
+  });
+  if (!vendor) {
+    deps.onLog?.('code-lookup: Dirt Cheap Labs vendor is inactive/removed — skipping catalog lookup.');
+    return null;
+  }
 
   let products: CatalogProduct[];
   try {

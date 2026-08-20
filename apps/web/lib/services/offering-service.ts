@@ -5,7 +5,10 @@ type Decimal = Prisma.Decimal;
 
 export async function getOfferingsByTest(testId: string) {
   const offerings = await prisma.offering.findMany({
-    where: { testId, isActive: true, deletedAt: null },
+    // vendor filter: an offering can outlive its vendor being deactivated/deleted (offering.isActive
+    // doesn't auto-follow vendor.isActive) — without this a removed vendor (e.g. gone out of business)
+    // keeps showing on the public test page.
+    where: { testId, isActive: true, deletedAt: null, vendor: { isActive: true, deletedAt: null } },
     include: {
       vendor: {
         select: { id: true, name: true, slug: true, websiteUrl: true, logoUrl: true },
