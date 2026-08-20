@@ -486,6 +486,25 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     **Known limit:** `Test` has no Bioreference code column, so
     Bioreference can never win the code match — if it's the cheapest lab we still rank on the cheaper
     of Quest/LabCorp. It's still ingested into `VendorProduct` and shows as a candidate.
+  - `algorx` — server-rendered Next.js; the whole priced catalog is in the `/biomarkers` page's RSC
+    flight payload (`decodeNextFlight`, one fetch, no pagination, no browser). Registered as a
+    **`fetchAll`** adapter even though it's HTML, because the per-product pages are client-rendered
+    shells with no data — a page-based crawl would fetch 175 pages and parse nothing. 175 records =
+    one per (test, lab): Quest 89 + Labcorp 86, each with its own slug/URL/price, deep-linked at
+    `/biomarkers/<slug>` (slugs are lab-suffixed: `ferritin-quest` / `ferritin-lc`). Honors the
+    vendor's own `type:'panel'` flag as `isPanel` (57 of 175).
+    ⚠️ **INGEST-ONLY — do not bulk auto-link its offerings.** This vendor publishes **no lab order
+    codes at all** (`marker_id` is an internal Vital id, not an order code — verified against nine
+    known codes with zero hits, and it differs per lab for the same test). With nothing to corroborate
+    a name, matching produces confidently-wrong prices: measured against the live catalog,
+    "Deamidated Gliadin Peptide Ab" → "C-Peptide" ($25), and with ambiguity-flagging off it got worse
+    ("Vitamin D, 25-Hydroxy" → "Vitamin B12", "Arsenic Blood Test" → "Phosphate"). Ambiguity-flagging
+    is kept ON and `scripts/discover-algorx.ts` creates **zero offerings** — it crawls so all 175
+    products land in `VendorProduct`, then genuine matches are promoted by hand in `/admin/discovered`
+    (a promoted offering pins a product URL, which prices reliably afterwards via `priceFromPinnedUrl`
+    even when the name tier stays ambiguous). Note the contrast worth remembering: the **strict**
+    ingest matcher (exact code/alias only) did fine here — 57 auto-matches, all sane — it is the
+    **loose** pricing name-tier that is unsafe without codes.
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),

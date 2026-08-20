@@ -4,6 +4,7 @@ import { parseGoodLabsCatalog, parseGoodLabsProduct } from './goodlabs-parser';
 import { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './ownyourlabs-parser';
 import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
 import { fetchAnabolicInsightsCatalog } from './anabolicinsights-parser';
+import { fetchAlgoRxCatalog } from './algorx-parser';
 import { fetchMitoHealthCatalog } from './mitohealth-parser';
 import { parseWalkInLabCatalog, parseWalkInLabProduct, parseWalkInLabNextPage } from './walkinlab-parser';
 import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextPage } from './personalabs-parser';
@@ -47,6 +48,14 @@ export const mitoHealthAdapter: CatalogAdapter = {
 export const anabolicInsightsAdapter: CatalogAdapter = {
   name: 'anabolicinsights',
   fetchAll: (deps, cfg) => fetchAnabolicInsightsCatalog(deps, cfg),
+};
+
+export const algoRxAdapter: CatalogAdapter = {
+  // One server-rendered page carries the whole priced catalog, so this is a `fetchAll` adapter even
+  // though it's HTML rather than an API: the per-product pages are client-rendered shells with no
+  // data, so a page-based crawl would make 175 requests and parse nothing out of them.
+  name: 'algorx',
+  fetchAll: (deps, cfg) => fetchAlgoRxCatalog(deps, cfg),
 };
 
 export const walkInLabAdapter: CatalogAdapter = {
@@ -157,6 +166,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   dcl: dirtCheapLabsAdapter,
   mitohealth: mitoHealthAdapter,
   anabolicinsights: anabolicInsightsAdapter,
+  algorx: algoRxAdapter,
   walkinlab: walkInLabAdapter,
   personalabs: personalabsAdapter,
   healthlabs: healthLabsAdapter,

@@ -40,6 +40,26 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   and bails before discovery when a vendor has no linked tests, so the runner (or linking a test by
   hand first) is the way in.
 
+### Added (2026-08-20, AlgoRx vendor adapter — ingest-only)
+- **New catalog adapter `algorx`** (algorx.com). Server-rendered Next.js: the whole priced catalog
+  lives in the `/biomarkers` page's RSC flight payload, decoded with the existing `decodeNextFlight`
+  helper — one fetch, no pagination, no browser. 175 records (Quest 89 + Labcorp 86), each a
+  lab-specific product with its own slug, price and deep link (`/biomarkers/<slug>`, verified live).
+  Registered as a `fetchAll` adapter despite being HTML, because the per-product pages are
+  client-rendered shells with no data in them. Honors the vendor's own `type:'panel'` flag as
+  `isPanel` (57 of 175).
+- **Deliberately ingest-only — it creates no offerings.** AlgoRx publishes **no lab order codes**
+  (`marker_id` is an internal Vital id: zero hits against nine known Quest/LabCorp codes, and it
+  differs per lab for the same test), so matching is name-only with nothing to corroborate it.
+  Measured against the live catalog and our real test list that produces confidently-wrong prices —
+  "Deamidated Gliadin Peptide Ab" → "C-Peptide" ($25); with ambiguity-flagging off it also gave
+  "Vitamin D, 25-Hydroxy" → "Vitamin B12" and "Arsenic Blood Test" → "Phosphate". So
+  `scripts/discover-algorx.ts` crawls to populate `VendorProduct` only, and genuine matches are
+  promoted by hand in `/admin/discovered`; a promoted offering pins a product URL and prices reliably
+  from then on. The test suite **asserts the known bad match** so the risk stays visible and a future
+  fix fails loudly. First production ingest: **175 VendorProduct rows recorded, 57 auto-matched by the
+  strict (exact code/alias) ingest matcher — all sane on review — and 0 offerings created.**
+
 ### Fixed (2026-08-20, matcher ignored confirmed aliases when corroborating a code hit)
 - **`mergeCodeTiers`'s code-corroboration guard compared only `Test.name` and ignored `TestAlias`
   rows**, while the name tier immediately below it already used `testNames()` (name + aliases). A

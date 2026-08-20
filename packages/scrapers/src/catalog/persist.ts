@@ -75,6 +75,12 @@ const ADAPTER_DEFAULTS: Record<
   ownyourlabs: { baseUrl: 'https://ownyourlabs.com', catalogPath: '/shop', codeMatchAnyProvider: true },
   dirtcheaplabs: { baseUrl: 'https://dirtcheaplabs.com', catalogPath: '/alacarte', apiBase: 'https://api.dirtcheaplabs.com', mergeCodeTiers: true },
   mitohealth: { baseUrl: 'https://mitohealth.com', catalogPath: '/shop', apiBase: 'https://trpc-bdhnb7m5vq-uc.a.run.app', matchPriority: ['name'] },
+  // AlgoRx: whole catalog on one server-rendered page (RSC flight payload). Publishes NO lab order
+  // codes anywhere, so name-only matching — and with nothing to corroborate a name, loose matches are
+  // real (measured live: "Vitamin D, 25-Hydroxy" matches "Vitamin B12", "Arsenic Blood Test" matches
+  // "Phosphate"). This vendor is therefore INGEST-ONLY: crawl it to populate VendorProduct, then
+  // promote genuine matches by hand in /admin/discovered. Don't bulk-auto-link its offerings.
+  algorx: { baseUrl: 'https://algorx.com', catalogPath: '/biomarkers', matchPriority: ['name'] },
   // Anabolic Insights prices the SAME test at up to three labs (Quest/LabCorp/Bioreference), each with
   // its own order code — so mergeCodeTiers (cheapest code-matching lab wins, the other shows as the
   // secondary price), exactly like Dirt Cheap Labs. `catalogPath` is the human catalog page; the data

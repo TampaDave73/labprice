@@ -180,6 +180,18 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     seeded first, via `apps/worker/scripts/discover-<vendor>.ts` (the established pattern) or by
     linking one test by hand. `runVendorDiscovery` itself is fine with zero offerings for `fetchAll`
     adapters (they skip name-narrowing and always return the whole catalog).
+14. **A vendor with no lab codes can't be safely bulk-auto-linked.** The pricing **name tier** is a
+    loose token-subset match; without a Quest/LabCorp code to corroborate it, it produces confidently
+    wrong prices — measured on AlgoRx: "Deamidated Gliadin Peptide Ab" → "C-Peptide", and with
+    `flagAmbiguous:false` also "Vitamin D, 25-Hydroxy" → "Vitamin B12" and "Arsenic Blood Test" →
+    "Phosphate". Turning ambiguity-flagging off to avoid a big Change Queue is a trap: it converts
+    "needs review" into "silently published". For a codeless vendor, run discovery **ingest-only**
+    (no offerings — see `scripts/discover-algorx.ts`) and promote real matches in `/admin/discovered`,
+    which pins a product URL so later scrapes price it via `priceFromPinnedUrl` regardless of the name
+    tier. The **strict ingest matcher** (exact code/alias) is a different, trustworthy thing — don't
+    confuse the two. Related process note: when judging a new vendor's match quality, **print the
+    actual matches and read them**; grepping for bad patterns you already know about only confirms
+    what you went looking for (that mistake is how the AlgoRx wrong matches were nearly shipped).
 
 ## Verifying changes
 
