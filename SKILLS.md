@@ -477,7 +477,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     "Lipid Panel") are real single orderables we also carry, so flagging them would make the matcher
     skip them; the vendor's actual bundles live on a different page this adapter ignores. `basePrice:
     0` is treated as unpriced (not free), codeless options stay name-matchable, and names are trimmed
-    (the source data has trailing spaces). **Known limit:** `Test` has no Bioreference code column, so
+    (the source data has trailing spaces). The API's **`loincId` doubles as the site's per-biomarker
+    URL segment** (`/labs/panels/biomarkers/<loincId>`), so each offering deep-links to its own test
+    page rather than the catalog listing — verified live: a real id serves a server-rendered
+    "<name> · Anabolic Insights" `<title>` while an unknown id falls back to a generic "Biomarker",
+    so the URL is genuinely canonical and not just a client-side route. (Don't trust the HTTP status
+    to validate one of these: it's an SPA shell, so even a bogus UUID returns 200.)
+    **Known limit:** `Test` has no Bioreference code column, so
     Bioreference can never win the code match — if it's the cheapest lab we still rank on the cheaper
     of Quest/LabCorp. It's still ingested into `VendorProduct` and shows as a candidate.
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:

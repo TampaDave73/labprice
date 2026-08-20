@@ -13,6 +13,13 @@ import type { CatalogProduct, ProviderOffering } from './types';
 
 export const AI_DEFAULT_API_BASE = 'https://api.anabolicinsights.ai';
 export const AI_CATALOG_PATH = '/api/lab-biomarkers/multi-lab-pricing';
+/**
+ * Site path for a single biomarker's own page. The API's `loincId` doubles as this URL's segment
+ * (`/labs/panels/biomarkers/<loincId>`) — verified live: a real id serves a server-rendered
+ * "<name> · Anabolic Insights" <title>, an unknown one falls back to a generic "Biomarker", so the
+ * URL is genuinely canonical rather than a client-only route.
+ */
+export const AI_PRODUCT_PATH = '/labs/panels/biomarkers';
 
 interface AiLabOption {
   labName?: string;
@@ -77,8 +84,8 @@ export function mergeAnabolicInsightsCatalog(
     products.push({
       slug,
       name,
-      // No per-test URL exists (single catalog page + cart), so every product points at the catalog.
-      url: `${baseUrl}/labs/panels/biomarkers`,
+      // Deep-link to the biomarker's own page so "Order" lands on the test, not the catalog listing.
+      url: `${baseUrl}${AI_PRODUCT_PATH}/${slug}`,
       providers,
     });
   }

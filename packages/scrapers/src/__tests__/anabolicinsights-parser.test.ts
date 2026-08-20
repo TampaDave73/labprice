@@ -52,6 +52,16 @@ describe('mergeAnabolicInsightsCatalog', () => {
   it('uses a stable unique slug per biomarker', () => {
     expect(new Set(products.map((p) => p.slug)).size).toBe(products.length);
   });
+
+  it('links each product at its own page, not the catalog listing', () => {
+    // The loincId doubles as the site's per-biomarker URL segment
+    // (/labs/panels/biomarkers/<loincId>), verified live: that URL serves a server-rendered
+    // "<name> · Anabolic Insights" <title>, while an unknown id falls back to a generic "Biomarker".
+    // Pointing every offering at the bare catalog page instead sent "Order" to the listing.
+    const zinc = products.find((p) => p.name === 'Zinc')!;
+    expect(zinc.url).toBe(`https://www.anabolicinsights.ai/labs/panels/biomarkers/${zinc.slug}`);
+    expect(new Set(products.map((p) => p.url)).size).toBe(products.length);
+  });
 });
 
 describe('Anabolic Insights matching (mergeCodeTiers -> cheapest code-matching lab)', () => {
