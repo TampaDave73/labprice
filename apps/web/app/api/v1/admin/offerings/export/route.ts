@@ -38,7 +38,11 @@ export async function GET() {
 
   const [offerings, matchedProducts] = await Promise.all([
     prisma.offering.findMany({
-      where: { isActive: true, deletedAt: null },
+      // Also exclude offerings whose vendor is soft-deleted — same gap as the old public-page
+      // queries: this route's where clause didn't follow the vendor's own status, so a removed
+      // vendor's orphaned offerings (e.g. Dirt Cheap Labs, 2026-08-20) kept showing up here even
+      // though the on-page table (route.ts) already filtered them out.
+      where: { isActive: true, deletedAt: null, vendor: { deletedAt: null } },
       select: {
         id: true, externalUrl: true, currentPrice: true, vendorId: true, testId: true,
         test: { select: { name: true, slug: true, questCode: true, labcorpCode: true } },

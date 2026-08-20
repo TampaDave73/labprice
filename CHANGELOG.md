@@ -20,6 +20,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   (`api/v1/admin/vendors/[id]/route.ts`) now cascade — deactivating/soft-deleting the vendor also
   deactivates/soft-deletes its offerings — so the underlying data stays consistent going forward, not
   just query-filtered.
+- **`/admin/offerings` Excel export (`api/v1/admin/offerings/export`) had the same gap** as the public
+  queries above — its own on-page table (`api/v1/admin/offerings`) already filtered out a soft-deleted
+  vendor's offerings, but the Excel export route didn't, so it still listed a removed vendor's rows.
+  Added the same `vendor: { deletedAt: null }` filter.
+- **Production data cleanup:** Dirt Cheap Labs (`slug: dirt-cheap-labs`) had been soft-deleted
+  (`Vendor.deletedAt` set) but its 235 `Offering` rows were still `isActive: true, deletedAt: null` —
+  the dangling-offering bug above, from before this fix shipped. Deactivated + soft-deleted all 235
+  directly in production, mirroring what the new cascade does going forward. Verified: `/test/alt-sgpt`
+  no longer lists Dirt Cheap Labs.
 - **Admin Add-Test auto-fill (`/api/v1/admin/tests/lookup`) kept "matching" codes against the Dirt
   Cheap Labs catalog after that vendor was removed** — `lookupCodesFromCatalogs()`
   (`packages/scrapers/src/catalog/code-lookup.ts`) fetched `dirtcheaplabs.com` live regardless of our
