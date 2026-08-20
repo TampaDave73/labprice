@@ -174,7 +174,12 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     the code first, confirm the adapter appears in the `/admin/vendors/[id]` dropdown, *then* create the
     vendor row. (Related: that dropdown is a **hardcoded `<option>` list**, not generated from
     `ADAPTERS` — it's currently missing `marekdiagnostics`, `jasonhealth`, and `drsays`, which exist as
-    real adapters. Add new adapters in both places.)
+    real adapters. Add new adapters in both places.) **"Scrape now" can't bootstrap a brand-new vendor
+    either**: `api/v1/admin/vendors/[id]/scrape` returns 400 `no_offerings` and bails *before* running
+    discovery when the vendor has no linked tests — so a fresh catalog vendor needs its offerings
+    seeded first, via `apps/worker/scripts/discover-<vendor>.ts` (the established pattern) or by
+    linking one test by hand. `runVendorDiscovery` itself is fine with zero offerings for `fetchAll`
+    adapters (they skip name-narrowing and always return the whole catalog).
 
 ## Verifying changes
 

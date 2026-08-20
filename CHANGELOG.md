@@ -26,9 +26,19 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   $14, TSH $7, CRP $6). The 8th (Vitamin D) is a deliberate conservative miss — the vendor lists it as
   plain "Vitamin D" and the generic-token guard rejects it until a `TestAlias` is confirmed, which is
   the normal `/admin/discovered` workflow (verified: with the alias it matches $18 @quest / alt $39).
-  **Not yet live:** the production `Vendor` row + `ScrapeConfig` still have to be created once this
-  branch is deployed — creating them before the deploy would make `getAdapter()` fall back to the
-  GoodLabs parser and crawl the wrong site.
+  **Now live in production** (2026-08-20): vendor row + catalog `ScrapeConfig` created, and the first
+  real discovery run completed against the live catalog — 110 products ingested into `VendorProduct`
+  (78 auto-matched), **126 offerings linked, 90 matched / 36 ambiguous / 0 unmatched, 133 changes
+  published, 82 offerings carrying a live price**. Confirmed on the public site (`/test/alt-sgpt` now
+  lists Anabolic Insights at $6.00). The 36 ambiguous are in the Change Queue for manual review; the
+  remaining unpriced offerings are held by the normal trust/confidence auto-approval gates.
+  Bootstrapped with `apps/worker/scripts/discover-anabolicinsights.ts` — unlike the older per-vendor
+  runners it doesn't hardcode seed slugs; it runs the real matcher against the live catalog to find
+  which of our tests the vendor actually carries, then links exactly those (matched **and** ambiguous,
+  so ambiguous ones surface for review instead of being dropped). Note the web "Scrape now" button
+  cannot bootstrap a brand-new vendor: `api/v1/admin/vendors/[id]/scrape` returns 400 `no_offerings`
+  and bails before discovery when a vendor has no linked tests, so the runner (or linking a test by
+  hand first) is the way in.
 
 ### Fixed (2026-08-20, matcher ignored confirmed aliases when corroborating a code hit)
 - **`mergeCodeTiers`'s code-corroboration guard compared only `Test.name` and ignored `TestAlias`
