@@ -9,6 +9,38 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-08-20, Anabolic Insights vendor adapter)
+- **New catalog adapter `anabolicinsights`** (anabolicinsights.ai) — an **API vendor**: its
+  `/labs/panels/biomarkers` page is a client-rendered shell with no prices in the server HTML, and the
+  priced catalog comes from one public JSON endpoint,
+  `api.anabolicinsights.ai/api/lab-biomarkers/multi-lab-pricing` (no auth, cookies, or headers needed).
+  110 biomarkers / 260 lab options, each the same test priced at up to **three** labs
+  (Quest/LabCorp/Bioreference) with per-lab order codes in our DB's own formats — so it reuses the
+  existing `mergeCodeTiers` path (cheapest code-matching lab ranks, the other becomes the secondary
+  "also available via X" price), the same shape as Dirt Cheap Labs. New files:
+  `catalog/anabolicinsights-parser.ts` (pure `mergeAnabolicInsightsCatalog` + HTTP wrapper),
+  `configs/anabolicinsights.ts`, a 12-case test suite, and a captured real-API fixture. Registered in
+  `ADAPTERS`, `ADAPTER_DEFAULTS`, and the admin adapter dropdown.
+  Verified live end-to-end through the registered adapter: 110 products, 7/8 sample tests matched with
+  correct alt-lab secondaries (Hemoglobin A1c $9, CMP $20, Lipid Panel $10, Ferritin $19, Testosterone
+  $14, TSH $7, CRP $6). The 8th (Vitamin D) is a deliberate conservative miss — the vendor lists it as
+  plain "Vitamin D" and the generic-token guard rejects it until a `TestAlias` is confirmed, which is
+  the normal `/admin/discovered` workflow (verified: with the alias it matches $18 @quest / alt $39).
+  **Not yet live:** the production `Vendor` row + `ScrapeConfig` still have to be created once this
+  branch is deployed — creating them before the deploy would make `getAdapter()` fall back to the
+  GoodLabs parser and crawl the wrong site.
+
+### Fixed (2026-08-20, matcher ignored confirmed aliases when corroborating a code hit)
+- **`mergeCodeTiers`'s code-corroboration guard compared only `Test.name` and ignored `TestAlias`
+  rows**, while the name tier immediately below it already used `testNames()` (name + aliases). A
+  vendor that lists a test only under an abbreviation — "HbA1c" for our "Hemoglobin A1c" — shares no
+  distinctive token with our name, so its **correct** Quest/LabCorp codes were rejected: `unmatched`
+  with no alias, and only `ambiguous` with one, meaning a confirmed alias still could not produce a
+  price. Now checked against `testNames(test)`, consistent with the name tier
+  (`packages/scrapers/src/catalog/matcher.ts`). Found while building the Anabolic Insights adapter;
+  `mergeCodeTiers` is used only by Dirt Cheap Labs (removed, out of business) and that new vendor, so
+  the blast radius is minimal. All 216 scraper tests pass, including the DCL and matcher suites.
+
 ### Fixed (2026-08-20, removed vendor kept showing on public pages + stale codes from its dead catalog)
 - **Offerings from a deactivated/deleted vendor still appeared everywhere** (search, category pages,
   homepage stats, test detail, price trends) — `Offering.isActive`/`deletedAt` are independent columns

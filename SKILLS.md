@@ -466,6 +466,20 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     treatment as MitoHealth's member price below. Each lab is staged **independently** (its own
     Change Queue entry, `StagedPriceChange.labProvider`) — see "Change Queue" under the admin panel
     for the approve-time ranking recompute.
+  - `anabolicinsights` — **API vendor** (`CatalogAdapter.fetchAll`): one public JSON call to
+    `api.anabolicinsights.ai/api/lab-biomarkers/multi-lab-pricing` (no auth/headers). **Do not try to
+    parse `/labs/panels/biomarkers`** — that page is a client-rendered shell whose server HTML contains
+    no prices at all (not even the word "Quest"); the endpoint was found via the page's own Resource
+    Timing entries. 110 biomarkers / 260 lab options: each row is the same test priced at up to
+    **three** labs (Quest/LabCorp/**Bioreference**) with per-lab order codes, so it uses
+    `mergeCodeTiers` exactly like Dirt Cheap Labs above. `isPanel` is **false for everything** — the
+    endpoint is the à la carte catalog and rows named like panels ("Comp. Metabolic Panel (14)",
+    "Lipid Panel") are real single orderables we also carry, so flagging them would make the matcher
+    skip them; the vendor's actual bundles live on a different page this adapter ignores. `basePrice:
+    0` is treated as unpriced (not free), codeless options stay name-matchable, and names are trimmed
+    (the source data has trailing spaces). **Known limit:** `Test` has no Bioreference code column, so
+    Bioreference can never win the code match — if it's the cheapest lab we still rank on the cheaper
+    of Quest/LabCorp. It's still ingested into `VendorProduct` and shows as a candidate.
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),

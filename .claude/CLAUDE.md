@@ -167,6 +167,14 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     (catalog code matching) fetched Dirt Cheap Labs' live site regardless of our own vendor status, so a
     since-out-of-business vendor's stale site kept "confidently" matching codes; it's now gated on the
     `dirt-cheap-labs` `Vendor` row being active in our DB first.
+13. **A new catalog adapter isn't usable in production until the code deploys.** `getAdapter()` falls
+    back to **GoodLabs** for an unknown adapter name (`ADAPTERS[name] || goodlabsAdapter`), so creating
+    a `Vendor` + `ScrapeConfig` naming an adapter the deployed build doesn't have yet, then hitting
+    "Scrape now", silently crawls **goodlabs.com** and attaches its products to the wrong vendor. Ship
+    the code first, confirm the adapter appears in the `/admin/vendors/[id]` dropdown, *then* create the
+    vendor row. (Related: that dropdown is a **hardcoded `<option>` list**, not generated from
+    `ADAPTERS` — it's currently missing `marekdiagnostics`, `jasonhealth`, and `drsays`, which exist as
+    real adapters. Add new adapters in both places.)
 
 ## Verifying changes
 
