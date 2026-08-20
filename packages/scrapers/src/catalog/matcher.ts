@@ -69,7 +69,13 @@ export function matchTestToProducts(
       // A code can be stale/wrong and land on the wrong test (seed TSH Quest code 867 is actually
       // "T4 Total" at Quest). Trust a code hit only if the product name also shares a distinctive
       // token with our test — this drops the wrong-test hit while keeping the same test across labs.
-      const trusted = codeHits.filter((h) => sharesStrongToken(test.name, h.product.name));
+      //
+      // Checked against `testNames` (name + confirmed aliases), NOT the bare name — same rule the
+      // name tier uses below. A vendor that lists a test only under an abbreviation ("HbA1c" for our
+      // "Hemoglobin A1c") shares no token with our name, so a bare-name check rejected codes that were
+      // exactly right: the test came back `unmatched`, or `ambiguous` once an alias let the name tier
+      // see it — defeating the point of the admin having confirmed that alias.
+      const trusted = codeHits.filter((h) => testNames(test).some((n) => sharesStrongToken(n, h.product.name)));
       if (trusted.length > 0) {
         const priced = [...trusted].filter((h) => h.provider.price != null).sort((a, b) => a.provider.price! - b.provider.price!);
         // If every trusted code hit lacks a price (a stale/broken price selector), there's nothing

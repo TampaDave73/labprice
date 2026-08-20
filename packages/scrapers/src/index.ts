@@ -24,6 +24,7 @@ export { goodlabsCatalogConfig, GOODLABS_SLUG } from './configs/goodlabs';
 export { ownYourLabsCatalogConfig, OWNYOURLABS_SLUG } from './configs/ownyourlabs';
 export { dirtCheapLabsCatalogConfig, DIRTCHEAPLABS_SLUG } from './configs/dirtcheaplabs';
 export { mitoHealthCatalogConfig, MITOHEALTH_SLUG } from './configs/mitohealth';
+export { anabolicInsightsCatalogConfig, ANABOLICINSIGHTS_SLUG } from './configs/anabolicinsights';
 
 // Catalog scraper (search-and-match discovery: catalog → product pages → match by code/name)
 export type {
@@ -41,7 +42,8 @@ export { parseGoodLabsCatalog, parseGoodLabsProduct } from './catalog/goodlabs-p
 export { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './catalog/ownyourlabs-parser';
 export { mergeDirtCheapLabsCatalog, fetchDirtCheapLabsCatalog } from './catalog/dirtcheaplabs-parser';
 export { parseMitoHealthCatalog, fetchMitoHealthCatalog } from './catalog/mitohealth-parser';
-export { goodlabsAdapter, ownYourLabsAdapter, dirtCheapLabsAdapter, mitoHealthAdapter, ADAPTERS, getAdapter } from './catalog/adapters';
+export { mergeAnabolicInsightsCatalog, fetchAnabolicInsightsCatalog } from './catalog/anabolicinsights-parser';
+export { goodlabsAdapter, ownYourLabsAdapter, dirtCheapLabsAdapter, mitoHealthAdapter, anabolicInsightsAdapter, ADAPTERS, getAdapter } from './catalog/adapters';
 export type { CatalogAdapter } from './catalog/types';
 export { matchTestToProducts, nameMatches, nameTokens } from './catalog/matcher';
 export { decodeNextFlight, extractJsonObject } from './catalog/flight-parser';

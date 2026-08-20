@@ -674,6 +674,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
                   <option value="ownyourlabs">Own Your Labs (ownyourlabs.com)</option>
                   <option value="dirtcheaplabs">Dirt Cheap Labs (dirtcheaplabs.com)</option>
                   <option value="mitohealth">Mito Health (mitohealth.com)</option>
+                  <option value="anabolicinsights">Anabolic Insights (anabolicinsights.ai)</option>
                   <option value="walkinlab">Walk-In Lab (walkinlab.com)</option>
                   <option value="personalabs">Personalabs (personalabs.com)</option>
                   <option value="healthlabs">HealthLabs.com (healthlabs.com)</option>

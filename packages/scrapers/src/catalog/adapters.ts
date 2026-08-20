@@ -3,6 +3,7 @@
 import { parseGoodLabsCatalog, parseGoodLabsProduct } from './goodlabs-parser';
 import { parseOwnYourLabsCatalog, parseOwnYourLabsProduct } from './ownyourlabs-parser';
 import { fetchDirtCheapLabsCatalog } from './dirtcheaplabs-parser';
+import { fetchAnabolicInsightsCatalog } from './anabolicinsights-parser';
 import { fetchMitoHealthCatalog } from './mitohealth-parser';
 import { parseWalkInLabCatalog, parseWalkInLabProduct, parseWalkInLabNextPage } from './walkinlab-parser';
 import { parsePersonalabsCatalog, parsePersonalabsProduct, parsePersonalabsNextPage } from './personalabs-parser';
@@ -41,6 +42,11 @@ export const dirtCheapLabsAdapter: CatalogAdapter = {
 export const mitoHealthAdapter: CatalogAdapter = {
   name: 'mitohealth',
   fetchAll: (deps, cfg) => fetchMitoHealthCatalog(deps, cfg),
+};
+
+export const anabolicInsightsAdapter: CatalogAdapter = {
+  name: 'anabolicinsights',
+  fetchAll: (deps, cfg) => fetchAnabolicInsightsCatalog(deps, cfg),
 };
 
 export const walkInLabAdapter: CatalogAdapter = {
@@ -150,6 +156,7 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   dirtcheaplabs: dirtCheapLabsAdapter,
   dcl: dirtCheapLabsAdapter,
   mitohealth: mitoHealthAdapter,
+  anabolicinsights: anabolicInsightsAdapter,
   walkinlab: walkInLabAdapter,
   personalabs: personalabsAdapter,
   healthlabs: healthLabsAdapter,

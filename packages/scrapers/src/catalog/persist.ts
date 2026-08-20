@@ -75,6 +75,16 @@ const ADAPTER_DEFAULTS: Record<
   ownyourlabs: { baseUrl: 'https://ownyourlabs.com', catalogPath: '/shop', codeMatchAnyProvider: true },
   dirtcheaplabs: { baseUrl: 'https://dirtcheaplabs.com', catalogPath: '/alacarte', apiBase: 'https://api.dirtcheaplabs.com', mergeCodeTiers: true },
   mitohealth: { baseUrl: 'https://mitohealth.com', catalogPath: '/shop', apiBase: 'https://trpc-bdhnb7m5vq-uc.a.run.app', matchPriority: ['name'] },
+  // Anabolic Insights prices the SAME test at up to three labs (Quest/LabCorp/Bioreference), each with
+  // its own order code — so mergeCodeTiers (cheapest code-matching lab wins, the other shows as the
+  // secondary price), exactly like Dirt Cheap Labs. `catalogPath` is the human catalog page; the data
+  // itself comes from `apiBase` (the page's own HTML is a client-rendered shell with no prices in it).
+  anabolicinsights: {
+    baseUrl: 'https://www.anabolicinsights.ai',
+    catalogPath: '/labs/panels/biomarkers',
+    apiBase: 'https://api.anabolicinsights.ai',
+    mergeCodeTiers: true,
+  },
   // Walk-In Lab exposes BOTH lab codes together on one product; Personalabs labels the provider
   // directly per product, so it uses strict per-lab tiers (no codeMatchAnyProvider).
   walkinlab: { baseUrl: 'https://www.walkinlab.com', catalogPath: '/categories/view/all-products', codeMatchAnyProvider: true },
