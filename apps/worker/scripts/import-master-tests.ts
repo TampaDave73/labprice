@@ -20,7 +20,22 @@ type Row = {
 
 // --file lets one importer serve both the 246-row master list and the 30-row core catalog
 // (2026-09-07 reset). Defaults to the master list so previously-documented invocations are unchanged.
-const fileArg = process.argv.includes('--file') ? process.argv[process.argv.indexOf('--file') + 1] : undefined;
+// WHY the explicit presence check below (not just `?? DEFAULT_FILE`): "flag absent" and "flag present
+// but missing/invalid its value" must NOT share a code path. This importer is run during a catalog
+// reset whose whole point is cutting 278 tests to 30 — silently falling back to the 246-row master
+// list on a truncated/typo'd `--file` would queue the wrong dataset for --apply with no warning.
+const fileFlagIndex = process.argv.indexOf('--file');
+let fileArg: string | undefined;
+if (fileFlagIndex !== -1) {
+  const next = process.argv[fileFlagIndex + 1];
+  // A missing next token, or one that looks like another flag (e.g. `--file --apply`), is not a
+  // valid path — fail loudly rather than treating it as a request for the default file.
+  if (!next || next.startsWith('--')) {
+    console.error('Error: --file requires a path argument (got none, or the next token looked like another flag).');
+    process.exit(1);
+  }
+  fileArg = next;
+}
 const DEFAULT_FILE = join(__dirname, '../../../packages/database/data/2026-07-27-master-tests/tests.json');
 const filePath = fileArg ? (isAbsolute(fileArg) ? fileArg : join(process.cwd(), fileArg)) : DEFAULT_FILE;
 const tests = JSON.parse(readFileSync(filePath, 'utf8')) as Row[];
