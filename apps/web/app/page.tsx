@@ -44,7 +44,14 @@ const DEMO_TESTS = [
 async function getHomeData() {
   try {
     const [categories, popularTests, allTests, vendorCount] = await Promise.all([
-      prisma.category.findMany({ orderBy: { displayOrder: 'asc' } }),
+      prisma.category.findMany({
+        // Only categories with at least one live test. The 2026-09-07 catalog reset cut the
+        // catalog to 30 tests spanning 16 of 21 categories — without this, the remaining 5
+        // categories render as filter chips that return zero results. Rows stay in the DB
+        // (real membership lives in TestCategory) so widening the catalog later needs no reseed.
+        where: { testCategories: { some: { test: { deletedAt: null } } } },
+        orderBy: { displayOrder: 'asc' },
+      }),
       prisma.test.findMany({
         where: { isPopular: true, deletedAt: null },
         include: {
