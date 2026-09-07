@@ -707,6 +707,27 @@ model AffiliateClick {
   @@map("affiliate_clicks")
 }
 
+/// Flattened snapshot of AffiliateClick rows taken before the 2026-09-07 catalog reset. The
+/// originals are FK-bound to Offering (onDelete: Restrict), so they cannot survive a catalog wipe —
+/// this keeps the click history as denormalized text (vendor/test names, not ids) with nothing to
+/// cascade. Append-only; nothing reads it except ad-hoc analysis.
+model AffiliateClickArchive {
+  id         BigInt   @id @default(autoincrement())
+  vendorSlug String   @map("vendor_slug")
+  vendorName String   @map("vendor_name")
+  testSlug   String?  @map("test_slug")
+  testName   String?  @map("test_name")
+  price      Decimal? @db.Decimal(10, 2)
+  referrer   String?
+  sessionId  String?  @map("session_id")
+  clickedAt  DateTime @map("clicked_at")
+  archivedAt DateTime @default(now()) @map("archived_at")
+
+  @@index([clickedAt])
+  @@index([vendorSlug])
+  @@map("affiliate_click_archive")
+}
+
 // ───────────────────────── Analytics & Operations ─────────────────────────
 
 /// Partitioned by RANGE(created_at) monthly — see ddl.sql.
