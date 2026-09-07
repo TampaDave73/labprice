@@ -7,13 +7,23 @@
 import 'dotenv/config'; // must precede the @labprice/database import — PrismaClient reads DATABASE_URL at construction (see apply-master-test-fixes.ts)
 import { prisma } from '@labprice/database';
 import { normalizeName } from '@labprice/scrapers/src/catalog/matcher';
-import tests from '../../../packages/database/data/2026-07-27-master-tests/tests.json';
+import { readFileSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 
+// Row type must be declared before the runtime file read below (which type-asserts against it) —
+// it used to sit after a static `import tests from '...json'`, but that import is now dynamic.
 type Row = {
   name: string; short_name: string; slug: string; quest_code: string; labcorp_code: string;
   methodology: string; lab_variant: string; cardio_iq: string; categories: string; aliases: string;
   confidence: string; third_party_only: string; is_popular: string; notes: string;
 };
+
+// --file lets one importer serve both the 246-row master list and the 30-row core catalog
+// (2026-09-07 reset). Defaults to the master list so previously-documented invocations are unchanged.
+const fileArg = process.argv.includes('--file') ? process.argv[process.argv.indexOf('--file') + 1] : undefined;
+const DEFAULT_FILE = join(__dirname, '../../../packages/database/data/2026-07-27-master-tests/tests.json');
+const filePath = fileArg ? (isAbsolute(fileArg) ? fileArg : join(process.cwd(), fileArg)) : DEFAULT_FILE;
+const tests = JSON.parse(readFileSync(filePath, 'utf8')) as Row[];
 
 const toBool = (s: string) => s.trim().toUpperCase() === 'TRUE';
 const toNull = (s: string) => (s.trim() === '' ? null : s.trim());
@@ -22,6 +32,7 @@ const CONFIDENCE = new Set(['High', 'Medium', 'Low']);
 
 async function main() {
   const apply = process.argv.includes('--apply');
+  console.log(`Importing ${(tests as Row[]).length} test(s) from ${filePath}${apply ? '' : ' (DRY RUN — pass --apply to write)'}`);
   const rows = tests as Row[];
 
   const categories = await prisma.category.findMany({ select: { id: true, name: true, displayOrder: true } });
