@@ -1,9 +1,11 @@
 // Turns code-matched VendorProduct rows into live offerings after the 2026-09-07 catalog reset.
 // Dry-run unless --apply.
 //
-// Only rows whose matchedBy is an exact lab-code hit are listed (see catalog/autolist.ts for why).
-// exact-name/alias matches are left alone: they already show up in /admin/discovered's "Matched" tab
+// BY DEFAULT only rows whose matchedBy is an exact lab-code hit are listed (see catalog/autolist.ts
+// for why). exact-name/alias matches are left alone: they show up in /admin/discovered's "Matched" tab
 // (which means precisely "MATCHED with no offering yet") for one-click bulk listing by a human.
+// `--include-name-matches` opts those in for the case where a human has already read and approved
+// them in bulk — see the flag's own comment below. It is never the default.
 //
 // Listing goes through attachProductsToTest — the SAME function the admin UI's list action calls — so
 // this script and the UI cannot drift apart about what listing means. markMatched:false because these
@@ -13,12 +15,25 @@
 // Run (from apps/worker):
 //   DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/autolist-code-matches.ts
 //   DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/autolist-code-matches.ts --apply
+//   ... --include-name-matches --apply   # only after a human has read the candidate list
 import 'dotenv/config';
 import { prisma } from '@labprice/database';
 import { attachProductsToTest } from '@labprice/scrapers/src/catalog/discovered-actions';
 import { CODE_MATCHED_BY } from '@labprice/scrapers/src/catalog/autolist';
 
 const APPLY = process.argv.includes('--apply');
+
+// --include-name-matches widens the selection to STRICT name matches (`exact-name` = exact equality
+// after normalizeName, and `alias` = the same against a confirmed TestAlias). It is OFF by default and
+// must stay that way: the default policy is code-matches-only precisely because four vendors (algorx,
+// directlabs, mito-health, private-md-labs) publish no lab codes at all, making a name match their
+// ONLY route to an offering — which is where a silently wrong match would be least likely to be
+// noticed. This flag exists for the case where a HUMAN has read the candidates and approved them in
+// bulk; it is the scripted equivalent of clicking "list" in /admin/discovered's Matched tab, not a
+// relaxation of the automatic policy. It never admits the loose token-subset matcher, which only ever
+// writes suggestedTestId and can never reach MATCHED.
+const INCLUDE_NAMES = process.argv.includes('--include-name-matches');
+const SELECTED_MATCHED_BY = INCLUDE_NAMES ? [...CODE_MATCHED_BY, 'exact-name', 'alias'] : [...CODE_MATCHED_BY];
 
 async function main() {
   // price: { gt: 0 } — not just { not: null }. A $0 row is a parse failure, not a real free test,
@@ -28,7 +43,7 @@ async function main() {
     status: 'MATCHED' as const,
     isPanel: false,
     testId: { not: null },
-    matchedBy: { in: [...CODE_MATCHED_BY] },
+    matchedBy: { in: SELECTED_MATCHED_BY },
     vendor: { isActive: true, deletedAt: null },
     // Soft-deleted tests stay referenced by VendorProduct.testId — that FK is only SetNull on a HARD
     // delete (schema.prisma), so a soft-deleted test (Test.deletedAt, set by the admin delete route)
@@ -63,7 +78,8 @@ async function main() {
   const has = new Set(existing.map((o) => `${o.testId}:${o.vendorId}`));
   const todo = rows.filter((r) => !has.has(`${r.testId}:${r.vendorId}`));
 
-  console.log(`${rows.length} code-matched product(s); ${todo.length} not yet listed`);
+  console.log(`${rows.length} ${INCLUDE_NAMES ? 'code+name-matched' : 'code-matched'} product(s); ${todo.length} not yet listed`);
+  if (INCLUDE_NAMES) console.log('--include-name-matches is ON: exact-name/alias matches are included. These are NOT auto-published by default — this run assumes a human has read and approved them.');
   if (nonPositivePriceCount > 0) {
     console.log(`WARNING: ${nonPositivePriceCount} code-matched row(s) excluded for price <= 0 — likely a parser bug, not a real free test.`);
   }
