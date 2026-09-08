@@ -9,6 +9,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-07, weekly traffic topline in the admin digest)
+- The Monday scrape-health digest now appends a **site-traffic section**: visitors/sessions/top
+  sources from GA4, plus top searches, zero-result searches (demand signal for what to add next),
+  most-viewed tests, and click-throughs by vendor from our own tables (`SearchLog`, `PageView`,
+  `AffiliateClick`). New `apps/worker/src/traffic.ts` (`collectTraffic`, the I/O half) and
+  `packages/shared/src/traffic-render.ts` (`renderTrafficHtml`/`renderTrafficText`, pure — carries the
+  unit tests, since `apps/worker` has no test runner). Scraper health stays first in the email;
+  traffic is appended after. A GA4 failure (missing creds, expired key, outage) degrades only the
+  traffic section — the digest, whose primary job is scraper health, still sends.
+
 ### Added (2026-08-20, Anabolic Insights vendor adapter)
 - **New catalog adapter `anabolicinsights`** (anabolicinsights.ai) — an **API vendor**: its
   `/labs/panels/biomarkers` page is a client-rendered shell with no prices in the server HTML, and the

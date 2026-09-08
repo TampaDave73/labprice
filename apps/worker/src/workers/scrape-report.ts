@@ -7,6 +7,8 @@ import { Worker, type Job } from 'bullmq';
 import { prisma } from '@labprice/database';
 import { redisConnection } from '../redis';
 import { sendAdminEmail } from '../report';
+import { collectTraffic } from '../traffic';
+import { renderTrafficHtml, renderTrafficText } from '@labprice/shared/src/traffic-render';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -40,7 +42,9 @@ function esc(s: string): string {
 
 // Email clients need inline styles; keep the markup boring and table-based.
 // Exported for preview/testing (scripts can render sample data without a Worker).
-export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChanges: number; windowErrors: number; counts: Record<State, number> }): string {
+// `extraHtml` (the traffic topline) is inserted inside the card, after the scraper-health content —
+// kept as a trailing param so it defaults away cleanly for callers/tests that only want the health report.
+export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChanges: number; windowErrors: number; counts: Record<State, number> }, extraHtml = ''): string {
   const chip = (n: number, label: string, color: string) =>
     n > 0
       ? `<span style="display:inline-block;margin:0 8px 8px 0;padding:4px 12px;border-radius:14px;background:${color}18;color:${color};font-weight:600;font-size:13px;">${n} ${label}</span>`
@@ -115,6 +119,7 @@ export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChang
         Pending price changes to review: <strong>${meta.pendingChanges}</strong> (admin &rarr; Change Queue) &middot; Scrape errors this week: <strong>${meta.windowErrors}</strong><br>
         Scrape frequency is set per vendor (admin &rarr; Vendors); the master switch is on admin &rarr; Settings.
       </p>
+      ${extraHtml}
     </div>
   </div>
 </body></html>`;
@@ -225,7 +230,17 @@ export function createReportWorker() {
       const subject = `LabTestCompare scrape report: ${subjectBits.join(', ')}`;
 
       const meta = { date: new Date().toISOString().slice(0, 10), pendingChanges, windowErrors, counts };
-      await sendAdminEmail(subject, renderText(rows, meta), renderHtml(rows, meta));
+
+      // Traffic topline: appended after scraper health, which stays first — the subject line is about
+      // whether scraping is healthy, and that must not be diluted.
+      const traffic = await collectTraffic(7).catch((e) => {
+        console.warn('[report] traffic collection failed, sending digest without it:', e instanceof Error ? e.message : e);
+        return null;
+      });
+
+      const text = `${renderText(rows, meta)}${traffic ? renderTrafficText(traffic) : ''}`;
+      const html = renderHtml(rows, meta, traffic ? renderTrafficHtml(traffic) : '');
+      await sendAdminEmail(subject, text, html);
       return { vendors: rows.length, ...counts };
     },
     { connection: redisConnection },

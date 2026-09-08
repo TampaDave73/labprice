@@ -344,6 +344,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   overdue detection, pending change count, weekly error count. Scheduled-run failures also alert
   immediately (throttled 1/vendor/day). Needs `RESEND_API_KEY` on the worker; without it the email
   body is logged to the worker console instead (handy for local dry-runs).
+  **Traffic topline** (`apps/worker/src/traffic.ts` `collectTraffic()` + `packages/shared/src/traffic-render.ts`
+  `renderTrafficHtml`/`renderTrafficText`, appended after the scraper-health section — health stays
+  first): visitors/sessions/top-sources from GA4 (`fetchGa4Traffic`), plus top searches, zero-result
+  searches (the demand signal for what to add next), most-viewed tests, and vendor click-throughs from
+  our own tables. A GA4 failure/misconfiguration degrades only this section (renders the DB half with
+  a "not configured" note) — it never blocks the digest send. The renderer is pure and lives in
+  `@labprice/shared` (deep-import, not in the barrel) specifically so it has unit tests, since
+  `apps/worker` has no test runner.
 - **Price-range chart**: test detail pages chart the last 12 months of `PriceHistory` as a single
   shaded low-high band across all vendors (`apps/web/app/test/[slug]/PriceHistoryChart.tsx`,
   inline-SVG step chart) — not one line per vendor, which stopped being readable past a handful of
