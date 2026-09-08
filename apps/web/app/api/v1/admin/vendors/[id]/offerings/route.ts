@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@labprice/database';
 import { auth } from '@/lib/auth';
-import { isCatalogMode } from '@/lib/catalog-mode';
-import { runVendorDiscovery, publishStagedChange } from '@labprice/scrapers/src/catalog/persist';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -67,22 +65,17 @@ export async function POST(req: NextRequest, { params }: Params) {
     create: { testId, vendorId, externalUrl, currentPrice, isActive: true },
   });
 
-  // For catalog-mode vendors (e.g. GoodLabs), a newly-linked test has no price yet. Run discovery
-  // INLINE, scoped to just this offering (name-narrowed → a couple of fetches, ~1-3s), so the price
-  // appears immediately. Best-effort: if the site is unreachable, the link still succeeds.
-  const config = await prisma.scrapeVendorConfig.findUnique({ where: { vendorId }, select: { selectors: true, isEnabled: true } });
-  let discovery: { matched: number; ambiguous: number; unmatched: number } | null = null;
-  if (config?.isEnabled && isCatalogMode(config.selectors)) {
-    try {
-      const summary = await runVendorDiscovery({ vendorId, triggeredBy: 'MANUAL', offeringIds: [offering.id] });
-      for (const sid of summary.autoApprovedStagedIds) await publishStagedChange(sid);
-      discovery = { matched: summary.matched, ambiguous: summary.ambiguous, unmatched: summary.unmatched };
-    } catch (e) {
-      console.error('[offerings] inline discovery failed for new offering', e);
-    }
-  }
+  // Linking a test no longer prices it inline. It used to run discovery here, scoped to the one new
+  // offering, on the assumption that was "a couple of fetches, ~1-3s". It isn't: discovery fetches the
+  // vendor's ENTIRE catalog listing before it can match anything (1,200+ products on Walk-In Lab,
+  // 3,100+ on Private MD Labs), so every single add paid a full catalog crawl — minutes per test, and
+  // N times over when adding N tests. Because that listing fetch dominates, pricing many offerings
+  // costs the same as pricing one, so the right shape is: add instantly, then price everything in a
+  // single pass via "Scrape now" (POST /vendors/[id]/scrape), which already does exactly that and
+  // additionally handles the browser-gated vendors by queueing them to the worker.
+  const needsPricing = offering.currentPrice == null;
 
-  return NextResponse.json({ data: offering, discovery }, { status: 201 });
+  return NextResponse.json({ data: offering, needsPricing }, { status: 201 });
 }
 
 // Update an existing link's URL / price.

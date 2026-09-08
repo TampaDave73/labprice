@@ -127,6 +127,9 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   // Walk-In Lab, 3,100+ on Private MD Labs). Without a pending state the button looked inert for
   // minutes while the row was already committed — "nothing happens until I refresh".
   const [adding, setAdding] = useState(false);
+  // Tests linked this session that still have no price. Adding is now instant (the API no longer
+  // prices inline); these are what the one-shot "price them" action below covers.
+  const [awaitingPrice, setAwaitingPrice] = useState<string[]>([]);
 
   const loadCatalog = async () => {
     try {
@@ -212,7 +215,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     if (!newTestId || adding) return;
     const testName = availableTests.find((t) => t.id === newTestId)?.name ?? 'test';
     setAdding(true);
-    setMsg(`Adding ${testName} and looking up its price — this can take a minute on a large catalog…`);
+    setMsg(null);
     try {
       const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -225,18 +228,10 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
       }
       setNewTestId(''); setNewUrl(''); setNewPrice('');
       await loadCatalog();
-      // The offering row is committed before discovery runs, so it exists even when pricing found
-      // nothing — say which happened rather than leaving an unpriced row looking like a failure.
-      const d = j.discovery as { matched: number; ambiguous: number; unmatched: number } | null | undefined;
-      setMsg(
-        d == null ? `Added ${testName}.`
-          : d.matched > 0 ? `Added ${testName} — price found.`
-          : d.ambiguous > 0 ? `Added ${testName} — several possible products found, so the price is waiting in the Change Queue.`
-          : `Added ${testName} — no matching product found in this vendor's catalog, so it has no price yet.`,
-      );
+      if (j.needsPricing) setAwaitingPrice((prev) => (prev.includes(testName) ? prev : [...prev, testName]));
+      setMsg(j.needsPricing ? `Added ${testName}. It has no price yet — see below.` : `Added ${testName}.`);
     } catch {
-      // The row may still have been created: the POST commits the offering before it starts pricing.
-      setMsg('The request failed or timed out while pricing. Reload the page — the test may still have been added.');
+      setMsg('Could not add that test — check your connection and try again.');
       await loadCatalog();
     } finally {
       setAdding(false);
@@ -358,8 +353,10 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     } else if (j.data?.mode === 'catalog') {
       const d = j.data;
       setMsg(`Scraped ${d.offerings} test(s): ${d.matched} matched, ${d.ambiguous} need review, ${d.unmatched} not found — ${d.published} price(s) published.`);
+      setAwaitingPrice([]);
       loadCatalog(); // refresh to show newly-published prices
     } else if (j.data?.mode === 'catalog-queued') {
+      setAwaitingPrice([]);
       setMsg('This vendor needs a browser-based crawl, so it runs via the background worker, not inline — queued. Make sure `pnpm dev:worker` (or the production worker) is running; check back here or the Change Queue shortly for results.');
     } else {
       setMsg(`Queued ${j.data?.enqueued ?? 0} scrape job(s). Watch the Change Queue for results.`);
@@ -589,6 +586,21 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
           </div>
           <button onClick={addLink} disabled={!newTestId || adding} className="admin-btn">{adding ? 'Adding…' : 'Add'}</button>
         </div>
+
+        {/* One crawl prices every unpriced test at once. Discovery has to pull the vendor's whole
+            catalog listing before it can match anything, so pricing ten tests costs the same as
+            pricing one — batching here is the entire point of not pricing on each add. */}
+        {awaitingPrice.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <span>
+              {awaitingPrice.length} test{awaitingPrice.length === 1 ? '' : 's'} added without a price
+              ({awaitingPrice.join(', ')}). Add the rest first, then price them all in one crawl.
+            </span>
+            <button onClick={runScrape} disabled={scraping} className="admin-btn">
+              {scraping ? 'Pricing…' : `Price ${awaitingPrice.length} added test${awaitingPrice.length === 1 ? '' : 's'}`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Scraper health */}
