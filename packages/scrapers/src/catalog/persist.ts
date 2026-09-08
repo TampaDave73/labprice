@@ -33,6 +33,15 @@ export interface DiscoveryOptions {
   offeringIds?: string[];
   /** Fetch every catalog page instead of just name-matches (exhaustive; default false = narrow). */
   exhaustive?: boolean;
+  /**
+   * Narrow the crawl using EVERY live test (name + confirmed aliases) rather than only the tests
+   * linked to this vendor's existing offerings — for a freshly-reseeded catalog where no offerings
+   * exist yet, so narrowing by "tests with offerings" would narrow to nothing and force a full crawl.
+   * Does NOT change what gets matched/staged — that's still driven by this vendor's own offerings.
+   * If `exhaustive` is also set, `exhaustive` wins (see below) — narrowing is only an optimization,
+   * so the safer/more-complete behavior takes precedence over the cheaper one.
+   */
+  narrowToAllTests?: boolean;
   /** Inject a fetcher for tests; defaults to plain HTTP (no browser needed). */
   fetchHtml?: (url: string) => Promise<string>;
   onLog?: (msg: string) => void;
@@ -248,12 +257,40 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     data: { jobId: job.id, vendorId: opts.vendorId, status: 'RUNNING', startedAt: new Date() },
   });
 
+  // narrowToAllTests: load every live test (not just this vendor's own offerings) to narrow the
+  // crawl against — see DiscoveryOptions.narrowToAllTests. Same TestKey shape the offerings query
+  // above builds, so the name tier/alias matching behaves identically either way. Skipped entirely
+  // when `exhaustive` is set: exhaustive already ignores narrowing, so this query would be wasted.
+  let narrowTests: TestKey[] | undefined;
+  if (opts.narrowToAllTests && !opts.exhaustive) {
+    const allLiveTests = await prisma.test.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, questCode: true, labcorpCode: true, confidence: true, aliases: { select: { alias: true } } },
+    });
+    narrowTests = allLiveTests.map((t) => ({
+      id: t.id,
+      name: t.name,
+      questCode: t.questCode,
+      labcorpCode: t.labcorpCode,
+      aliases: t.aliases.map((a) => a.alias),
+      confidence: t.confidence,
+    }));
+  }
+
   const started = Date.now();
   let matches: OfferingMatch[];
   let catalogProducts: CatalogProduct[] = [];
   let catalogEntries: CatalogEntry[] = [];
   try {
-    const result = await discover(tests, { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log }, cfg, { narrow: !opts.exhaustive });
+    // exhaustive wins over narrowToAllTests if both are somehow passed (see DiscoveryOptions doc) —
+    // `narrow: !opts.exhaustive` already forces a full crawl in that case, so narrowTests is simply
+    // unused (and left undefined above, since we skip loading it when exhaustive is set).
+    const result = await discover(
+      tests,
+      { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log },
+      cfg,
+      { narrow: !opts.exhaustive, narrowTests },
+    );
     matches = result.matches;
     catalogProducts = result.products;
     catalogEntries = result.entries;

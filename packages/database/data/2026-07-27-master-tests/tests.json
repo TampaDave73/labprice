@@ -985,7 +985,7 @@
     "lab_variant": "",
     "cardio_iq": "FALSE",
     "categories": "Blood Count",
-    "aliases": "CBC with Differential|CBC/Diff/Plt|CBC with Diff",
+    "aliases": "CBC|CBC with Differential|CBC/Diff/Plt|CBC with Diff",
     "confidence": "High",
     "third_party_only": "FALSE",
     "is_popular": "TRUE",

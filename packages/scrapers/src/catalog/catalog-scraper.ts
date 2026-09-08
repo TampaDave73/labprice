@@ -145,15 +145,23 @@ export function matchOfferings(tests: TestKey[], products: CatalogProduct[], opt
  * Convenience: crawl the catalog and match a set of tests in one call.
  * `opts.narrow` (default true) only fetches detail pages whose name overlaps a test — much faster for
  * interactive/small runs. Pass `{ narrow: false }` for an exhaustive crawl.
+ *
+ * `opts.narrowTests` lets the crawl-narrowing list differ from `tests` (the list matched against the
+ * fetched products). Why they can differ: a freshly-reseeded catalog has live tests but zero existing
+ * offerings yet — `tests` here is normally "tests this vendor already has offerings for" (see
+ * `runVendorDiscovery`), which would be empty right after a reset and narrow the crawl to nothing.
+ * Passing every live test as `narrowTests` keeps the crawl fast (only fetch pages that plausibly match
+ * SOME live test) while `tests` still controls what actually gets matched/staged. Omit it and both
+ * roles fall back to `tests`, unchanged from prior behavior.
  */
 export async function discover(
   tests: TestKey[],
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
-  opts: { narrow?: boolean } = {},
+  opts: { narrow?: boolean; narrowTests?: TestKey[] } = {},
 ): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[]; entries: CatalogEntry[] }> {
   const narrow = opts.narrow ?? true;
-  const { products, entries } = await buildCatalogIndexDetailed(deps, cfg, narrow ? tests : undefined);
+  const { products, entries } = await buildCatalogIndexDetailed(deps, cfg, narrow ? (opts.narrowTests ?? tests) : undefined);
   const matches = matchOfferings(tests, products, cfg.matchOptions);
   return { products, matches, entries };
 }

@@ -1,5 +1,5 @@
-// Exhaustively crawls every active catalog vendor and ingests what it finds into VendorProduct.
-// Used after the 2026-09-07 catalog reset to repopulate the ingest layer against the new 30 tests.
+// Crawls every active catalog vendor and ingests what it finds into VendorProduct. Used after the
+// 2026-09-07 catalog reset to repopulate the ingest layer against the new 30 tests.
 //
 // This creates NO offerings. runVendorDiscovery only prices offerings that already exist, and after
 // the reset there are none — the value here is entirely the ingest pass, which strict-matches every
@@ -7,9 +7,16 @@
 // result on VendorProduct. Task 7's autolist-code-matches.ts turns the code matches into offerings;
 // the name matches wait in /admin/discovered.
 //
-// exhaustive:true matters. discover() narrows the crawl to pages whose names overlap a test, and with
-// zero offerings that test list is empty — a narrow crawl would fetch almost nothing. Exhaustive
-// ignores the test list entirely (catalog-scraper.ts: `narrow ? tests : undefined`).
+// narrowToAllTests:true, NOT exhaustive:true. discover() still narrows the crawl to catalog entries
+// whose name plausibly matches one of our tests — it just narrows against EVERY live test (30 of
+// them) instead of "tests this vendor already has offerings for" (empty right after a reset, which
+// is exactly why exhaustive:true used to be load-bearing here: a narrow-by-offerings crawl would
+// have fetched almost nothing). The full catalog listing is still ingested into VendorProduct either
+// way (buildCatalogIndexDetailed always returns the complete `entries`, narrowed or not) — narrowing
+// only decides which product DETAIL pages get fetched, not what's recorded. Measured against the
+// live 30-test catalog: ~877 detail fetches total across all 18 vendors, down from 9,114 exhaustive
+// (~25 min instead of ~4.3 hours), with 166/168 code matches surviving — the 2 losses were closed by
+// adding a bare "CBC" alias (see packages/database/data/2026-07-27-master-tests/tests.json).
 //
 // No --apply / dry-run gate, unlike this project's other destructive scripts — intentionally. This
 // script's writes are additive-only (VendorProduct upserts, ScrapeRun/ScrapeJob rows); it creates no
@@ -41,19 +48,25 @@ async function main() {
     const adapter = (v.scrapeConfig?.selectors as Record<string, unknown> | null)?.adapter as string | undefined;
     const before = await prisma.vendorProduct.count({ where: { vendorId: v.id } });
     process.stdout.write(`${v.slug} (${adapter ?? 'goodlabs'})… `);
+    // Capture the crawler's own "narrowed to N/M" line rather than discarding every log: it is the
+    // only visible proof that narrowing is actually active. Without it, a silently-exhaustive crawl
+    // (narrowToAllTests dropped, or zero live tests to narrow against) looks identical to a narrow
+    // one until you notice it took four hours instead of twenty minutes.
+    let narrowed = '';
     try {
       await runVendorDiscovery({
         vendorId: v.id,
         triggeredBy: 'MANUAL',
-        exhaustive: true,
+        narrowToAllTests: true,
         // Cloudflare/WAF-gated vendors (personalabs, requestatest, truehealthlabs) need a real
         // browser; plain HTTP gets a challenge page, which parses as 0 products and fails the run.
         ...(adapterNeedsBrowser(adapter) ? { fetchHtml: browserFetchHtml(60_000) } : {}),
-        onLog: () => {},
+        onLog: (m) => { if (m.startsWith('narrowed to')) narrowed = m; },
       });
       const after = await prisma.vendorProduct.count({ where: { vendorId: v.id } });
       const matched = await prisma.vendorProduct.count({ where: { vendorId: v.id, status: 'MATCHED' } });
-      console.log(`${after} product(s) (+${after - before}), ${matched} matched`);
+      // API (fetchAll) vendors never emit a narrowed line — they return the whole catalog in one call.
+      console.log(`${after} product(s) (+${after - before}), ${matched} matched${narrowed ? ` [${narrowed}]` : ''}`);
       results.push({ slug: v.slug, products: after, matched });
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
