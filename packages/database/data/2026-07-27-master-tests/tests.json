@@ -976,7 +976,7 @@
     "notes": ""
   },
   {
-    "name": "Complete Blood Count w/ Differential & Platelets",
+    "name": "Complete Blood Count w/ Differential & Platelets (CBC)",
     "short_name": "CBC w/ Diff",
     "slug": "complete-blood-count-w-differential-platelets",
     "quest_code": "6399",
@@ -992,7 +992,7 @@
     "notes": "CPT 85025"
   },
   {
-    "name": "Comprehensive Metabolic Panel (14)",
+    "name": "Comprehensive Metabolic Panel (CMP)",
     "short_name": "CMP-14",
     "slug": "comprehensive-metabolic-panel-14",
     "quest_code": "10231",
