@@ -780,14 +780,23 @@ async function priceFromPinnedUrl(
   if (!product) return null;
 
   // Prefer the code/name match on the pinned product — this picks the RIGHT provider (e.g. our Quest
-  // code → the Quest variant), not just the cheapest. Fall back to the cheapest non-panel provider
-  // when nothing matches (the admin pinned this URL, so trust it).
-  const m = matchTestToProducts(test, [product], cfg.matchOptions);
+  // code → the Quest variant), not just the cheapest. Fall back to the cheapest provider when nothing
+  // matches (the admin pinned this URL, so trust it).
+  //
+  // includePanels:true here, unlike every automatic path. The panel exclusion exists to stop a single
+  // test being priced from a bundle it merely appears inside — a guess the crawler must not make on
+  // its own. A pinned URL is not a guess: it is an admin pointing at one exact product and saying
+  // "this is the thing". Several of our own catalog tests are panels by nature (CBC, CMP), and vendors
+  // name them accordingly, so the exclusion silently swallowed exactly the pins most worth having —
+  // found live on AlgoRx, where "CBC (includes Differential and Platelets)" ($6) and "Comprehensive
+  // Metabolic Panel (CMP)" ($11) both resolved to the right product and were then discarded, leaving
+  // the offering priceless with no error anywhere.
+  const m = matchTestToProducts(test, [product], { ...cfg.matchOptions, includePanels: true });
   if (m.status === 'matched' && m.price != null) {
     return { price: m.price, memberPrice: m.memberPrice ?? null, sourceUrl: m.sourceUrl ?? product.url, provider: m.provider ?? '' };
   }
   const best = product.providers
-    .filter((p) => !p.isPanel && p.price != null)
+    .filter((p) => p.price != null)
     .sort((a, b) => a.price! - b.price!)[0];
   if (!best) return null;
   return { price: best.price!, memberPrice: best.memberPrice ?? null, sourceUrl: product.url || url, provider: best.labProvider };
