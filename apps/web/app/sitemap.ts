@@ -14,6 +14,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       select: { slug: true, updatedAt: true },
     }),
     prisma.category.findMany({
+      // Only categories with at least one live test — matches the homepage filter (page.tsx,
+      // fixed in the prior commit). The 2026-09-07 catalog reset cut the catalog to 30 tests
+      // spanning 16 of 21 categories; the other 5 still render (category/[slug]/page.tsx has no
+      // "empty" guard) as thin, empty listing pages, so the sitemap must not advertise them.
+      // Rows stay in the DB (real membership lives in TestCategory, and admin lists are
+      // untouched) so widening the catalog later needs no reseed.
+      where: { testCategories: { some: { test: { deletedAt: null } } } },
       select: { slug: true, updatedAt: true },
     }),
   ]);
