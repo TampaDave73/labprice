@@ -713,6 +713,33 @@ What it does **not** check — do these by hand in the admin UI before calling a
   (`ScrapeError.message`, e.g. `"HTTP 403 for https://..."`) before guessing — the actual cause is
   usually right there.
 
+### Catalog reset (2026-09-07 core-30 reset, and any future reset like it)
+
+Full runbook: `docs/superpowers/plans/2026-09-07-catalog-reset.md`, Task 12. Summary of the sequence
+and the policy it encodes, for anyone running a similar reset later:
+
+1. `reset-catalog.ts` (dry-run, then `--apply`) — archives affiliate clicks, deletes tests/offerings.
+   Precondition: `affiliate_click_archive` must be empty first, or the archive guard refuses mid-run.
+2. `import-master-tests.ts --file <tests.json>` (dry-run, then `--apply`) — reseeds the curated test
+   list. Watch for the literal printed string `N to create, M to update.`
+3. `recrawl-all.ts <slugs...>` — run in **staged waves**, not one all-vendor invocation: fast API/small
+   vendors first, then one big HTTP crawler at a time, then the browser/WAF vendors one at a time last.
+   A single unsharded invocation blocks priced offerings from appearing for the whole 6–15 hour crawl
+   and one bad vendor can't be isolated. Passing explicit slugs means a typo silently matches zero
+   vendors and exits 0 — always check the printed `Crawling N vendor(s)` count against what you typed.
+4. **Auto-list policy: code matches only.** `autolist-code-matches.ts` (dry-run, then `--apply`) turns
+   exact Quest/LabCorp code matches into live offerings automatically — run it after every wave, it's
+   idempotent. Exact-name/alias matches are deliberately **not** auto-published; they sit in
+   `/admin/discovered`'s **Matched** tab for one-click human review. `recrawl-all.ts`/`runVendorDiscovery`
+   itself never creates offerings — it only prices existing ones and ingests everything crawled into
+   `VendorProduct`; `autolist-code-matches.ts` is the only thing that turns a match into a real offering
+   outside the admin UI.
+5. Expect some vendor failures (WAF-blocked vendors like `true-health-labs`) and expect vendor trust to
+   sit at LOW for them until a crawl succeeds — both are normal post-reset transients, not bugs.
+6. Every inline `npx tsx -e "..."` verification one-liner needs `-r dotenv/config`, or
+   `DOTENV_CONFIG_PATH` is silently ignored and Prisma throws a "Validation Error". The committed
+   scripts don't need this — they `import 'dotenv/config'` themselves.
+
 ### Verifying UI
 Use the preview tools (`preview_start`, `preview_eval`, `preview_screenshot`) with the admin
 `authjs.session-token` cookie. Note: admin pages redirect unauthenticated requests at the layout, so

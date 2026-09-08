@@ -192,6 +192,22 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     confuse the two. Related process note: when judging a new vendor's match quality, **print the
     actual matches and read them**; grepping for bad patterns you already know about only confirms
     what you went looking for (that mistake is how the AlgoRx wrong matches were nearly shipped).
+15. **Catalog is now a curated 30-test core list (2026-09-07 reset), and pre-linking is abandoned.**
+    `runVendorDiscovery` **never creates offerings** — it only prices offerings that already exist and
+    ingests everything it crawls into `VendorProduct`; `autolist-code-matches.ts` is what turns exact
+    Quest/LabCorp code matches into real offerings (name/alias matches wait in `/admin/discovered`'s
+    Matched tab for human review — see gotcha 14, same reasoning). **Pre-linking every vendor to every
+    test is abandoned — do not run `link-all-tests-all-vendors.ts` again.** An `Offering` now means the
+    vendor genuinely sells that test, not "we haven't priced this pair yet." `discovered-actions.ts`
+    and `ga4-data.ts` now live in packages (`@labprice/scrapers/src/catalog/discovered-actions`,
+    `@labprice/shared/src/ga4`) and are re-exported from `apps/web/lib` — edit them there, not as
+    web-only files. **Never run `db:push` against production** — prod carries schema drift (the
+    `search_vector` generated column + its indexes, `users.email`) that `db:push --accept-data-loss`
+    would destroy; use `prisma migrate diff` and apply only the additive statements via
+    `prisma db execute`. And: any inline `npx tsx -e "..."` one-liner needs `-r dotenv/config` (form:
+    `npx tsx -r dotenv/config -e "..."`) or `DOTENV_CONFIG_PATH` is ignored and Prisma throws a
+    "Validation Error" — the committed scripts don't need this since they `import 'dotenv/config'`
+    themselves.
 
 ## Verifying changes
 

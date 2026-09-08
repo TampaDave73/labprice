@@ -87,7 +87,18 @@ async function main() {
       id: p.id, name: p.name, url: p.url, price: p.price, vendorId: p.vendorId,
       labProvider: p.labProvider, vendorSlug: p.vendor.slug,
     }));
-    const result = await prisma.$transaction((tx) => attachProductsToTest(tx, testId, products, { markMatched: false }));
+    // WHY the explicit timeout/maxWait: Prisma 6's default interactive-transaction timeout is 5,000
+    // ms, but attachProductsToTest issues ~4 sequential round trips per product (alias create,
+    // offering findUnique, offering create, priceHistory create) plus one findUnique up front, with
+    // no batching. Measured prod latency is ~106 ms/query, and a widely-carried test (TSH, Total
+    // Testosterone) can pull in up to 14 vendors: 14 * 4 + 1 = 57 queries * 106ms ~= 6.0s > 5.0s ->
+    // P2028 "Transaction already closed", and re-running just retries the same oversized group and
+    // fails identically. 120s comfortably covers the worst-case group; maxWait is how long we'll wait
+    // to even acquire a transaction slot under load.
+    const result = await prisma.$transaction(
+      (tx) => attachProductsToTest(tx, testId, products, { markMatched: false }),
+      { timeout: 120_000, maxWait: 30_000 },
+    );
     created += result.offeringsCreated;
     aliases += result.aliasesLearned;
     droppedDuplicates.push(...result.droppedDuplicates);

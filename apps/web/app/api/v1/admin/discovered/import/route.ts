@@ -214,6 +214,9 @@ export async function POST(req: NextRequest) {
   }
 
   const droppedDuplicates: { vendorId: string; name: string }[] = [];
+  // Same latent P2028 risk as autolist-code-matches.ts: default 5s interactive-tx timeout vs
+  // ~106ms RTT * ~4 sequential queries/product (in attachProductsToTest) * potentially many
+  // products across every promote/attach group in one CSV import.
   await prisma.$transaction(async (tx) => {
     let nextOrder = Math.max(0, ...categories.map((c) => c.displayOrder)) + 1;
     for (const catName of newCategories.values()) {
@@ -259,7 +262,7 @@ export async function POST(req: NextRequest) {
         newValues: { ignored: ignoreIds.length, testsCreated, attachedToExisting: attachGroups.size, offeringsCreated, aliasesLearned, droppedDuplicates },
       },
     });
-  });
+  }, { timeout: 120_000, maxWait: 30_000 });
 
   return NextResponse.json({ data: { ...summary, applied: true, droppedDuplicates } });
 }

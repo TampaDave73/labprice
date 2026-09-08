@@ -1508,7 +1508,21 @@ git -c http.version=HTTP/1.1 push && git log --oneline -1
 
 Then confirm the Railway web service has redeployed to that commit before continuing. A stale build means `/admin/discovered` is running the old import paths.
 
+Also confirm the three `GA4_*` env vars are set on the Railway **worker** service (not just web) —
+without them, Monday's digest silently degrades to the database half only (no traffic topline).
+
 - [ ] **Step 2: Reset the catalog**
+
+Precondition: confirm `affiliate_click_archive` is empty before running with `--apply` — the reset's
+archive step re-runs its guard and will refuse mid-run if the archive table is already populated
+(e.g. from an aborted earlier attempt):
+```bash
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
+  console.log('affiliate_click_archive rows:', await prisma.affiliateClickArchive.count());
+  await prisma.\$disconnect();
+})"
+```
+Must print `0` before proceeding.
 
 ```bash
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/reset-catalog.ts
@@ -1528,12 +1542,12 @@ Read the dry-run output, then:
 ```bash
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/import-master-tests.ts --file ../../packages/database/data/2026-09-07-core-30/tests.json --apply
 ```
-Expected: 30 created, 0 updated.
+Expected: `30 to create, 0 to update.` (the script's actual printed wording — not "created"/"updated").
 
 - [ ] **Step 4: Verify the catalog**
 
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -e "import('@labprice/database').then(async ({prisma}) => {
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
   const tests = await prisma.test.findMany({ include: { categories: true } });
   console.log('tests:', tests.length);
   console.log('missing a category:', tests.filter(t => t.categories.length === 0).map(t => t.slug));
@@ -1543,22 +1557,77 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -e "import('
 ```
 Expected: `tests: 30` and both lists empty.
 
-- [ ] **Step 5: Recrawl every vendor**
+Note the `-r dotenv/config` flag on this inline `npx tsx -e` command — without it, `@labprice/database`'s
+client never loads dotenv, `DOTENV_CONFIG_PATH` is ignored, and the command hard-errors with a Prisma
+"Validation Error" (it tries to connect with no `DATABASE_URL`). The committed scripts don't need this —
+they `import 'dotenv/config'` themselves — but every inline one-liner in this runbook does.
 
-This is slow — browser-gated vendors take minutes each.
+- [ ] **Step 5: Recrawl every vendor, in staged waves**
+
+Measured reality: ~9,100 products to crawl, strictly sequential at `rateLimitMs: 500` plus per-page
+fetch time, and 2,834 of those pages go through Playwright — **6–15 hours end-to-end**, not "minutes
+each". Worse, because auto-listing only happens after a crawl completes, running `recrawl-all.ts` with
+no arguments (all vendors, one giant invocation) would leave the live site showing all 30 tests with
+**zero prices** for that entire window. Instead, run it in waves so prices land within the hour and a
+single vendor's failure doesn't cost the whole run:
 
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts 2>&1 | tee /c/Users/david/AppData/Local/Temp/claude/recrawl.log
+# Wave 1 — five fast API (fetchAll) vendors + the small page vendors. Minutes, not hours.
+npx tsx scripts/recrawl-all.ts algorx anabolic-insights directlabs jason-health mito-health \
+  drsays good-labs discounted-labs marek-diagnostics labcorp-ondemand own-your-labs quest-health
+
+# Then auto-list so the site has prices immediately:
+npx tsx scripts/autolist-code-matches.ts            # READ the printed matches
+npx tsx scripts/autolist-code-matches.ts --apply
+
+# Wave 2 — the big HTTP crawlers, ONE invocation each so a failure loses only that vendor
+npx tsx scripts/recrawl-all.ts healthlabs          # ~730 products
+npx tsx scripts/recrawl-all.ts walk-in-lab         # ~1,256
+npx tsx scripts/recrawl-all.ts private-md-labs     # ~3,552 — the longest single job
+
+# Wave 3 — the three browser/WAF vendors, ONE each. Hours. true-health-labs is EXPECTED to fail.
+npx tsx scripts/recrawl-all.ts personalabs
+npx tsx scripts/recrawl-all.ts request-a-test
+npx tsx scripts/recrawl-all.ts true-health-labs
+
+# Re-run the autolist dry-run + --apply after each wave; it is idempotent (skips existing pairs).
 ```
-Expected: a summary table. Investigate any vendor reporting `FAILED` or 0 products before proceeding — a blocked crawl silently produces no matches.
+
+All of these run from `apps/worker` with `DOTENV_CONFIG_PATH=../../.env.scrape-prod` set, e.g.:
+```bash
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts algorx anabolic-insights ...
+```
+
+**Because each wave passes explicit slugs, check the printed `Crawling N vendor(s)` line matches the
+number of slugs you typed.** A typo'd slug matches zero vendors and `recrawl-all.ts` exits 0 without
+complaining — it silently skips that vendor rather than erroring, and nothing downstream will flag the
+gap.
+
+Expect `true-health-labs` to report `FAILED` (its WAF blocks even the browser-fetch path), and
+`personalabs`/`request-a-test` may too — impact is roughly **1 offering out of ~167**. This is a known,
+accepted gap, not a reason to abort or re-investigate the reset.
+
+Also expect vendor trust to reset: deleting every `ScrapeRun` in Step 2 put all 18 vendors at MEDIUM
+trust; after each wave's crawl, a vendor that succeeded goes HIGH and one that failed goes LOW off that
+single run (trust is computed from recent run history, and there's no history yet). A WAF-blocked
+vendor sitting at LOW — forcing manual price review on its offerings until a crawl eventually succeeds
+— is expected, not a regression.
+
+Investigate any vendor reporting `FAILED` or 0 products beyond the three expected WAF vendors above
+before moving to the next wave — a blocked crawl silently produces no matches.
 
 - [ ] **Step 6: Review the code matches, then list them**
+
+(Already run as part of each wave in Step 5 — this step is the final pass after Wave 3, to confirm
+nothing was left unlisted.)
 
 ```bash
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/autolist-code-matches.ts
 ```
 
-**Read every printed line.** Each is `vendor | our test name ← their product name | price`. You are checking that the two names describe the same test. Expect roughly 167 rows. If any line pairs two clearly different tests, stop and investigate the code on that `VendorProduct` row rather than proceeding.
+**Read every printed line.** Each is `vendor | our test name ← their product name | price`. You are checking that the two names describe the same test. Expect roughly 167 rows total across all waves. If any line pairs two clearly different tests, stop and investigate the code on that `VendorProduct` row rather than proceeding.
+
+Note: the printed match count will slightly **exceed** the number of offerings actually created. Same-vendor duplicates (the same vendor matching the same test twice) print as separate match lines, but only the first gets an offering — the script's own `DROPPED DUPLICATES` block at the end of the `--apply` run reconciles the difference. So `created < todo` (fewer created than listed) is expected output, not a bug.
 
 Then:
 ```bash
@@ -1568,7 +1637,7 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/auto
 - [ ] **Step 7: Verify the live site**
 
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -e "import('@labprice/database').then(async ({prisma}) => {
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
   const priced = await prisma.offering.count({ where: { currentPrice: { not: null }, isActive: true, deletedAt: null } });
   const byVendor = await prisma.offering.groupBy({ by: ['vendorId'], where: { currentPrice: { not: null }, isActive: true, deletedAt: null }, _count: true });
   const vs = await prisma.vendor.findMany({ select: { id: true, slug: true } });
@@ -1599,6 +1668,13 @@ Per the project's documentation discipline, all three docs change in this same c
 **SKILLS.md:** add a "Catalog reset" workflow — the Task 12 script sequence — and document the auto-list match policy.
 
 **CHANGELOG.md:** add under `[Unreleased]`: the catalog reset, the 30-test core catalog, the no-pre-linking policy, the auto-list rule, and the Monday traffic topline.
+
+**Note for whoever is on call the following Monday:** the first weekly digest email after this reset
+will legitimately show an **empty "Click-throughs by vendor" section and an empty "Most-viewed tests"
+section**. Step 2's reset deletes every `AffiliateClick` row (moved to `affiliate_click_archive`, which
+the digest does not read) and nulls every `page_views.test_id`. The page-view **total** will still show
+its pre-reset count (that column isn't touched), just with no per-test breakdown. This is correct
+behavior given the reset, not a broken digest — don't spend time debugging it.
 
 ```bash
 git add -A

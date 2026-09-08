@@ -11,6 +11,11 @@
 // zero offerings that test list is empty — a narrow crawl would fetch almost nothing. Exhaustive
 // ignores the test list entirely (catalog-scraper.ts: `narrow ? tests : undefined`).
 //
+// No --apply / dry-run gate, unlike this project's other destructive scripts — intentionally. This
+// script's writes are additive-only (VendorProduct upserts, ScrapeRun/ScrapeJob rows); it creates no
+// offerings and deletes/overwrites nothing. A "dry run" of a crawl would just be a crawl that writes
+// nothing, which is pointless — the entire point of running it is to populate the ingest layer.
+//
 // Run (from apps/worker):
 //   DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts            # all vendors
 //   DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts good-labs  # one vendor

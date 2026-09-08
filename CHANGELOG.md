@@ -9,6 +9,23 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-07, catalog reset to 30 community-demand tests)
+- Reset the production catalog to a curated **30-test core list**
+  (`packages/database/data/2026-09-07-core-30/`), reseeded via `import-master-tests.ts --file`.
+  Every prior `AffiliateClick` row moved to `affiliate_click_archive` (not read by the digest) and
+  `PageView.testId` was nulled across the board — expected, one-time side effects of the reset.
+- **Abandoned pre-linking every vendor to every test.** `link-all-tests-all-vendors.ts` must not be
+  run again — an `Offering` now means the vendor genuinely sells that test. Offerings are (re)built
+  going forward from real catalog crawls, not a blanket cross-product.
+- **New auto-publish policy: code matches only.** `autolist-code-matches.ts` turns exact Quest/LabCorp
+  code matches from `VendorProduct` into live offerings automatically; exact-name/alias matches are
+  held in `/admin/discovered`'s **Matched** tab for one-click human review rather than auto-published —
+  a codeless match is a plausible-but-unverified pairing, not a confirmed one.
+- Staged the production recrawl into three waves (fast API vendors → big HTTP crawlers → browser/WAF
+  vendors) instead of one `recrawl-all.ts` invocation, so priced offerings appear within the hour
+  instead of after a single 6–15 hour crawl. See the runbook in
+  `docs/superpowers/plans/2026-09-07-catalog-reset.md` (Task 12, Step 5).
+
 ### Added (2026-09-07, weekly traffic topline in the admin digest)
 - The Monday scrape-health digest now appends a **site-traffic section**: visitors/sessions/top
   sources from GA4, plus top searches, zero-result searches (demand signal for what to add next),

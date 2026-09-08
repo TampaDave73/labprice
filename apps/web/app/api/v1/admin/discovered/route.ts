@@ -265,7 +265,13 @@ export async function POST(req: NextRequest) {
     }
     for (const [targetTestId, group] of groups) {
       const withVendorSlug = group.map((p) => ({ ...p, vendorSlug: p.vendor.slug }));
-      const result = await prisma.$transaction((tx) => attachProductsToTest(tx, targetTestId, withVendorSlug, { markMatched: action !== 'list' }));
+      // Same latent P2028 risk as autolist-code-matches.ts (default 5s timeout vs ~106ms RTT * ~4
+      // sequential queries/product * up to 14 vendors/test) — lower exposure here since a group is
+      // usually small, but a bulk "list" action on a widely-carried test can still hit it.
+      const result = await prisma.$transaction(
+        (tx) => attachProductsToTest(tx, targetTestId, withVendorSlug, { markMatched: action !== 'list' }),
+        { timeout: 120_000, maxWait: 30_000 },
+      );
       offeringsCreated += result.offeringsCreated;
       aliasesLearned += result.aliasesLearned;
       droppedDuplicates.push(...result.droppedDuplicates);
