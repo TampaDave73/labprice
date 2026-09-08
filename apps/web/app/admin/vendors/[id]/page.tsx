@@ -127,9 +127,10 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   // Walk-In Lab, 3,100+ on Private MD Labs). Without a pending state the button looked inert for
   // minutes while the row was already committed — "nothing happens until I refresh".
   const [adding, setAdding] = useState(false);
-  // Tests linked this session that still have no price. Adding is now instant (the API no longer
-  // prices inline); these are what the one-shot "price them" action below covers.
-  const [awaitingPrice, setAwaitingPrice] = useState<string[]>([]);
+  // How many tests linked THIS SESSION still have no price. A count, not a list of names: "Add all"
+  // links up to 30 at once, and an earlier version pushed a summary string ("20 tests") into a name
+  // array, so the banner read "1 test added without a price (20 tests)".
+  const [awaitingPrice, setAwaitingPrice] = useState(0);
 
   const loadCatalog = async () => {
     try {
@@ -228,7 +229,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
       }
       setNewTestId(''); setNewUrl(''); setNewPrice('');
       await loadCatalog();
-      if (j.needsPricing) setAwaitingPrice((prev) => (prev.includes(testName) ? prev : [...prev, testName]));
+      if (j.needsPricing) setAwaitingPrice((prev) => prev + 1);
       setMsg(j.needsPricing ? `Added ${testName}. It has no price yet — see below.` : `Added ${testName}.`);
     } catch {
       setMsg('Could not add that test — check your connection and try again.');
@@ -257,7 +258,7 @@ They are added without prices — price them in one crawl afterwards. You can re
       if (!res.ok) { setMsg(j.error?.message ?? 'Could not add those tests.'); return; }
       const linked = j.data?.linked ?? 0;
       await loadCatalog();
-      if (j.needsPricing) setAwaitingPrice((prev) => [...new Set([...prev, `${linked} test${linked === 1 ? '' : 's'}`])]);
+      if (j.needsPricing) setAwaitingPrice((prev) => prev + linked);
       setMsg(`Linked ${linked} test${linked === 1 ? '' : 's'}. They have no prices yet — see below.`);
     } catch {
       setMsg('Could not add those tests — check your connection and try again.');
@@ -382,10 +383,10 @@ They are added without prices — price them in one crawl afterwards. You can re
     } else if (j.data?.mode === 'catalog') {
       const d = j.data;
       setMsg(`Scraped ${d.offerings} test(s): ${d.matched} matched, ${d.ambiguous} need review, ${d.unmatched} not found — ${d.published} price(s) published.`);
-      setAwaitingPrice([]);
+      setAwaitingPrice(0);
       loadCatalog(); // refresh to show newly-published prices
     } else if (j.data?.mode === 'catalog-queued') {
-      setAwaitingPrice([]);
+      setAwaitingPrice(0);
       setMsg('This vendor needs a browser-based crawl, so it runs via the background worker, not inline — queued. Make sure `pnpm dev:worker` (or the production worker) is running; check back here or the Change Queue shortly for results.');
     } else {
       setMsg(`Queued ${j.data?.enqueued ?? 0} scrape job(s). Watch the Change Queue for results.`);
@@ -627,14 +628,14 @@ They are added without prices — price them in one crawl afterwards. You can re
         {/* One crawl prices every unpriced test at once. Discovery has to pull the vendor's whole
             catalog listing before it can match anything, so pricing ten tests costs the same as
             pricing one — batching here is the entire point of not pricing on each add. */}
-        {awaitingPrice.length > 0 && (
+        {awaitingPrice > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <span>
-              {awaitingPrice.length} test{awaitingPrice.length === 1 ? '' : 's'} added without a price
-              ({awaitingPrice.join(', ')}). Add the rest first, then price them all in one crawl.
+              {awaitingPrice} test{awaitingPrice === 1 ? '' : 's'} added without a price. Add any others
+              first — one crawl prices them all, and costs the same whether it&apos;s 1 test or 30.
             </span>
             <button onClick={runScrape} disabled={scraping} className="admin-btn">
-              {scraping ? 'Pricing…' : `Price ${awaitingPrice.length} added test${awaitingPrice.length === 1 ? '' : 's'}`}
+              {scraping ? 'Pricing…' : `Price ${awaitingPrice} added test${awaitingPrice === 1 ? '' : 's'}`}
             </button>
           </div>
         )}
