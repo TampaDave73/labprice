@@ -50,10 +50,9 @@ const EMPTY: TestData = {
 // clobbers prose the admin already wrote. (Categories are handled separately, as an array.)
 const LOOKUP_FIELDS = ['shortName', 'slug', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
 
-// The two lab codes are deliberately NOT blank-only: a code that is already present is exactly the
-// case where a second opinion is worth seeing, since a wrong code prices a different blood test and
-// nothing else on the page reveals it. So Auto-fill overwrites them and the previous value is offered
-// back via a per-field Revert control (see preLookupCodes) — suggestion visible, mistake undoable.
+// The lab codes fill on the same blank-only rule as everything else — an existing code has usually
+// been verified against the lab by hand and must not be overwritten by a guess. They are listed
+// separately only because their provenance is tracked per-field (see codeSources).
 const LOOKUP_CODE_FIELDS = ['questCode', 'labcorpCode'] as const;
 
 export default function TestEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -148,6 +147,8 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
       const d = j.data ?? {};
       // Snapshot BEFORE applying, so Revert restores what the admin had, not what the lookup wrote.
       setPreLookupCodes({ questCode: test.questCode ?? null, labcorpCode: test.labcorpCode ?? null });
+      // Which code fields this lookup ACTUALLY wrote. Provenance is only meaningful for those.
+      const filled = new Set<string>();
       setTest((prev) => {
         if (!prev) return prev;
         const next = { ...prev };
@@ -159,8 +160,12 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           }
         }
         for (const f of LOOKUP_CODE_FIELDS) {
+          const cur = prev[f];
           const incoming = d[f];
-          if (incoming != null && incoming !== '') (next as Record<string, unknown>)[f] = incoming;
+          if ((cur == null || String(cur).trim() === '') && incoming != null && incoming !== '') {
+            (next as Record<string, unknown>)[f] = incoming;
+            filled.add(f);
+          }
         }
         // Categories: only auto-select when none are chosen yet (don't override the admin's picks).
         if (prev.categoryIds.length === 0 && Array.isArray(d.categoryIds) && d.categoryIds.length > 0) {
@@ -168,7 +173,14 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
         }
         return next;
       });
-      setCodeSources(d.sources ?? {});
+      // Only badge a code the lookup actually WROTE. Applying `d.sources` wholesale marked an
+      // existing, hand-verified code as "AI-suggested" even though the suggestion was discarded by the
+      // blank-only rule above — which reads as "your saved code is a guess" and is exactly backwards.
+      const sources = (d.sources ?? {}) as { questCode?: string; labcorpCode?: string };
+      setCodeSources({
+        ...(filled.has('questCode') ? { questCode: sources.questCode } : {}),
+        ...(filled.has('labcorpCode') ? { labcorpCode: sources.labcorpCode } : {}),
+      });
       setLookupNote(Array.isArray(d.notes) && d.notes.length ? d.notes.join(' ') : 'Auto-fill complete.');
     } catch {
       setError('Lookup failed — check your connection and try again.');
