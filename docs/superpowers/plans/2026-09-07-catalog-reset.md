@@ -1553,70 +1553,48 @@ client never loads dotenv, `DOTENV_CONFIG_PATH` is ignored, and the command hard
 "Validation Error" (it tries to connect with no `DATABASE_URL`). The committed scripts don't need this —
 they `import 'dotenv/config'` themselves — but every inline one-liner in this runbook does.
 
-- [ ] **Step 5: Recrawl every vendor, in staged waves**
+- [ ] **Step 5: Recrawl every vendor**
 
-Measured reality: ~9,100 products to crawl, strictly sequential at `rateLimitMs: 500` plus per-page
-fetch time, and 2,834 of those pages go through Playwright — **6–15 hours end-to-end**, not "minutes
-each". Worse, because auto-listing only happens after a crawl completes, running `recrawl-all.ts` with
-no arguments (all vendors, one giant invocation) would leave the live site showing all 30 tests with
-**zero prices** for that entire window. Instead, run it in waves so prices land within the hour and a
-single vendor's failure doesn't cost the whole run:
+One command, all 18 vendors. Expect roughly **25–45 minutes**.
 
 ```bash
-# Wave 1 — five fast API (fetchAll) vendors + the small page vendors. Minutes, not hours.
-npx tsx scripts/recrawl-all.ts algorx anabolic-insights directlabs jason-health mito-health \
-  drsays good-labs discounted-labs marek-diagnostics labcorp-ondemand own-your-labs quest-health
-
-# Then auto-list so the site has prices immediately:
-npx tsx scripts/autolist-code-matches.ts            # READ the printed matches
-npx tsx scripts/autolist-code-matches.ts --apply
-
-# Wave 2 — the big HTTP crawlers, ONE invocation each so a failure loses only that vendor
-npx tsx scripts/recrawl-all.ts healthlabs          # ~730 products
-npx tsx scripts/recrawl-all.ts walk-in-lab         # ~1,256
-npx tsx scripts/recrawl-all.ts private-md-labs     # ~3,552 — the longest single job
-
-# Wave 3 — the three browser/WAF vendors, ONE each. Hours. true-health-labs is EXPECTED to fail.
-npx tsx scripts/recrawl-all.ts personalabs
-npx tsx scripts/recrawl-all.ts request-a-test
-npx tsx scripts/recrawl-all.ts true-health-labs
-
-# Re-run the autolist dry-run + --apply after each wave; it is idempotent (skips existing pairs).
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts 2>&1 | tee ../../recrawl.log
 ```
 
-All of these run from `apps/worker` with `DOTENV_CONFIG_PATH=../../.env.scrape-prod` set, e.g.:
-```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/recrawl-all.ts algorx anabolic-insights ...
-```
+The crawl narrows to the live 30-test catalog (`narrowToAllTests`), fetching only product detail pages
+whose name plausibly matches one of the 30 by name or alias: ~877 detail fetches instead of the ~9,114
+an exhaustive crawl would do, and ~328 Playwright page loads instead of 2,834. The **full** catalog
+listing is still ingested into `VendorProduct` regardless, so nothing is lost from `/admin/discovered`
+— narrowing only decides which pages get their price and codes read.
 
-**Because each wave passes explicit slugs, check the printed `Crawling N vendor(s)` line matches the
-number of slugs you typed.** A typo'd slug matches zero vendors and `recrawl-all.ts` exits 0 without
-complaining — it silently skips that vendor rather than erroring, and nothing downstream will flag the
-gap.
+Each vendor line ends with the crawler's own narrowing count, e.g.
+`good-labs (goodlabs)… 51 product(s) (+0), 26 matched [narrowed to 32/50 candidate product page(s)]`.
+**If that `[narrowed to …]` note is missing on the page-crawl vendors, narrowing is not active** and
+you are about to sit through a multi-hour exhaustive crawl — stop and check `narrowToAllTests` is still
+being passed. (API/`fetchAll` vendors — `algorx`, `anabolic-insights`, `directlabs`, `jason-health`,
+`mito-health` — legitimately never print it; they return their whole catalog in a single call.)
 
 Expect `true-health-labs` to report `FAILED` (its WAF blocks even the browser-fetch path), and
 `personalabs`/`request-a-test` may too — impact is roughly **1 offering out of ~167**. This is a known,
 accepted gap, not a reason to abort or re-investigate the reset.
 
 Also expect vendor trust to reset: deleting every `ScrapeRun` in Step 2 put all 18 vendors at MEDIUM
-trust; after each wave's crawl, a vendor that succeeded goes HIGH and one that failed goes LOW off that
+trust; after the crawl, a vendor that succeeded goes HIGH and one that failed goes LOW off that
 single run (trust is computed from recent run history, and there's no history yet). A WAF-blocked
 vendor sitting at LOW — forcing manual price review on its offerings until a crawl eventually succeeds
 — is expected, not a regression.
 
 Investigate any vendor reporting `FAILED` or 0 products beyond the three expected WAF vendors above
-before moving to the next wave — a blocked crawl silently produces no matches.
+before moving on — a blocked crawl silently produces no matches, which looks identical to a vendor
+that simply carries none of the 30.
 
 - [ ] **Step 6: Review the code matches, then list them**
-
-(Already run as part of each wave in Step 5 — this step is the final pass after Wave 3, to confirm
-nothing was left unlisted.)
 
 ```bash
 cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/autolist-code-matches.ts
 ```
 
-**Read every printed line.** Each is `vendor | our test name ← their product name | price`. You are checking that the two names describe the same test. Expect roughly 167 rows total across all waves. If any line pairs two clearly different tests, stop and investigate the code on that `VendorProduct` row rather than proceeding.
+**Read every printed line.** Each is `vendor | our test name ← their product name | price`. You are checking that the two names describe the same test. Expect roughly 167 rows. If any line pairs two clearly different tests, stop and investigate the code on that `VendorProduct` row rather than proceeding.
 
 Note: the printed match count will slightly **exceed** the number of offerings actually created. Same-vendor duplicates (the same vendor matching the same test twice) print as separate match lines, but only the first gets an offering — the script's own `DROPPED DUPLICATES` block at the end of the `--apply` run reconciles the difference. So `created < todo` (fewer created than listed) is expected output, not a bug.
 
