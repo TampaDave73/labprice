@@ -28,6 +28,15 @@ const COLUMNS = [
   { key: 'confidence', header: 'confidence', width: 10, note: 'High, Medium, or Low — how reliably the codes were verified.' },
   { key: 'third_party_only', header: 'third_party_only', width: 12, note: 'true/false — not offered by Quest or LabCorp at all.' },
   { key: 'notes', header: 'notes', width: 40, note: 'Free-text research/verification note.' },
+  // The long-form content fields. Previously export-only-omitted, which meant a round-trip could not
+  // edit the copy that actually renders on the public test page — the whole point of working offline.
+  { key: 'description', header: 'description', width: 50, note: 'Public-facing description shown on the test page.' },
+  { key: 'purpose', header: 'purpose', width: 50, note: 'Why someone orders this test.' },
+  { key: 'procedure', header: 'procedure', width: 50, note: 'How the sample is collected/run.' },
+  { key: 'preparation', header: 'preparation', width: 50, note: 'Patient prep, e.g. fasting requirements.' },
+  { key: 'normal_range', header: 'normal_range', width: 30, note: 'Reference range text.' },
+  { key: 'display_order', header: 'display_order', width: 12, note: 'Sort weight within listings. Integer; lower sorts first. Blank keeps the current value.' },
+  { key: 'code_verified_at', header: 'code_verified_at', width: 20, note: 'READ-ONLY — when the lab codes were last verified. Ignored on import.' },
 ] as const;
 
 const TEXT_FORMAT_COLUMNS = new Set(['quest_code', 'labcorp_code']);
@@ -100,6 +109,13 @@ export async function GET() {
       confidence: t.confidence,
       third_party_only: t.thirdPartyOnly,
       notes: t.notes ?? '',
+      description: t.description ?? '',
+      purpose: t.purpose ?? '',
+      procedure: t.procedure ?? '',
+      preparation: t.preparation ?? '',
+      normal_range: t.normalRange ?? '',
+      display_order: t.displayOrder,
+      code_verified_at: t.codeVerifiedAt ? t.codeVerifiedAt.toISOString().slice(0, 10) : '',
     });
   }
 

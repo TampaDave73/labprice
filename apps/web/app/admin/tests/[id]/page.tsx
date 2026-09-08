@@ -46,9 +46,15 @@ const EMPTY: TestData = {
   methodology: '', labVariant: '', cardioIq: false, confidence: 'LOW', thirdPartyOnly: false, notes: '',
 };
 
-// Text fields the "auto-fill from name" lookup populates — only when currently blank, so it never
-// clobbers something the admin already typed. (Categories are handled separately, as an array.)
-const LOOKUP_FIELDS = ['shortName', 'slug', 'questCode', 'labcorpCode', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
+// Text fields the "auto-fill from name" lookup populates, only when currently blank, so it never
+// clobbers prose the admin already wrote. (Categories are handled separately, as an array.)
+const LOOKUP_FIELDS = ['shortName', 'slug', 'description', 'purpose', 'procedure', 'preparation', 'normalRange'] as const;
+
+// The two lab codes are deliberately NOT blank-only: a code that is already present is exactly the
+// case where a second opinion is worth seeing, since a wrong code prices a different blood test and
+// nothing else on the page reveals it. So Auto-fill overwrites them and the previous value is offered
+// back via a per-field Revert control (see preLookupCodes) — suggestion visible, mistake undoable.
+const LOOKUP_CODE_FIELDS = ['questCode', 'labcorpCode'] as const;
 
 export default function TestEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -66,6 +72,11 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
   // vendor-sourced option: they're always Claude's writing, never copied from a vendor page — see the
   // static note below the Auto-fill button.
   const [codeSources, setCodeSources] = useState<{ questCode?: string; labcorpCode?: string }>({});
+  // The two lab codes exactly as they were immediately before the last Auto-fill, so a suggestion can
+  // be undone per-field. Lab codes are the one thing on this form that is expensive to get wrong (a
+  // wrong code prices a different blood test), and re-deriving the old value by hand means digging it
+  // out of the DB. null = no Auto-fill has run since the page loaded or was last saved.
+  const [preLookupCodes, setPreLookupCodes] = useState<{ questCode: string | null; labcorpCode: string | null } | null>(null);
   const [vendors, setVendors] = useState<VendorRow[]>([]);
   const [vendorBusy, setVendorBusy] = useState<Set<string>>(new Set());
   // Distinct from `error` (which is action feedback on an already-loaded page): a failure here means
@@ -135,6 +146,8 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
       const j = await res.json();
       if (!res.ok) { setError(j.error?.message ?? 'Lookup failed'); return; }
       const d = j.data ?? {};
+      // Snapshot BEFORE applying, so Revert restores what the admin had, not what the lookup wrote.
+      setPreLookupCodes({ questCode: test.questCode ?? null, labcorpCode: test.labcorpCode ?? null });
       setTest((prev) => {
         if (!prev) return prev;
         const next = { ...prev };
@@ -144,6 +157,10 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           if ((cur == null || String(cur).trim() === '') && incoming != null && incoming !== '') {
             (next as Record<string, unknown>)[f] = incoming;
           }
+        }
+        for (const f of LOOKUP_CODE_FIELDS) {
+          const incoming = d[f];
+          if (incoming != null && incoming !== '') (next as Record<string, unknown>)[f] = incoming;
         }
         // Categories: only auto-select when none are chosen yet (don't override the admin's picks).
         if (prev.categoryIds.length === 0 && Array.isArray(d.categoryIds) && d.categoryIds.length > 0) {
@@ -336,12 +353,30 @@ export default function TestEditPage({ params }: { params: Promise<{ id: string 
           <div>
             <label className={labelCls}>Quest Code</label>
             <input type="text" className="admin-input" value={test.questCode ?? ''} onChange={(e) => handleChange('questCode', e.target.value)} />
+            {preLookupCodes && (test.questCode ?? '') !== (preLookupCodes.questCode ?? '') && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-primary-700 underline"
+                onClick={() => { handleChange('questCode', preLookupCodes.questCode ?? ''); setCodeSources((p) => ({ ...p, questCode: undefined })); }}
+              >
+                ↩ Revert to {preLookupCodes.questCode ? `"${preLookupCodes.questCode}"` : 'blank'}
+              </button>
+            )}
             {codeSources.questCode === 'ai' && <p className="mt-1 text-xs text-amber-700">⚠ AI-suggested — verify against the lab before saving.</p>}
             {codeSources.questCode && codeSources.questCode !== 'ai' && <p className="mt-1 text-xs text-success-700">✓ Matched in the {codeSources.questCode} catalog, not AI-guessed.</p>}
           </div>
           <div>
             <label className={labelCls}>LabCorp Code</label>
             <input type="text" className="admin-input" value={test.labcorpCode ?? ''} onChange={(e) => handleChange('labcorpCode', e.target.value)} />
+            {preLookupCodes && (test.labcorpCode ?? '') !== (preLookupCodes.labcorpCode ?? '') && (
+              <button
+                type="button"
+                className="mt-1 text-xs text-primary-700 underline"
+                onClick={() => { handleChange('labcorpCode', preLookupCodes.labcorpCode ?? ''); setCodeSources((p) => ({ ...p, labcorpCode: undefined })); }}
+              >
+                ↩ Revert to {preLookupCodes.labcorpCode ? `"${preLookupCodes.labcorpCode}"` : 'blank'}
+              </button>
+            )}
             {codeSources.labcorpCode === 'ai' && <p className="mt-1 text-xs text-amber-700">⚠ AI-suggested — verify against the lab before saving.</p>}
             {codeSources.labcorpCode && codeSources.labcorpCode !== 'ai' && <p className="mt-1 text-xs text-success-700">✓ Matched in the {codeSources.labcorpCode} catalog, not AI-guessed.</p>}
           </div>

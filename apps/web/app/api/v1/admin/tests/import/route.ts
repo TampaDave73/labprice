@@ -34,6 +34,12 @@ type RowPlan = {
     confidence: 'HIGH' | 'MEDIUM' | 'LOW';
     thirdPartyOnly: boolean;
     notes: string | null;
+    description: string | null;
+    purpose: string | null;
+    procedure: string | null;
+    preparation: string | null;
+    normalRange: string | null;
+    displayOrder: number;
   };
   changes?: Record<string, { from: string; to: string }>; // updates only — human-readable diff
 };
@@ -136,6 +142,16 @@ export async function POST(req: NextRequest) {
       confidence: 'confidence' in rec ? (rec.confidence.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW') : (existing?.confidence ?? 'LOW'),
       thirdPartyOnly: 'third_party_only' in rec ? parseBool(rec.third_party_only ?? '') : (existing?.thirdPartyOnly ?? false),
       notes: 'notes' in rec ? (rec.notes || null) : (existing?.notes ?? null),
+      description: 'description' in rec ? (rec.description || null) : (existing?.description ?? null),
+      purpose: 'purpose' in rec ? (rec.purpose || null) : (existing?.purpose ?? null),
+      procedure: 'procedure' in rec ? (rec.procedure || null) : (existing?.procedure ?? null),
+      preparation: 'preparation' in rec ? (rec.preparation || null) : (existing?.preparation ?? null),
+      normalRange: 'normal_range' in rec ? (rec.normal_range || null) : (existing?.normalRange ?? null),
+      // Blank keeps the current value rather than resetting to 0 — an operator clearing a cell means
+      // "leave it alone", not "send this test to the top of every listing".
+      displayOrder: 'display_order' in rec && String(rec.display_order ?? '').trim() !== ''
+        ? (Number.parseInt(String(rec.display_order), 10) || 0)
+        : (existing?.displayOrder ?? 0),
     };
 
     if (!existing) {
@@ -160,6 +176,12 @@ export async function POST(req: NextRequest) {
     cmp('confidence', existing.confidence, fields.confidence);
     cmp('third_party_only', String(existing.thirdPartyOnly), String(fields.thirdPartyOnly));
     cmp('notes', existing.notes, fields.notes);
+    cmp('description', existing.description, fields.description);
+    cmp('purpose', existing.purpose, fields.purpose);
+    cmp('procedure', existing.procedure, fields.procedure);
+    cmp('preparation', existing.preparation, fields.preparation);
+    cmp('normal_range', existing.normalRange, fields.normalRange);
+    cmp('display_order', String(existing.displayOrder), String(fields.displayOrder));
     const oldCats = [...existingCatNames].sort().join('|');
     const newCats = [...fields.categories].sort().join('|');
     if (oldCats.toLowerCase() !== newCats.toLowerCase()) changes.categories = { from: oldCats, to: newCats };
@@ -216,6 +238,12 @@ export async function POST(req: NextRequest) {
         confidence: plan.fields.confidence,
         thirdPartyOnly: plan.fields.thirdPartyOnly,
         notes: plan.fields.notes,
+        description: plan.fields.description,
+        purpose: plan.fields.purpose,
+        procedure: plan.fields.procedure,
+        preparation: plan.fields.preparation,
+        normalRange: plan.fields.normalRange,
+        displayOrder: plan.fields.displayOrder,
       };
 
       const testId = plan.action === 'create'
