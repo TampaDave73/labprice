@@ -139,9 +139,13 @@ const ADAPTER_DEFAULTS: Record<
   // Dedicated product-only sitemap (single flat fetch, no pagination). The WooCommerce SKU literally
   // encodes "<Lab>_<code>", explicitly labelled per product — strict per-lab tiers, no
   // codeMatchAnyProvider needed.
-  // needsBrowser (2026-07-19): plain HTTP worked from residential IPs, but from Railway's datacenter
-  // IP the WAF 403s even the sitemap — the stealth browser fetch clears it like a real visitor.
-  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml', needsBrowser: true },
+  // needsBrowser REMOVED 2026-09-08. It was added 2026-07-19 because the WAF 403'd Railway's
+  // datacenter IP even for the sitemap. Retested from inside the scrape-worker container: plain HTTP
+  // returns 200 / 66,513 bytes / 196 <loc> entries, identical to a residential fetch — the block is
+  // gone. Keeping the flag was actively harmful: it forced the Playwright path, which failed and got
+  // this vendor written off as "blocked" for a day. If the 403 ever returns, put the flag back rather
+  // than assuming — `railway ssh --service scrape-worker` + a one-line fetch settles it in seconds.
+  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/product-sitemap.xml' },
   // Quest's own first-party store (Salesforce Commerce Cloud). Sitemap embeds the Quest order code
   // directly in the URL; every product is Quest-fulfilled by definition.
   questhealth: { baseUrl: 'https://www.questhealth.com', catalogPath: '/sitemap_0.xml' },

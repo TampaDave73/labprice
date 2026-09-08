@@ -122,6 +122,11 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   const [newTestId, setNewTestId] = useState('');
   const [newUrl, setNewUrl] = useState('');
   const [newPrice, setNewPrice] = useState('');
+  // Adding a test is NOT a quick write: the POST creates the offering and then runs catalog discovery
+  // inline to price it, which has to pull the vendor's whole catalog listing first (1,200+ products on
+  // Walk-In Lab, 3,100+ on Private MD Labs). Without a pending state the button looked inert for
+  // minutes while the row was already committed — "nothing happens until I refresh".
+  const [adding, setAdding] = useState(false);
 
   const loadCatalog = async () => {
     try {
@@ -204,18 +209,38 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
   useEffect(() => { loadRuns(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addLink = async () => {
-    if (!newTestId) return;
-    const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ testId: newTestId, externalUrl: newUrl || null, currentPrice: newPrice || null }),
-    });
-    if (!res.ok) {
+    if (!newTestId || adding) return;
+    const testName = availableTests.find((t) => t.id === newTestId)?.name ?? 'test';
+    setAdding(true);
+    setMsg(`Adding ${testName} and looking up its price — this can take a minute on a large catalog…`);
+    try {
+      const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: newTestId, externalUrl: newUrl || null, currentPrice: newPrice || null }),
+      });
       const j = await res.json().catch(() => ({}));
-      setMsg(j.error?.message ?? 'Could not add that link.');
-      return;
+      if (!res.ok) {
+        setMsg(j.error?.message ?? 'Could not add that link.');
+        return;
+      }
+      setNewTestId(''); setNewUrl(''); setNewPrice('');
+      await loadCatalog();
+      // The offering row is committed before discovery runs, so it exists even when pricing found
+      // nothing — say which happened rather than leaving an unpriced row looking like a failure.
+      const d = j.discovery as { matched: number; ambiguous: number; unmatched: number } | null | undefined;
+      setMsg(
+        d == null ? `Added ${testName}.`
+          : d.matched > 0 ? `Added ${testName} — price found.`
+          : d.ambiguous > 0 ? `Added ${testName} — several possible products found, so the price is waiting in the Change Queue.`
+          : `Added ${testName} — no matching product found in this vendor's catalog, so it has no price yet.`,
+      );
+    } catch {
+      // The row may still have been created: the POST commits the offering before it starts pricing.
+      setMsg('The request failed or timed out while pricing. Reload the page — the test may still have been added.');
+      await loadCatalog();
+    } finally {
+      setAdding(false);
     }
-    setNewTestId(''); setNewUrl(''); setNewPrice('');
-    loadCatalog();
   };
 
   // Catalog rows save on blur (click away) — no separate Save button. Flash a confirmation so it's
@@ -562,7 +587,7 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
             <label className={labelCls}>Price</label>
             <input type="number" className="admin-input" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
           </div>
-          <button onClick={addLink} disabled={!newTestId} className="admin-btn">Add</button>
+          <button onClick={addLink} disabled={!newTestId || adding} className="admin-btn">{adding ? 'Adding…' : 'Add'}</button>
         </div>
       </div>
 

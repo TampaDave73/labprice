@@ -33,6 +33,13 @@ import { browserFetchHtml } from '@labprice/scrapers/src/catalog/browser-fetch';
 import { runVendorDiscovery } from '../src/discovery';
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+// --no-browser forces plain HTTP even for adapters flagged needsBrowser. Those flags exist because
+// the vendor's WAF blocks Railway's DATACENTER IP — from a residential connection plain HTTP is often
+// fine, and the browser path is both far slower and memory-hungry enough to get the process OOM-killed.
+// Verified 2026-09-08: truehealthlabs' product sitemap returns 196 entries over plain HTTP from here,
+// while the browser path failed. Never make this the default — on Railway the browser fetch is what
+// gets these vendors through at all.
+const NO_BROWSER = process.argv.includes('--no-browser');
 
 async function main() {
   const vendors = await prisma.vendor.findMany({
@@ -60,7 +67,7 @@ async function main() {
         narrowToAllTests: true,
         // Cloudflare/WAF-gated vendors (personalabs, requestatest, truehealthlabs) need a real
         // browser; plain HTTP gets a challenge page, which parses as 0 products and fails the run.
-        ...(adapterNeedsBrowser(adapter) ? { fetchHtml: browserFetchHtml(60_000) } : {}),
+        ...(adapterNeedsBrowser(adapter) && !NO_BROWSER ? { fetchHtml: browserFetchHtml(60_000) } : {}),
         onLog: (m) => { if (m.startsWith('narrowed to')) narrowed = m; },
       });
       const after = await prisma.vendorProduct.count({ where: { vendorId: v.id } });
