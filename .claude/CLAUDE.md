@@ -209,6 +209,25 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     "Validation Error" — the committed scripts don't need this since they `import 'dotenv/config'`
     themselves.
 
+16. **A "likely blocked (WAF/challenge page)" crawl failure is a GUESS, not a diagnosis.** The 0-products
+    guard in `runVendorDiscovery` fires for any empty catalog — a real block, a stale selector, or a
+    forced-and-failing browser path all look identical. Three vendors were written off as blocked in
+    one day and none of them were: Private MD Labs was a regex pinning single spaces between HTML
+    attributes, `truehealthlabs` was a stale `needsBrowser` flag whose WAF block had lifted, and one
+    was a missing UI spinner. Diagnose by instrumenting the boundaries separately — raw fetch bytes,
+    then `parseCatalog` on that same body — before believing the message. Adapter fixtures freeze the
+    markup captured on the day they were written, so **the test suite stays green while production
+    silently breaks**; a passing suite is not evidence the parser still matches the live site. To test
+    whether a WAF really blocks production (as opposed to your machine), run the fetch from inside the
+    container: `railway ssh --service scrape-worker "node -e \"fetch(url).then(...)\""`.
+17. **A pinned `Offering.externalUrl` overrides the panel exclusion; automatic matching still doesn't.**
+    `priceFromPinnedUrl` passes `includePanels: true` (2026-09-08). Panels are excluded automatically so
+    a single test is never priced from a bundle it merely appears inside — but several of our own tests
+    (CBC, CMP, Lipid Panel) ARE panels, and vendors name them so. The trade-off: pinning a genuine
+    multi-test bundle now prices the test at the bundle's price with no warning. Also note **linking a
+    test no longer prices it inline** — discovery fetches the whole catalog listing regardless of how
+    many offerings it prices, so pricing is batched behind "Scrape now" instead of run per-add.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

@@ -9,6 +9,37 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-08, admin + scraper fixes)
+- **A pinned product URL now overrides the panel exclusion.** `priceFromPinnedUrl` resolved the right
+  product and then discarded it whenever that product was `isPanel`, returning null — the offering
+  stayed priceless while the scrape reported success, so the admin's URL looked ignored. The exclusion
+  still applies to every automatic match (it stops a test being priced from a bundle it merely appears
+  inside); a pin is an explicit human choice, and several of our own tests (CBC, CMP, Lipid Panel) are
+  panels by nature. NOTE: this means pinning a genuine multi-test bundle now prices the test at the
+  bundle's price, and nothing flags it — pin deliberately.
+- **Adding a test to a vendor is instant.** The POST used to run catalog discovery inline for the one
+  new offering, on the assumption that was "~1-3s". Discovery fetches the vendor's ENTIRE catalog
+  listing first (1,200+ products on Walk-In Lab, 3,100+ on Private MD Labs), so every add paid a full
+  crawl. Because that listing fetch dominates, pricing N offerings costs the same as pricing one — so
+  adds are now instant and one "Price N added tests" runs a single crawl for the batch.
+- **"Add all N" on the vendor page** links every test the vendor doesn't already carry, in one
+  transactional request.
+- **Private MD Labs catalog parser** no longer pins attribute whitespace. The site began emitting two
+  spaces between the product anchor's attributes; the regex matched nothing and the crawl reported
+  "0 products — likely blocked (WAF/challenge page)", indistinguishable from a real block. It was
+  serving ~900KB of product HTML the whole time. Fixtures from 2026-07 kept the suite green.
+- **`truehealthlabs` needsBrowser removed.** Added 2026-07-19 because the WAF 403'd Railway's
+  datacenter IP; retested from inside the scrape-worker container and plain HTTP returns 200 / 196
+  entries. The flag was forcing a Playwright path that failed, which is why the vendor looked blocked.
+  `recrawl-all.ts` also gains `--no-browser` for local runs.
+- **Auto-fill only badges a lab code as AI-suggested when it actually wrote it.** Provenance was
+  applied wholesale, so an existing hand-verified code was labelled "⚠ AI-suggested" even though the
+  suggestion had been discarded by the blank-only fill rule. Each code field also gains a per-field
+  "Revert to <previous>" control.
+- **Tests export/import now round-trips every editable field** — `description`, `purpose`,
+  `procedure`, `preparation`, `normal_range` and `display_order` were missing, so offline editing
+  couldn't touch the copy that renders on the public test page.
+
 ### Changed (2026-09-07, catalog reset to 30 community-demand tests)
 - Reset the production catalog to a curated **30-test core list**
   (`packages/database/data/2026-09-07-core-30/`), reseeded via `import-master-tests.ts --file`.
