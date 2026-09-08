@@ -1517,10 +1517,7 @@ Precondition: confirm `affiliate_click_archive` is empty before running with `--
 archive step re-runs its guard and will refuse mid-run if the archive table is already populated
 (e.g. from an aborted earlier attempt):
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
-  console.log('affiliate_click_archive rows:', await prisma.affiliateClickArchive.count());
-  await prisma.\$disconnect();
-})"
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => { console.log('affiliate_click_archive rows:', await prisma.affiliateClickArchive.count()); await prisma.\$disconnect(); })"
 ```
 Must print `0` before proceeding.
 
@@ -1547,13 +1544,7 @@ Expected: `30 to create, 0 to update.` (the script's actual printed wording — 
 - [ ] **Step 4: Verify the catalog**
 
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
-  const tests = await prisma.test.findMany({ include: { categories: true } });
-  console.log('tests:', tests.length);
-  console.log('missing a category:', tests.filter(t => t.categories.length === 0).map(t => t.slug));
-  console.log('missing a display categoryId:', tests.filter(t => !t.categoryId).map(t => t.slug));
-  await prisma.\$disconnect();
-})"
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => { const tests = await prisma.test.findMany({ include: { categories: true } }); console.log('tests:', tests.length); console.log('missing a category:', tests.filter(t => t.categories.length === 0).map(t => t.slug)); console.log('missing a display categoryId:', tests.filter(t => !t.categoryId).map(t => t.slug)); await prisma.\$disconnect(); })"
 ```
 Expected: `tests: 30` and both lists empty.
 
@@ -1637,15 +1628,7 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx scripts/auto
 - [ ] **Step 7: Verify the live site**
 
 ```bash
-cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => {
-  const priced = await prisma.offering.count({ where: { currentPrice: { not: null }, isActive: true, deletedAt: null } });
-  const byVendor = await prisma.offering.groupBy({ by: ['vendorId'], where: { currentPrice: { not: null }, isActive: true, deletedAt: null }, _count: true });
-  const vs = await prisma.vendor.findMany({ select: { id: true, slug: true } });
-  const m = new Map(vs.map(v => [v.id, v.slug]));
-  console.log('priced offerings:', priced);
-  for (const b of byVendor.sort((a,b) => b._count - a._count)) console.log(' ', m.get(b.vendorId), b._count);
-  await prisma.\$disconnect();
-})"
+cd apps/worker && DOTENV_CONFIG_PATH=../../.env.scrape-prod npx tsx -r dotenv/config -e "import('@labprice/database').then(async ({prisma}) => { const priced = await prisma.offering.count({ where: { currentPrice: { not: null }, isActive: true, deletedAt: null } }); const byVendor = await prisma.offering.groupBy({ by: ['vendorId'], where: { currentPrice: { not: null }, isActive: true, deletedAt: null }, _count: true }); const vs = await prisma.vendor.findMany({ select: { id: true, slug: true } }); const m = new Map(vs.map(v => [v.id, v.slug])); console.log('priced offerings:', priced); for (const b of byVendor.sort((a,b) => b._count - a._count)) console.log(' ', m.get(b.vendorId), b._count); await prisma.\$disconnect(); })"
 ```
 Expected: roughly 167 priced offerings across a dozen or more vendors.
 
