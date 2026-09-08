@@ -191,6 +191,9 @@ importers:
 
   packages/shared:
     dependencies:
+      '@google-analytics/data':
+        specifier: ^6.1.0
+        version: 6.1.0
       '@labprice/database':
         specifier: workspace:*
         version: link:../database

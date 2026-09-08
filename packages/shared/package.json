@@ -11,6 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@google-analytics/data": "^6.1.0",
     "@labprice/database": "workspace:*",
     "zod": "^3.24.0"
   },
