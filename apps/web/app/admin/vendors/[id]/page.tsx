@@ -238,6 +238,35 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
     }
   };
 
+  // Link every test this vendor doesn't already carry, in one request. `availableTests` is already
+  // "tests with no live offering here", so it IS the remaining set — no client-side filtering needed.
+  const addAll = async () => {
+    if (adding || availableTests.length === 0) return;
+    const n = availableTests.length;
+    if (!confirm(`Link all ${n} remaining test${n === 1 ? '' : 's'} to this vendor?
+
+They are added without prices — price them in one crawl afterwards. You can remove any that this vendor doesn't actually sell.`)) return;
+    setAdding(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/v1/admin/vendors/${id}/offerings`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testIds: availableTests.map((t) => t.id) }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) { setMsg(j.error?.message ?? 'Could not add those tests.'); return; }
+      const linked = j.data?.linked ?? 0;
+      await loadCatalog();
+      if (j.needsPricing) setAwaitingPrice((prev) => [...new Set([...prev, `${linked} test${linked === 1 ? '' : 's'}`])]);
+      setMsg(`Linked ${linked} test${linked === 1 ? '' : 's'}. They have no prices yet — see below.`);
+    } catch {
+      setMsg('Could not add those tests — check your connection and try again.');
+      await loadCatalog();
+    } finally {
+      setAdding(false);
+    }
+  };
+
   // Catalog rows save on blur (click away) — no separate Save button. Flash a confirmation so it's
   // clear the change persisted without touching "Save Scraper Config".
   const saveLink = async (offeringId: string, patch: { externalUrl?: string; currentPrice?: string }) => {
@@ -585,6 +614,14 @@ export default function VendorEditPage({ params }: { params: Promise<{ id: strin
             <input type="number" className="admin-input" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
           </div>
           <button onClick={addLink} disabled={!newTestId || adding} className="admin-btn">{adding ? 'Adding…' : 'Add'}</button>
+          <button
+            onClick={addAll}
+            disabled={adding || availableTests.length === 0}
+            className="admin-btn"
+            title="Link every test this vendor doesn't already have, without prices"
+          >
+            {availableTests.length === 0 ? 'All tests added' : `Add all ${availableTests.length}`}
+          </button>
         </div>
 
         {/* One crawl prices every unpriced test at once. Discovery has to pull the vendor's whole

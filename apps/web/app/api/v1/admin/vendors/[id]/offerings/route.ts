@@ -52,12 +52,39 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!(await requireAdmin())) return forbidden();
   const { id: vendorId } = await params;
   const body = await req.json();
+  // Accepts one testId (the Add form) or many (Add all remaining). Bulk goes in a single request so
+  // linking 30 tests is one round trip rather than 30, and so it can't half-apply across a dropped
+  // connection. url/price are single-add only — they describe one specific product page.
+  const bulkIds: string[] = Array.isArray(body.testIds)
+    ? [...new Set((body.testIds as unknown[]).map((v) => String(v)).filter((v): v is string => v.length > 0))]
+    : [];
   const testId = String(body.testId ?? '');
-  if (!testId) {
-    return NextResponse.json({ error: { code: 'validation_error', message: 'testId is required' } }, { status: 400 });
+  if (!testId && bulkIds.length === 0) {
+    return NextResponse.json({ error: { code: 'validation_error', message: 'testId or testIds is required' } }, { status: 400 });
   }
   const externalUrl = body.externalUrl ? String(body.externalUrl) : null;
   const currentPrice = body.currentPrice != null && body.currentPrice !== '' ? Number(body.currentPrice) : null;
+
+  if (bulkIds.length > 0) {
+    // Reject unknown/deleted ids up front rather than letting the upsert fail on a foreign key
+    // mid-batch, which would leave an arbitrary prefix linked.
+    const live = await prisma.test.findMany({ where: { id: { in: bulkIds }, deletedAt: null }, select: { id: true } });
+    const liveIds = live.map((t) => t.id);
+    if (liveIds.length === 0) {
+      return NextResponse.json({ error: { code: 'validation_error', message: 'None of those tests exist.' } }, { status: 400 });
+    }
+    const created = await prisma.$transaction(
+      liveIds.map((tid) =>
+        prisma.offering.upsert({
+          where: { testId_vendorId: { testId: tid, vendorId } },
+          update: { deletedAt: null, isActive: true },
+          create: { testId: tid, vendorId, externalUrl: null, currentPrice: null, isActive: true },
+        }),
+      ),
+    );
+    const unpriced = created.filter((o) => o.currentPrice == null).length;
+    return NextResponse.json({ data: { linked: created.length, skipped: bulkIds.length - liveIds.length }, needsPricing: unpriced > 0 }, { status: 201 });
+  }
 
   const offering = await prisma.offering.upsert({
     where: { testId_vendorId: { testId, vendorId } },
