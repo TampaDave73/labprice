@@ -1091,8 +1091,8 @@
     "name": "Cortisol, Total",
     "short_name": "Cortisol",
     "slug": "cortisol-total",
-    "quest_code": "395",
-    "labcorp_code": "004341",
+    "quest_code": "367",
+    "labcorp_code": "004051",
     "methodology": "immunoassay",
     "lab_variant": "",
     "cardio_iq": "FALSE",
@@ -1101,7 +1101,7 @@
     "confidence": "High",
     "third_party_only": "FALSE",
     "is_popular": "FALSE",
-    "notes": ""
+    "notes": "Codes corrected 2026-09-08: was Quest 395 / LabCorp 004341, which matched no vendor catalog. Quest 367 confirmed by jason-health (\"Cortisol, Total\"), request-a-test and marek-diagnostics; LabCorp 004051 by request-a-test and labcorp-ondemand (LabCorp first-party store)."
   },
   {
     "name": "Creatine Kinase, MB",
