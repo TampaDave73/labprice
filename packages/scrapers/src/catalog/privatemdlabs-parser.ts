@@ -14,7 +14,11 @@
 // MitoHealth.
 import type { CatalogEntry, CatalogProduct, ProviderOffering } from './types';
 
-const CARD_RE = /<a id="product-name-link-\d+" href="(https:\/\/www\.privatemdlabs\.com\/product\/[a-z0-9-]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g;
+// `\s+` between attributes, never a literal space: on 2026-09-08 the site began emitting TWO spaces
+// there, this regex matched nothing, and the crawl reported "0 products" — which reads identically to
+// a WAF block, so the vendor was written off as blocked while it was in fact serving ~900KB of product
+// HTML normally. Attribute whitespace is presentational and changes on any redeploy; never pin it.
+const CARD_RE = /<a\s+id="product-name-link-\d+"\s+href="(https:\/\/www\.privatemdlabs\.com\/product\/[a-z0-9-]+)"[^>]*>\s*([^<]+?)\s*<\/a>/g;
 const LDJSON_RE = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g;
 
 /** The AJAX pagination endpoint returns `{data: "<html>", total}`; a plain page load returns full HTML. */

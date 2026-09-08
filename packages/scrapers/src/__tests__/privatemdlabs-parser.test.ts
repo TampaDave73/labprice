@@ -31,6 +31,26 @@ describe('parsePrivateMDLabsCatalog', () => {
     const slugs = entries.map((e) => e.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
+
+  // Regression, 2026-09-08: the live site started emitting TWO spaces between the anchor's
+  // attributes. The card regex hardcoded single spaces, so it matched nothing — the crawl returned
+  // 0 products and the vendor was written off as WAF-blocked for a day, while the site was happily
+  // serving 904KB of product HTML. The 2026-07 fixtures still had single spaces, so the suite stayed
+  // green throughout. Attribute whitespace is presentational and can change at any redeploy; the
+  // parser must not depend on its exact width.
+  it('parses cards regardless of the whitespace between anchor attributes', () => {
+    const card = (gap: string, slug: string, name: string) =>
+      `<div class="lab-test-info-wrapper">` +
+      `<a id="product-name-link-4759"${gap}href="https://www.privatemdlabs.com/product/${slug}"${gap}class="lab-test-name">\n   ${name}\n  </a></div>`;
+
+    for (const [label, gap] of [['one space', ' '], ['two spaces', '  '], ['newline + indent', '\n                        ']] as const) {
+      const entries = parsePrivateMDLabsCatalog(card(gap, '11-deoxycortisol', '11-Deoxycortisol'));
+      expect(entries, label).toHaveLength(1);
+      expect(entries[0]!.slug, label).toBe('11-deoxycortisol');
+      expect(entries[0]!.name, label).toBe('11-Deoxycortisol');
+      expect(entries[0]!.url, label).toBe('https://www.privatemdlabs.com/product/11-deoxycortisol');
+    }
+  });
 });
 
 describe('parsePrivateMDLabsNextPage', () => {
