@@ -21,10 +21,33 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   code matches from `VendorProduct` into live offerings automatically; exact-name/alias matches are
   held in `/admin/discovered`'s **Matched** tab for one-click human review rather than auto-published —
   a codeless match is a plausible-but-unverified pairing, not a confirmed one.
-- Staged the production recrawl into three waves (fast API vendors → big HTTP crawlers → browser/WAF
-  vendors) instead of one `recrawl-all.ts` invocation, so priced offerings appear within the hour
-  instead of after a single 6–15 hour crawl. See the runbook in
-  `docs/superpowers/plans/2026-09-07-catalog-reset.md` (Task 12, Step 5).
+- **Recrawl narrows to the live catalog instead of crawling everything.** `discover()` now takes a
+  `narrowTests` list separate from the tests it matches offerings against, and `runVendorDiscovery`
+  gains `narrowToAllTests` to fill it from every live test — needed because it otherwise derives
+  candidates from *offerings*, which are zero straight after a reset. Measured: 9,114 detail fetches
+  → 877 (~4.3 hours → ~25 min), 2,834 Playwright loads → 328, with 166/168 code matches preserved.
+  The two lost matches were vendors listing "Complete Blood Count (CBC) Test", recovered by adding a
+  bare `CBC` alias. The full catalog listing is still ingested into `VendorProduct` either way, so
+  nothing is dropped from `/admin/discovered`.
+- **Auto-listing picks the cheapest product when a vendor duplicates a test.** `Offering` is unique on
+  (testId, vendorId), so only one of a vendor's duplicate code matches survives; ordering by name
+  decided that alphabetically. Found live: HealthLabs lists a "Comprehensive Vitamin Panel" at **$599**
+  carrying the same lab code as its $59 Vitamin D test, and name order would have published the $599
+  one. The pricier twin is invariably a panel or bundle sharing the code.
+
+### Migration result (2026-09-08, executed against production)
+- Archived 5,849 affiliate clicks; deleted 278 tests, 4,359 offerings, 11,667 vendor products,
+  39,892 scrape results across 13 tables with no FK violations. Vendors, categories, page views and
+  search logs preserved as designed.
+- Reseeded 30 tests, then crawled **16 of 18 vendors**. `private-md-labs` is blocked (WAF, retried)
+  and `true-health-labs` too — both publish no lab codes, so neither costs a code-matched price.
+- **279 live priced offerings across 16 vendors; all 30 tests have at least one price.** 245 from
+  code matches, plus 34 net from a human-reviewed pass of the 42 exact-name/alias candidates
+  (`--include-name-matches`, off by default).
+- **Known data issue:** our `Cortisol, Total` carries Quest `395` / LabCorp `004341` (HIGH
+  confidence), but `marek-diagnostics` and `request-a-test` independently list plain cortisol as
+  Quest `367` / LabCorp `004051`. No vendor code-matched it; its prices come from name matches only.
+  The stored code should be re-verified before it is trusted.
 
 ### Added (2026-09-07, weekly traffic topline in the admin digest)
 - The Monday scrape-health digest now appends a **site-traffic section**: visitors/sessions/top
