@@ -11,11 +11,11 @@ const product = (name: string, slug: string) => parseDrSaysProduct(fx(name), 'ht
 const OPTS = { matchPriority: ['labcorp'] as const };
 
 describe('parseDrSaysCatalog', () => {
-  // Deliberately a hardcoded list, not a live crawl — the site's sitemap.xml is stale and doesn't
-  // list the real `test-<slug>` URL scheme (see module comment). The xml argument is ignored.
+  // The hand-verified slug list is a FLOOR, unioned with whatever the sitemap yields (see module
+  // comment). Passing no usable XML therefore still returns exactly that floor.
   const entries = parseDrSaysCatalog('<ignored/>');
 
-  it('returns the hardcoded known-good slugs regardless of input', () => {
+  it('returns the hardcoded known-good slugs even when the sitemap yields nothing', () => {
     const tsh = entries.find((e) => e.slug === 'test-tsh');
     expect(tsh).toBeDefined();
     expect(tsh!.url).toBe('https://www.drsays.com/home/test-tsh/');
@@ -25,6 +25,33 @@ describe('parseDrSaysCatalog', () => {
     const slugs = entries.map((e) => e.slug);
     expect(slugs.some((s) => s.includes('cortisol'))).toBe(false);
     expect(slugs.some((s) => s.includes('vitamin-b12'))).toBe(false);
+  });
+
+  // Regression 2026-09-08: the sitemap started listing real `test-<slug>` product URLs (22 of them,
+  // 15 parseable), which the old hardcoded-only parser ignored — DrSays sat at 5 products when it had
+  // three times that available, and the only way to add one was to hand-pin its URL.
+  it('discovers test- URLs from the sitemap and unions them with the floor', () => {
+    const xml = [
+      '<urlset>',
+      '<url><loc>https://www.drsays.com/home/test-cbc/</loc></url>',
+      '<url><loc>https://www.drsays.com/home/test-iron-and-tibc/</loc></url>',
+      '<url><loc>https://www.drsays.com/home/test-tsh/</loc></url>',
+      '</urlset>',
+    ].join('');
+    const found = parseDrSaysCatalog(xml);
+    const slugs = found.map((e) => e.slug);
+    expect(slugs).toContain('test-cbc');
+    expect(slugs).toContain('test-iron-and-tibc');
+    expect(found.find((e) => e.slug === 'test-cbc')!.url).toBe('https://www.drsays.com/home/test-cbc/');
+    // test-tsh appears in BOTH the sitemap and the floor — it must not be duplicated.
+    expect(slugs.filter((s) => s === 'test-tsh')).toHaveLength(1);
+    // The floor survives even though the sitemap didn't mention it.
+    expect(slugs).toContain('test-magnesium');
+  });
+
+  it('ignores prefix-less /home/<slug> URLs, which are the stale ones', () => {
+    const xml = '<url><loc>https://www.drsays.com/home/hemoglobin-a1c/</loc></url>';
+    expect(parseDrSaysCatalog(xml).map((e) => e.slug)).not.toContain('hemoglobin-a1c');
   });
 
   it('has no duplicate slugs', () => {

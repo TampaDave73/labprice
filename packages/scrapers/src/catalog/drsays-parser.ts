@@ -2,15 +2,17 @@
 // unit-testable against saved fixtures.
 //
 // WordPress (Yoast SEO + Kadence blocks) — despite the homepage looking like a Laravel/Vue SPA, the
-// individual `/home/test-<slug>/` test pages are plain server-rendered WordPress. There is NO reliable
-// way to discover the catalog live: `sitemap.xml` lists `/home/<slug>` pages WITHOUT the `test-`
-// prefix, and those are almost all stale — verified live 2026-07-04 that `thyroid-stimulating-hormone`,
-// `hemoglobin-a1c`, `ferritin`, `vitamin-d-25-hydroxy` etc. from the sitemap all 404 or redirect to a
-// generic search page, while the real, working pages use a DIFFERENT, undiscoverable-from-the-sitemap
-// `test-<slug>` URL scheme the site never lists anywhere in bulk. So — deliberately, and unlike every
-// other vendor this project — `parseCatalog` returns a HARDCODED list of individually hand-verified
-// `test-<slug>` URLs rather than crawling anything. Small, honest, currently-real coverage instead of a
-// crawl that would mostly 404.
+// individual `/home/test-<slug>/` test pages are plain server-rendered WordPress.
+//
+// `parseCatalog` reads the sitemap for `/home/test-<slug>/` URLs and unions in a hand-verified slug
+// list as a floor. It did NOT used to: as of 2026-07-04 the sitemap only carried `/home/<slug>` pages
+// WITHOUT the `test-` prefix, and those mostly 404'd, so the parser returned the hardcoded list alone
+// rather than crawl something that would mostly miss. Re-probed live 2026-09-08: the sitemap now lists
+// 22 real `test-` URLs, 15 of which parse into a priced product with a LabCorp code — three times the
+// hardcoded five, and including CBC, Iron and TIBC, Insulin, Prolactin and Ferritin. Keeping the union
+// means a future sitemap regression can only lose the extras, never those five known-good pages.
+// Unparseable URLs cost one fetch each and are dropped by `parseDrSaysProduct` returning null, which
+// the crawler already tolerates.
 //
 // Each real product page's own meta description states the price AND the fulfilling lab code in plain
 // text: `"Order the TSH online (Labcorp Test No. 004259) for only $8.99."` — LabCorp-only, no Quest
@@ -31,10 +33,18 @@ export const DRSAYS_KNOWN_SLUGS = ['test-tsh', 'test-hemoglobin-a1c', 'test-ferr
 
 const DESCRIPTION_RE = /"description":\s*"Order the ([^"(]+?)\s*online \(Labcorp Test No\. (\d+)\) for only \$([\d.]+)\./;
 
-/** Returns the hardcoded known-good slug list as catalog entries (see module comment for why this
- * isn't a live crawl — the site's sitemap is stale and doesn't list the real URL scheme). */
-export function parseDrSaysCatalog(_xml: string): CatalogEntry[] {
-  return DRSAYS_KNOWN_SLUGS.map((slug) => ({
+// Product URLs in the sitemap. Anchored to the `test-` prefix on purpose: the sitemap also carries
+// prefix-less `/home/<slug>` pages, and those are the stale ones that 404.
+const SITEMAP_TEST_URL_RE = /https?:\/\/www\.drsays\.com\/home\/(test-[a-z0-9-]+)\/?/gi;
+
+/** Catalog entries discovered from the sitemap, unioned with the hand-verified floor. */
+export function parseDrSaysCatalog(xml: string): CatalogEntry[] {
+  const slugs = new Set<string>(DRSAYS_KNOWN_SLUGS);
+  SITEMAP_TEST_URL_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = SITEMAP_TEST_URL_RE.exec(xml ?? '')) !== null) slugs.add(m[1]!.toLowerCase());
+
+  return [...slugs].map((slug) => ({
     name: slug.replace(/^test-/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     slug,
     url: `https://www.drsays.com/home/${slug}/`,
