@@ -42,7 +42,16 @@ async function main() {
       vendor: { select: { slug: true } },
       test: { select: { name: true } },
     },
-    orderBy: [{ vendorId: 'asc' }, { name: 'asc' }],
+    // Cheapest FIRST within each vendor. Offering is unique on (testId, vendorId), so when one vendor
+    // has two products code-matching the same test, only the first survives — attachProductsToTest
+    // takes them in the order given. Ordering by name would decide that on alphabetical luck; ordering
+    // by price makes the cheapest win, which is both the right answer for a price-comparison site and
+    // the right answer semantically: the pricier twin is invariably a panel or bundle that happened to
+    // carry the same lab code. Measured live on 2026-09-08 — healthlabs listed "Vitamin D 25-Hydroxy"
+    // at $59 alongside a "Comprehensive Vitamin Panel" at $599, and name order would have published
+    // the $599 one. Same shape for healthlabs B12 ($35 vs a $59 B12+folate bundle), walk-in-lab free
+    // testosterone ($69 vs a $125 bundle) and anabolic-insights TSH ($7 vs $19).
+    orderBy: [{ vendorId: 'asc' }, { price: 'asc' }],
   });
   const nonPositivePriceCount = await prisma.vendorProduct.count({
     where: { ...baseWhere, price: { not: null, lte: 0 } },
