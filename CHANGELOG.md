@@ -9,6 +9,34 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, SEOmator audit of /blog and /test/comprehensive-metabolic-panel-14)
+- **Only the title was clickable on a `/blog` card.** The whole card is now one link — image, title
+  and a "Read the guide" button inside it. One link per card, so anchor text stays descriptive.
+- **The first card's hero was lazy-loaded and is the LCP element** (audit hard fail). It now loads
+  eagerly at high priority; the rest stay lazy.
+- **`og:image` was missing on `/blog`, `/test/*`, `/category/*` and `/order-services`.** Declaring
+  `openGraph` on a route replaces the root default wholesale, so every route that set its own title
+  silently dropped the generated card. Now named explicitly on each.
+- **Missing `Strict-Transport-Security` and `Permissions-Policy`.** Added in `middleware.ts`; HSTS is
+  production-gated because sending it in dev pins localhost to HTTPS in your browser.
+- **robots.txt reported 7 AI crawlers as blocked.** They were not: the per-agent groups repeated the
+  same `Disallow` list under each named agent, and audit tools read "named agent + Disallow" as
+  blocked. The `*` group already allows them, so the redundant groups are gone.
+- **Nothing referenced `/llms.txt`** — a `<link rel="alternate" type="text/markdown">` now does.
+- **"Schema missing @type"** was the `@graph` wrapper, which by definition has no top-level type.
+  Every node is now its own typed `<script>`; `@id` cross-references resolve across tags unchanged.
+- **No external citations** (E-E-A-T). `BlogBody` only permitted relative links; external `https://`
+  links are now supported with `rel="nofollow noopener"`, and each article ends with two or three
+  NIH / MedlinePlus / CDC sources. Every URL was checked for a 200 before being published.
+- **Hero images were JPG with no srcset.** Now WebP at 800/1600 with `srcset`; the one alt over 125
+  characters is shortened.
+- Machine-readable `<time>` on post dates, a skip-to-content link, `preconnect` for
+  googletagmanager, and `id="main"` on every `main` landmark.
+- **Not addressed, deliberately**: text-to-HTML ratio (inherent to the App Router's inline RSC
+  payload), "meta tags in body" (Next streams metadata), and 27 elements under 12px on the test page
+  — that last is a real mobile-readability point, but resizing them is a design decision rather than
+  an audit fix.
+
 ### Added (2026-09-09, live prices in articles, and a real internal link graph)
 - **Article prices are now read live.** `[PRICE:slug]`, `[PRICE-RANGE:slug]`, `[PRICE-COUNT:slug]`
   and `[PRICE-DATE:slug]` resolve at request time from the same offerings query the "compare prices"

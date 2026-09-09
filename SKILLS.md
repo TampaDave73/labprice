@@ -70,6 +70,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   **Prices in article copy are never literals** — `[PRICE:slug]` / `[PRICE-RANGE:slug]` /
   `[PRICE-COUNT:slug]` / `[PRICE-DATE:slug]` resolve at request time from the same offerings query
   the price cards use (`lib/blog.ts`, resolved in `blog/[slug]/page.tsx`).
+  Article bodies may link **externally** with `[text](https://…)`, rendered `rel="nofollow noopener"`
+  — that's how the E-E-A-T citation signal is fed; verify a URL returns 200 before publishing it.
+  Hero images are `<name>-1600.webp` with an 800px sibling; `heroSrcSet()` derives the srcset from
+  the stored URL, so the DB keeps one column.
 - **Internal link graph** — `lib/guides.ts` holds the reverse lookups off `Post.relatedTests`:
   `guidesForTest` (test page), `guidesForTests` (category page), `relatedGuides` (sibling articles,
   ranked by shared tests). Set a post's related tests and links in *both* directions follow; there
