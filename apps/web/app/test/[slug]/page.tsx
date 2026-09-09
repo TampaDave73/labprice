@@ -37,9 +37,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const test = await getTest(slug);
   if (!test) return { title: 'Test Not Found' };
   const minPrice = test.offerings.length > 0 ? Math.min(...test.offerings.map((o) => Number(o.currentPrice))) : null;
+  const description = `Compare ${test.name} prices from ${test.offerings.length} ordering services.${minPrice ? ` From $${minPrice.toFixed(2)}.` : ''}`;
   return {
     title: `${test.name} — Compare Prices`,
-    description: `Compare ${test.name} prices from ${test.offerings.length} ordering services.${minPrice ? ` From $${minPrice.toFixed(2)}.` : ''}`,
+    description,
+    // Relative — resolved against metadataBase in the root layout. Without it, ?utm_*/?ref variants
+    // of a test page each index separately and split the page's own ranking signals.
+    alternates: { canonical: `/test/${test.slug}` },
+    openGraph: {
+      title: `${test.name} — Compare Prices | LabTestCompare`,
+      description,
+      url: `/test/${test.slug}`,
+      type: 'website',
+    },
   };
 }
 
@@ -69,22 +79,65 @@ export default async function TestDetailPage({ params }: Props) {
   const labcorpCode = test.labcorpCode ?? test.codes.find((c) => c.codeType === 'LABCORP')?.codeValue ?? null;
 
   const prices = offerings.map((o) => o.price);
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
+  const pageUrl = `${base}/test/${test.slug}`;
+
+  // Three nodes, deliberately split:
+  //  - MedicalTest carries the clinical facts. It does NOT carry `offers` — schema.org defines that
+  //    on Product/Service, not on MedicalTest (the old single-node markup hung an AggregateOffer off
+  //    MedicalTest, and set `bodyLocation` to the category name, which expects an anatomical site).
+  //  - Product carries the prices, with one Offer per vendor so the vendor↔price pairing is
+  //    machine-readable instead of only being visible in the rendered table.
+  //  - BreadcrumbList mirrors the breadcrumb the page already renders.
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'MedicalTest',
-    name: test.name,
-    description: test.description,
-    url: `${process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com'}/test/${test.slug}`,
-    ...(test.category && { bodyLocation: test.category.name }),
-    ...(offerings.length > 0 && {
-      offers: {
-        '@type': 'AggregateOffer',
-        lowPrice: Math.min(...prices).toFixed(2),
-        highPrice: Math.max(...prices).toFixed(2),
-        priceCurrency: 'USD',
-        offerCount: offerings.length,
+    '@graph': [
+      {
+        '@type': 'MedicalTest',
+        '@id': `${pageUrl}#test`,
+        name: test.name,
+        description: test.description,
+        url: pageUrl,
+        ...(test.normalRange && { normalRange: test.normalRange }),
       },
-    }),
+      ...(offerings.length > 0
+        ? [
+            {
+              '@type': 'Product',
+              '@id': `${pageUrl}#product`,
+              name: `${test.name} blood test`,
+              description: test.description,
+              url: pageUrl,
+              ...(test.category && { category: test.category.name }),
+              isRelatedTo: { '@id': `${pageUrl}#test` },
+              offers: {
+                '@type': 'AggregateOffer',
+                priceCurrency: 'USD',
+                lowPrice: Math.min(...prices).toFixed(2),
+                highPrice: Math.max(...prices).toFixed(2),
+                offerCount: offerings.length,
+                offers: offerings.map((o) => ({
+                  '@type': 'Offer',
+                  price: o.price.toFixed(2),
+                  priceCurrency: 'USD',
+                  availability: 'https://schema.org/InStock',
+                  // The tracked redirect, not the raw vendor URL — same link the Order button uses.
+                  url: `${base}/api/v1/go/${o.id}`,
+                  seller: { '@type': 'Organization', name: o.vendorName },
+                })),
+              },
+            },
+          ]
+        : []),
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+          { '@type': 'ListItem', position: 2, name: test.category.name, item: `${base}/category/${test.category.slug}` },
+          { '@type': 'ListItem', position: 3, name: test.name },
+        ],
+      },
+    ],
   };
 
   return (
