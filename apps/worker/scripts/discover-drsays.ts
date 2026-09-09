@@ -9,7 +9,9 @@ import { prisma } from '@labprice/database';
 import { runVendorDiscovery, publishStagedChange } from '../src/discovery';
 
 // WordPress itself lives under /home/ on this site (same reason product pages are /home/test-<slug>/).
-const SELECTORS = { mode: 'catalog', adapter: 'drsays', catalogPath: '/home/wp-json/wp/v2/pages?per_page=100&page=1&_fields=slug,link,status' };
+// _fields includes title: parseDrSaysCatalog reads the real page title, not a slug-derived guess (see
+// its module comment — some slugs drop word boundaries the title keeps, e.g. lipoproteina/Lipoprotein(a)).
+const SELECTORS = { mode: 'catalog', adapter: 'drsays', catalogPath: '/home/wp-json/wp/v2/pages?per_page=100&page=1&_fields=slug,link,title,status' };
 
 async function main() {
   const vendor = await prisma.vendor.upsert({

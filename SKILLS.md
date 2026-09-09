@@ -605,7 +605,12 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     returning empty, so `parseDrSaysNextPage` stops as soon as a page comes back short instead of
     fetching one more to confirm. The product-detail regex also used to exclude `(` from the name
     capture (to stop before "(Labcorp Test No. ...)"), which silently broke every product whose own
-    name has parens — CMP, Lipid Panel, Basic Metabolic Panel, PT (INR)/PTT all included. Matches on
+    name has parens — CMP, Lipid Panel, Basic Metabolic Panel, PT (INR)/PTT all included. The catalog
+    listing's entry name comes from the REST row's own `title.rendered` (`Test-<name>`, prefix
+    stripped), not a title-cased guess off the slug — some slugs drop word boundaries the title keeps
+    (`test-lipoproteina` → "Lipoproteina" title-cased, one word, sharing no token with our
+    "Lipoprotein(a)" test and so never surviving narrowing; the real title is "Test-Lipoprotein(a)").
+    Matches on
     LabCorp code ONLY, no name fallback — this vendor's own codes for "Cortisol" and "Vitamin B12"
     don't match our stored codes for those same-named tests (a real variant discrepancy, found live),
     so name-only matching is disabled entirely for this vendor rather than special-casing those two.

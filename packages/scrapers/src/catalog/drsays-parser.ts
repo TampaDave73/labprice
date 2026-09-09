@@ -43,11 +43,13 @@ export const DRSAYS_KNOWN_SLUGS = ['test-tsh', 'test-hemoglobin-a1c', 'test-ferr
 // stops at the first literal "online (Labcorp Test No." it finds, which only appears once per string.
 const DESCRIPTION_RE = /"description":\s*"Order the (.+?)\s*online \(Labcorp Test No\. (\d+)\) for only \$([\d.]+)\./;
 
-/** One row of a `GET /wp-json/wp/v2/pages` response, trimmed to what we read (`_fields=slug,link,status`). */
+/** One row of a `GET /wp-json/wp/v2/pages` response, trimmed to what we read
+ * (`_fields=slug,link,title,status`). */
 interface WpPageRow {
   slug?: unknown;
   link?: unknown;
   status?: unknown;
+  title?: { rendered?: unknown };
 }
 
 function parseWpPagesJson(json: string): WpPageRow[] {
@@ -59,22 +61,50 @@ function parseWpPagesJson(json: string): WpPageRow[] {
   }
 }
 
+// WP escapes its rendered titles as HTML entities ("Panel-Hormone Health, Women &#8211; Basic").
+// Decodes the handful of named entities plus any numeric (\d+ or hex) entity — covers everything seen
+// live (en dash, curly quotes, ampersand) without pulling in a full HTML-entity table.
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(Number(dec)));
+}
+
+// Every real product page's title is its own name prefixed "Test-" ("Test-Lipoprotein(a)",
+// "Test-Comp. Metabolic Panel (14)") — strip it to recover the real name.
+const TITLE_PREFIX_RE = /^test-\s*/i;
+
 /** Catalog entries discovered by paging the WP REST API (see module comment), unioned with the
  * hand-verified floor. Anchored to the `test-` slug prefix on purpose — that's the individual
  * order-a-lab-test page type; the site has hundreds of other page slugs (conditions, panels-as-content,
- * blog posts) that aren't real orderable products. */
+ * blog posts) that aren't real orderable products.
+ *
+ * Name comes from the page's own title (`Test-<name>`), NOT title-cased off the slug: found live
+ * 2026-09-08 that DrSays' slugs sometimes drop word boundaries the title keeps — `test-lipoproteina`
+ * title-cases to "Lipoproteina", one word, which shares no token with our "Lipoprotein(a)" test and so
+ * never survives narrowing (see catalog-scraper.ts's `buildCatalogIndexDetailed`); the real title is
+ * "Test-Lipoprotein(a)", correctly split. Slug-casing is kept as a fallback for a row with no title. */
 export function parseDrSaysCatalog(json: string): CatalogEntry[] {
   const slugs = new Set<string>(DRSAYS_KNOWN_SLUGS);
   const urlBySlug = new Map<string, string>();
+  const nameBySlug = new Map<string, string>();
   for (const row of parseWpPagesJson(json)) {
     const slug = typeof row.slug === 'string' ? row.slug.toLowerCase() : '';
     if (!slug.startsWith('test-') || row.status !== 'publish') continue;
     slugs.add(slug);
     if (typeof row.link === 'string') urlBySlug.set(slug, row.link);
+    const rawTitle = row.title?.rendered;
+    if (typeof rawTitle === 'string' && rawTitle.trim()) {
+      nameBySlug.set(slug, decodeEntities(rawTitle).replace(TITLE_PREFIX_RE, '').trim());
+    }
   }
 
   return [...slugs].map((slug) => ({
-    name: slug.replace(/^test-/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    name: nameBySlug.get(slug) || slug.replace(/^test-/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
     slug,
     url: urlBySlug.get(slug) ?? `https://www.drsays.com/home/${slug}/`,
   }));

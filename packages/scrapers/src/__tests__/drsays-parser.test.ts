@@ -32,9 +32,9 @@ describe('parseDrSaysCatalog', () => {
   // WP REST API, which is WordPress's own source of truth and can't lag itself.
   it('discovers test- slugs from the REST response and unions them with the floor', () => {
     const json = JSON.stringify([
-      { slug: 'test-cbc', link: 'https://www.drsays.com/home/test-cbc/', status: 'publish' },
-      { slug: 'test-apolipoprotein-b', link: 'https://www.drsays.com/home/test-apolipoprotein-b/', status: 'publish' },
-      { slug: 'test-tsh', link: 'https://www.drsays.com/home/test-tsh/', status: 'publish' },
+      { slug: 'test-cbc', link: 'https://www.drsays.com/home/test-cbc/', status: 'publish', title: { rendered: 'Test-CBC' } },
+      { slug: 'test-apolipoprotein-b', link: 'https://www.drsays.com/home/test-apolipoprotein-b/', status: 'publish', title: { rendered: 'Test-Apolipoprotein B' } },
+      { slug: 'test-tsh', link: 'https://www.drsays.com/home/test-tsh/', status: 'publish', title: { rendered: 'Test-TSH' } },
     ]);
     const found = parseDrSaysCatalog(json);
     const slugs = found.map((e) => e.slug);
@@ -49,12 +49,34 @@ describe('parseDrSaysCatalog', () => {
 
   it('ignores non-test- page slugs and unpublished rows', () => {
     const json = JSON.stringify([
-      { slug: 'condition-weight-management', link: 'https://www.drsays.com/home/condition-weight-management/', status: 'publish' },
-      { slug: 'test-draft-thing', link: 'https://www.drsays.com/home/test-draft-thing/', status: 'draft' },
+      { slug: 'condition-weight-management', link: 'https://www.drsays.com/home/condition-weight-management/', status: 'publish', title: { rendered: 'Weight Management' } },
+      { slug: 'test-draft-thing', link: 'https://www.drsays.com/home/test-draft-thing/', status: 'draft', title: { rendered: 'Test-Draft Thing' } },
     ]);
     const slugs = parseDrSaysCatalog(json).map((e) => e.slug);
     expect(slugs).not.toContain('condition-weight-management');
     expect(slugs).not.toContain('test-draft-thing');
+  });
+
+  // Regression 2026-09-08: found live that a slug can drop a word boundary the real title keeps —
+  // `test-lipoproteina` title-cases to "Lipoproteina" (one word), sharing no token with our
+  // "Lipoprotein(a)" test, so it never survived narrowing even though the product page itself was
+  // fine. The REST row's own title ("Test-Lipoprotein(a)") has the correct split.
+  it('names an entry from its title, not a title-cased guess off the slug', () => {
+    const json = JSON.stringify([
+      { slug: 'test-lipoproteina', link: 'https://www.drsays.com/home/test-lipoproteina/', status: 'publish', title: { rendered: 'Test-Lipoprotein(a)' } },
+    ]);
+    const found = parseDrSaysCatalog(json).find((e) => e.slug === 'test-lipoproteina');
+    expect(found!.name).toBe('Lipoprotein(a)');
+  });
+
+  it('decodes HTML entities in the title and falls back to a slug-cased name when title is missing', () => {
+    const json = JSON.stringify([
+      { slug: 'test-hormone-health-basic', link: 'https://www.drsays.com/home/test-hormone-health-basic/', status: 'publish', title: { rendered: 'Test-Hormone Health &#8211; Basic' } },
+      { slug: 'test-no-title', link: 'https://www.drsays.com/home/test-no-title/', status: 'publish' },
+    ]);
+    const found = parseDrSaysCatalog(json);
+    expect(found.find((e) => e.slug === 'test-hormone-health-basic')!.name).toBe('Hormone Health – Basic');
+    expect(found.find((e) => e.slug === 'test-no-title')!.name).toBe('No Title');
   });
 
   it('has no duplicate slugs', () => {

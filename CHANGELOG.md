@@ -16,8 +16,11 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   the sitemap's ~22, all narrowed against our catalog before any detail page gets fetched, same as
   before. Also fixed the product-detail regex, which excluded `(` from the name capture and so silently
   dropped every product whose own name has parens — CMP, Lipid Panel, Basic Metabolic Panel, PT
-  (INR)/PTT. Net: DrSays now finds and prices most of a linked test list, not just the handful whose
-  name happened to be paren-free and land on a sitemap-listed URL.
+  (INR)/PTT. Also: the catalog listing now names each entry from the REST row's real title, not a
+  title-cased guess off the slug — `test-lipoproteina` title-cases to "Lipoproteina" (one word), which
+  shares no token with our "Lipoprotein(a)" test and so never survived narrowing even though the
+  product page itself was fine; the real title, "Test-Lipoprotein(a)", has the correct word split. Net:
+  DrSays went from 9 to 29 of 30 linked tests priced, verified live.
 - **A pinned product URL now overrides the panel exclusion.** `priceFromPinnedUrl` resolved the right
   product and then discarded it whenever that product was `isPanel`, returning null — the offering
   stayed priceless while the scrape reported success, so the admin's URL looked ignored. The exclusion
