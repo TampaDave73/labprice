@@ -9,6 +9,13 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, GoodLabs catalog discovery)
+- **GoodLabs catalog discovery was silently missing most of the real catalog.** The JSON-LD `ItemList`
+  we relied on only carries ~50 of ~200+ real tests — DHEA-Sulfate and Prolactin both had real, priced
+  product pages that never showed up in the admin because they were never discovered in the first
+  place. Unioned in the plain-anchor A-Z "all tests" index rendered further down the same catalog page
+  (203 entries live vs. the ItemList's 50), same fetch, no config change. Verified live.
+
 ### Changed (2026-09-08, admin + scraper fixes)
 - **DrSays catalog discovery moved from `sitemap.xml` to the WordPress REST API.** Sitemap.xml turned
   out to be materially incomplete — a real, live "Apolipoprotein B" product page (200 OK) never

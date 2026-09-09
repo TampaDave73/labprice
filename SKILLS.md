@@ -363,10 +363,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 
 #### GoodLabs catalog scraper (the first live scraper)
 - **How it works**: GoodLabs (goodlabs.com) is a Next.js reseller with no price API and no stable
-  per-test URL. We fetch its **catalog page** (JSON-LD `ItemList` → every `{name, /tests/<slug>}`),
-  then each product page's **flight data** (`self.__next_f` chunks) which embeds one entry *per
-  fulfilling lab* (quest/labcorp/bioreference) with that lab's code (`labTestIDs`), `price`, and an
-  explicit **`isPanel`** flag. Plain HTTP — no browser, no CSS selectors.
+  per-test URL. We fetch its **catalog page** (JSON-LD `ItemList` → every `{name, /tests/<slug>}`,
+  UNIONED with the plain-anchor A-Z "all tests" index further down the same page — root-caused
+  2026-09-09: the ItemList alone only carries ~50 of ~200+ real tests, DHEA-Sulfate and Prolactin
+  included, both real priced products that were simply never discovered), then each product page's
+  **flight data** (`self.__next_f` chunks) which embeds one entry *per fulfilling lab*
+  (quest/labcorp/bioreference) with that lab's code (`labTestIDs`), `price`, and an explicit
+  **`isPanel`** flag. Plain HTTP — no browser, no CSS selectors.
 - **Matching** (`catalog/matcher.ts`): resolve each of our tests by **Quest code → LabCorp code →
   name** (first tier with a hit wins; tiers aren't blended). Bundle panels (`isPanel:true`) are
   excluded — we price the test itself, never the panel it's part of.

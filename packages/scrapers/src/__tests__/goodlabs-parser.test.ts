@@ -24,6 +24,25 @@ describe('parseGoodLabsCatalog', () => {
     const slugs = entries.map((e) => e.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
+
+  // Regression 2026-09-09: DHEA-Sulfate and Prolactin have real, priced product pages but were never
+  // discovered — the JSON-LD ItemList only carries a partial catalog (~50 of ~200+ real tests). The
+  // A-Z "all tests" index further down the same page has the rest.
+  it('finds tests missing from the JSON-LD ItemList via the A-Z test index', () => {
+    const dhea = entries.find((e) => e.slug === 'dhea-sulfate');
+    expect(dhea).toBeDefined();
+    expect(dhea!.name).toBe('DHEA-Sulfate');
+    expect(dhea!.url).toBe('https://goodlabs.com/tests/dhea-sulfate');
+
+    const prolactin = entries.find((e) => e.slug === 'prolactin');
+    expect(prolactin).toBeDefined();
+    expect(prolactin!.name).toBe('Prolactin');
+  });
+
+  it('decodes HTML entities in A-Z index names', () => {
+    const mens = entries.find((e) => e.slug === 'comprehensive-mens');
+    expect(mens!.name).toBe("Comprehensive Men's");
+  });
 });
 
 describe('parseGoodLabsProduct', () => {
