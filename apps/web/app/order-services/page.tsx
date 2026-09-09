@@ -73,20 +73,32 @@ async function getVendors() {
 
 export default async function OrderServicesPage() {
   const vendors = await getVendors();
+  // Distinct tests across every service — the catalog's breadth, not the sum of the per-vendor counts.
+  const testCount = new Set(vendors.flatMap((v) => v.tests.map((t) => t.testSlug))).size;
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <Navbar />
-      <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px 80px' }}>
+      <main style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px 80px' }}>
         <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.6px', color: 'oklch(0.2 0.04 260)', marginBottom: 10 }}>
           Order Services
         </h1>
-        <p style={{ fontSize: 16, color: 'oklch(0.45 0.04 260)', lineHeight: 1.6, maxWidth: 640, marginBottom: 36 }}>
-          Every ordering service we track prices from. Expand one to see every test it carries and its
-          current self-pay price.
+        {/* The list used to start immediately under the h1, with no stated scope and no inclusion
+            criteria — nothing to quote and nothing establishing that the ordering is alphabetical
+            rather than a ranking. Counts are derived, never written down. */}
+        <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'oklch(0.2 0.04 260)', marginBottom: 8 }}>
+          Which lab test ordering services does LabTestCompare track?
+        </h2>
+        <p style={{ fontSize: 16, color: 'oklch(0.45 0.04 260)', lineHeight: 1.65, maxWidth: 680, marginBottom: 36 }}>
+          LabTestCompare tracks {vendors.length} ordering service{vendors.length === 1 ? '' : 's'} that
+          sell self-pay lab requisitions drawn at Quest Diagnostics and LabCorp patient service centers,
+          covering {testCount} test{testCount === 1 ? '' : 's'} between them. Each entry shows how many
+          tracked tests that service carries and its lowest current price; expand one to see every test
+          and price. Services are listed alphabetically, not ranked — ranking happens on individual test
+          pages, strictly by price.
         </p>
         <VendorAccordionList vendors={vendors} />
-      </div>
+      </main>
       <Footer />
     </div>
   );

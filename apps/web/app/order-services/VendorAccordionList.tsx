@@ -82,7 +82,18 @@ export default function VendorAccordionList({ vendors }: { vendors: Vendor[] }) 
               >
                 {v.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.logoUrl} alt={v.name} style={{ height: 28, maxWidth: 120, objectFit: 'contain', flexShrink: 0 }} />
+                  // width/height reserve the box before the remote logo loads — this page renders one
+                  // per vendor, so without them the whole list reflows as they arrive. Not next/image:
+                  // logoUrl is an arbitrary vendor host and would need a remotePatterns allowlist.
+                  <img
+                    src={v.logoUrl}
+                    alt={`${v.name} logo`}
+                    width={120}
+                    height={28}
+                    loading="lazy"
+                    decoding="async"
+                    style={{ height: 28, maxWidth: 120, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+                  />
                 ) : (
                   <div style={{ fontSize: 17, fontWeight: 700, color: 'oklch(0.2 0.04 260)' }}>{v.name}</div>
                 )}

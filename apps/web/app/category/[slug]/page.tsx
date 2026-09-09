@@ -76,7 +76,7 @@ export default async function CategoryPage({ params }: Props) {
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <PageViewTracker />
       <Navbar />
-      <div className="max-w-[1240px] mx-auto px-6 py-10">
+      <main className="max-w-[1240px] mx-auto px-6 py-10">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-[13px] text-[oklch(0.5_0.04_260)] mb-6">
           <Link href="/" className="hover:text-[oklch(0.35_0.04_260)] no-underline text-inherit">
@@ -112,7 +112,7 @@ export default async function CategoryPage({ params }: Props) {
             No tests available in this category yet.
           </p>
         )}
-      </div>
+      </main>
       <Footer />
     </div>
   );

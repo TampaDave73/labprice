@@ -128,6 +128,7 @@ export default async function Home() {
       <PageViewTracker />
       <Navbar />
 
+      <main>
       {/* Hero */}
       <div
         style={{
@@ -171,8 +172,13 @@ export default async function Home() {
               instantly
             </span>
           </h1>
+          {/* The subheading was a slogan ("Stop overpaying"). This is the page most visitors and
+              crawlers land on first and nothing on it said what LabTestCompare actually is, who it
+              compares, or that the draw happens at Quest/LabCorp. Counts are derived, not written. */}
           <p style={{ fontSize: 18, color: 'oklch(0.45 0.04 260)', marginBottom: 44, lineHeight: 1.55 }}>
-            Stop overpaying for lab tests. Search by test name or Quest/LabCorp test number.
+            LabTestCompare is a free, independent price comparison for self-pay blood tests. See what
+            each of {vendorCount} ordering services charges for the same Quest Diagnostics or LabCorp
+            test — no insurance required. Search by test name or by Quest/LabCorp test number.
           </p>
 
           <SearchBar />
@@ -251,6 +257,7 @@ export default async function Home() {
         {/* All Tests — client component for filtering/sorting */}
         <HomeTestList tests={allTests} categories={categories} testCount={testCount} />
       </div>
+      </main>
 
       <Footer />
     </div>
