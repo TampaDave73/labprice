@@ -596,14 +596,19 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     threaded via `extraHeaders`). Every hit's `url_code` IS the Quest code. Best match rate of any
     vendor (33/35 seed tests). Capped at 1,000 results (Algolia's `query`-endpoint limit) out of a
     ~3,842-item index — accepted, not a bug (common tests rank first in an empty-query browse).
-  - `drsays` — WordPress, but with **no reliable live catalog discovery**: the sitemap lists a
-    different, stale URL scheme than the site's real `/home/test-<slug>/` pages (most sitemap URLs
-    404 or redirect to a generic search page). `parseCatalog` deliberately returns a **hardcoded list**
-    of hand-verified working slugs instead of crawling — small, honest coverage (5 tests) rather than a
-    crawl that would mostly fail. Matches on LabCorp code ONLY, no name fallback — this vendor's own
-    codes for "Cortisol" and "Vitamin B12" don't match our stored codes for those same-named tests (a
-    real variant discrepancy, found live), so name-only matching is disabled entirely for this vendor
-    rather than special-casing those two.
+  - `drsays` — WordPress. `catalogPath` points at the **WP REST API** (`/home/wp-json/wp/v2/pages?
+    per_page=100&page=1`, paged via `nextCatalogPage`), not `sitemap.xml` — that was tried first
+    (2026-07) and looked reasonable, but root-caused 2026-09-08 as materially incomplete: a real, live
+    `test-apolipoprotein-b` page (200 OK) never appeared in it at all, and the REST listing turned up
+    ~900 `test-*` pages against the sitemap's ~22. The REST endpoint is WordPress's own source of truth
+    for the sitemap, so it can't lag it. WordPress 400s a page number past the last one rather than
+    returning empty, so `parseDrSaysNextPage` stops as soon as a page comes back short instead of
+    fetching one more to confirm. The product-detail regex also used to exclude `(` from the name
+    capture (to stop before "(Labcorp Test No. ...)"), which silently broke every product whose own
+    name has parens — CMP, Lipid Panel, Basic Metabolic Panel, PT (INR)/PTT all included. Matches on
+    LabCorp code ONLY, no name fallback — this vendor's own codes for "Cortisol" and "Vitamin B12"
+    don't match our stored codes for those same-named tests (a real variant discrepancy, found live),
+    so name-only matching is disabled entirely for this vendor rather than special-casing those two.
   - **Function Health** was evaluated (it was the 4th vendor from the same research batch) and
     deliberately NOT built: its site exposes zero per-test pricing anywhere unauthenticated ($365/year
     membership required just to see any price) — no data source exists to scrape, unlike MitoHealth's

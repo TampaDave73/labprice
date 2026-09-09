@@ -18,7 +18,7 @@ import { parseQuestHealthCatalog, parseQuestHealthProduct } from './questhealth-
 import { parseLabCorpOnDemandCatalog, parseLabCorpOnDemandProduct } from './labcorpondemand-parser';
 import { parseMarekDiagnosticsCatalog, parseMarekDiagnosticsProduct } from './marekdiagnostics-parser';
 import { fetchJasonHealthCatalog } from './jasonhealth-parser';
-import { parseDrSaysCatalog, parseDrSaysProduct } from './drsays-parser';
+import { parseDrSaysCatalog, parseDrSaysProduct, parseDrSaysNextPage } from './drsays-parser';
 import type { CatalogAdapter } from './types';
 
 export const goodlabsAdapter: CatalogAdapter = {
@@ -151,10 +151,12 @@ export const jasonHealthAdapter: CatalogAdapter = {
 
 export const drSaysAdapter: CatalogAdapter = {
   name: 'drsays',
-  parseCatalog: (xml) => parseDrSaysCatalog(xml),
+  parseCatalog: (json) => parseDrSaysCatalog(json),
   parseProduct: (html, baseUrl, slug) => parseDrSaysProduct(html, baseUrl, slug),
+  nextCatalogPage: (json, currentUrl) => parseDrSaysNextPage(json, currentUrl),
   productUrl: (baseUrl, slug) => `${baseUrl}/home/${slug}/`,
-  // Single flat sitemap.xml fetch — no pagination (nextCatalogPage omitted).
+  // catalogPath points at the WP REST API (`/wp-json/wp/v2/pages?per_page=100&page=1`), not
+  // sitemap.xml — see drsays-parser.ts's module comment for why.
 };
 
 /** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */

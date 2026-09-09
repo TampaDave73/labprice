@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseDrSaysCatalog, parseDrSaysProduct } from '../catalog/drsays-parser';
+import { parseDrSaysCatalog, parseDrSaysNextPage, parseDrSaysProduct } from '../catalog/drsays-parser';
 import { matchTestToProducts } from '../catalog/matcher';
 import type { TestKey } from '../catalog/types';
 
@@ -11,11 +11,11 @@ const product = (name: string, slug: string) => parseDrSaysProduct(fx(name), 'ht
 const OPTS = { matchPriority: ['labcorp'] as const };
 
 describe('parseDrSaysCatalog', () => {
-  // The hand-verified slug list is a FLOOR, unioned with whatever the sitemap yields (see module
-  // comment). Passing no usable XML therefore still returns exactly that floor.
-  const entries = parseDrSaysCatalog('<ignored/>');
+  // The hand-verified slug list is a FLOOR, unioned with whatever the WP REST page listing yields (see
+  // module comment). Passing no usable JSON therefore still returns exactly that floor.
+  const entries = parseDrSaysCatalog('not json');
 
-  it('returns the hardcoded known-good slugs even when the sitemap yields nothing', () => {
+  it('returns the hardcoded known-good slugs even when the response is unparseable', () => {
     const tsh = entries.find((e) => e.slug === 'test-tsh');
     expect(tsh).toBeDefined();
     expect(tsh!.url).toBe('https://www.drsays.com/home/test-tsh/');
@@ -27,36 +27,58 @@ describe('parseDrSaysCatalog', () => {
     expect(slugs.some((s) => s.includes('vitamin-b12'))).toBe(false);
   });
 
-  // Regression 2026-09-08: the sitemap started listing real `test-<slug>` product URLs (22 of them,
-  // 15 parseable), which the old hardcoded-only parser ignored — DrSays sat at 5 products when it had
-  // three times that available, and the only way to add one was to hand-pin its URL.
-  it('discovers test- URLs from the sitemap and unions them with the floor', () => {
-    const xml = [
-      '<urlset>',
-      '<url><loc>https://www.drsays.com/home/test-cbc/</loc></url>',
-      '<url><loc>https://www.drsays.com/home/test-iron-and-tibc/</loc></url>',
-      '<url><loc>https://www.drsays.com/home/test-tsh/</loc></url>',
-      '</urlset>',
-    ].join('');
-    const found = parseDrSaysCatalog(xml);
+  // Regression 2026-09-08: sitemap.xml turned out to be materially incomplete (found live: a real,
+  // live "Apolipoprotein B" product page that never appears in it at all) — replaced with paging the
+  // WP REST API, which is WordPress's own source of truth and can't lag itself.
+  it('discovers test- slugs from the REST response and unions them with the floor', () => {
+    const json = JSON.stringify([
+      { slug: 'test-cbc', link: 'https://www.drsays.com/home/test-cbc/', status: 'publish' },
+      { slug: 'test-apolipoprotein-b', link: 'https://www.drsays.com/home/test-apolipoprotein-b/', status: 'publish' },
+      { slug: 'test-tsh', link: 'https://www.drsays.com/home/test-tsh/', status: 'publish' },
+    ]);
+    const found = parseDrSaysCatalog(json);
     const slugs = found.map((e) => e.slug);
     expect(slugs).toContain('test-cbc');
-    expect(slugs).toContain('test-iron-and-tibc');
+    expect(slugs).toContain('test-apolipoprotein-b');
     expect(found.find((e) => e.slug === 'test-cbc')!.url).toBe('https://www.drsays.com/home/test-cbc/');
-    // test-tsh appears in BOTH the sitemap and the floor — it must not be duplicated.
+    // test-tsh appears in BOTH the response and the floor — it must not be duplicated.
     expect(slugs.filter((s) => s === 'test-tsh')).toHaveLength(1);
-    // The floor survives even though the sitemap didn't mention it.
+    // The floor survives even though the response didn't mention it.
     expect(slugs).toContain('test-magnesium');
   });
 
-  it('ignores prefix-less /home/<slug> URLs, which are the stale ones', () => {
-    const xml = '<url><loc>https://www.drsays.com/home/hemoglobin-a1c/</loc></url>';
-    expect(parseDrSaysCatalog(xml).map((e) => e.slug)).not.toContain('hemoglobin-a1c');
+  it('ignores non-test- page slugs and unpublished rows', () => {
+    const json = JSON.stringify([
+      { slug: 'condition-weight-management', link: 'https://www.drsays.com/home/condition-weight-management/', status: 'publish' },
+      { slug: 'test-draft-thing', link: 'https://www.drsays.com/home/test-draft-thing/', status: 'draft' },
+    ]);
+    const slugs = parseDrSaysCatalog(json).map((e) => e.slug);
+    expect(slugs).not.toContain('condition-weight-management');
+    expect(slugs).not.toContain('test-draft-thing');
   });
 
   it('has no duplicate slugs', () => {
     const slugs = entries.map((e) => e.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
+  });
+});
+
+describe('parseDrSaysNextPage', () => {
+  const url = 'https://www.drsays.com/home/wp-json/wp/v2/pages?per_page=100&page=1';
+  const rowsOf = (n: number) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ slug: `test-${i}`, status: 'publish' })));
+
+  it('advances the page param when the response is a full page', () => {
+    expect(parseDrSaysNextPage(rowsOf(100), url)).toBe('https://www.drsays.com/home/wp-json/wp/v2/pages?per_page=100&page=2');
+  });
+
+  // WordPress 400s a page number past the last one rather than returning an empty array, so this must
+  // stop as soon as a page comes back short — never fetch "one more" to confirm the end.
+  it('stops once a page is short of a full page', () => {
+    expect(parseDrSaysNextPage(rowsOf(46), url)).toBeNull();
+  });
+
+  it('stops on an unparseable response', () => {
+    expect(parseDrSaysNextPage('not json', url)).toBeNull();
   });
 });
 
@@ -82,6 +104,16 @@ describe('parseDrSaysProduct', () => {
     expect(p.name).toBe('Ferritin, Serum');
     expect(p.providers[0]!.labTestIDs).toEqual(['004598']);
     expect(p.providers[0]!.price).toBe(7.99);
+  });
+
+  // Regression 2026-09-08: the name capture used to exclude "(" to stop before "(Labcorp Test No.
+  // ...)", which broke the match entirely for any product whose own name contains parens.
+  it('parses Comp. Metabolic Panel (14): a paren in the product name itself', () => {
+    const p = product('drsays-cmp-14.html', 'test-cmp-14')!;
+    expect(p).not.toBeNull();
+    expect(p.name).toBe('Comp. Metabolic Panel (14)');
+    expect(p.providers[0]!.labTestIDs).toEqual(['322000']);
+    expect(p.providers[0]!.price).toBe(9.99);
   });
 
   it('returns null for a stale sitemap entry that redirects to a generic search page, not a real product', () => {

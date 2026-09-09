@@ -1,13 +1,15 @@
 // End-to-end DB test for the DrSays catalog scraper (adapter='drsays'). Sets up DrSays as a
 // catalog-mode vendor, links every test currently in our catalog, runs discovery against the live site
-// + real Postgres, publishes auto-approved changes, and prints the result. Coverage is deliberately
-// small — see drsays-parser.ts's module comment for why.
+// + real Postgres, publishes auto-approved changes, and prints the result. catalogPath is the WP REST
+// API's page listing (2026-09-08, replacing sitemap.xml — see drsays-parser.ts's module comment: the
+// site's own sitemap is materially incomplete).
 // Run (from apps/worker):  DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-drsays.ts
 import 'dotenv/config';
 import { prisma } from '@labprice/database';
 import { runVendorDiscovery, publishStagedChange } from '../src/discovery';
 
-const SELECTORS = { mode: 'catalog', adapter: 'drsays', catalogPath: '/sitemap.xml' };
+// WordPress itself lives under /home/ on this site (same reason product pages are /home/test-<slug>/).
+const SELECTORS = { mode: 'catalog', adapter: 'drsays', catalogPath: '/home/wp-json/wp/v2/pages?per_page=100&page=1&_fields=slug,link,status' };
 
 async function main() {
   const vendor = await prisma.vendor.upsert({

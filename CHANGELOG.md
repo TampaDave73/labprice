@@ -10,6 +10,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 ## [Unreleased]
 
 ### Changed (2026-09-08, admin + scraper fixes)
+- **DrSays catalog discovery moved from `sitemap.xml` to the WordPress REST API.** Sitemap.xml turned
+  out to be materially incomplete — a real, live "Apolipoprotein B" product page (200 OK) never
+  appeared in it — while `/wp-json/wp/v2/pages` (paged) turned up ~900 `test-*` product pages against
+  the sitemap's ~22, all narrowed against our catalog before any detail page gets fetched, same as
+  before. Also fixed the product-detail regex, which excluded `(` from the name capture and so silently
+  dropped every product whose own name has parens — CMP, Lipid Panel, Basic Metabolic Panel, PT
+  (INR)/PTT. Net: DrSays now finds and prices most of a linked test list, not just the handful whose
+  name happened to be paren-free and land on a sitemap-listed URL.
 - **A pinned product URL now overrides the panel exclusion.** `priceFromPinnedUrl` resolved the right
   product and then discarded it whenever that product was `isPanel`, returning null — the offering
   stayed priceless while the scrape reported success, so the admin's URL looked ignored. The exclusion
