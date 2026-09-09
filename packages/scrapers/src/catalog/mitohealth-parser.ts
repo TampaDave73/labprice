@@ -68,6 +68,13 @@ export function parseMitoHealthCatalog(trpcResponse: unknown): CatalogProduct[] 
   return products.map(toProduct).filter((p): p is CatalogProduct => p !== null);
 }
 
+// Safety cap on pagination, not the real catalog size — just a guard against an infinite loop if the
+// API ever stops returning a short final page. MUST stay comfortably above the real catalog: it was
+// 6 (600 products) until 2026-09-09, silently truncating a since-grown catalog of 1,078+ (found live
+// hunting a pinned-URL bug — "Testosterone, Free Blood Test", a real product past the old cutoff,
+// never appeared in `all`, and a stale `externalUrl` pin to it read as broken every scrape).
+const MAX_PAGES = 50;
+
 /** Fetch the whole catalog (paginated) via the injected fetcher and parse it. */
 export async function fetchMitoHealthCatalog(
   deps: { fetchHtml: (url: string) => Promise<string>; onLog?: (m: string) => void },
@@ -76,7 +83,7 @@ export async function fetchMitoHealthCatalog(
   const apiBase = cfg.apiBase ?? MITO_DEFAULT_API_BASE;
   const all: CatalogProduct[] = [];
   const limit = 100;
-  for (let offset = 0, page = 0; page < 6; offset += limit, page++) {
+  for (let offset = 0, page = 0; page < MAX_PAGES; offset += limit, page++) {
     const input = encodeURIComponent(
       JSON.stringify({ '0': { context: { address_region: 'FL' }, sort: 'featured', speciality: 'hide', pagination: { limit, offset } } }),
     );

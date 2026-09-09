@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, MitoHealth catalog pagination cap)
+- **MitoHealth's catalog crawl was hardcoded to stop after 6 pages (600 products).** The real catalog
+  has grown to 1,078+ — found chasing the pinned-URL bug below: "Testosterone, Free Blood Test" is a
+  real MitoHealth product past the old cutoff, so it never appeared in the crawl no matter what. Raised
+  the cap to 50 pages (a safety guard against a true infinite loop, not a real limit) and added a
+  regression test pinning pagination past the old cutoff. Same shape as the DrSays/GoodLabs/True Health
+  Labs catalog-completeness bugs fixed earlier this week — a hardcoded number baked in when an adapter
+  was built quietly stopped matching reality as the vendor's real catalog grew.
+
 ### Changed (2026-09-09, a pinned offering URL now actually stays pinned)
 - **A manually pinned product URL could silently revert on the next scrape.** `Offering.externalUrl`
   did double duty as both "the admin's deliberate override" and "the scraper's own cache of the last

@@ -526,7 +526,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   - `mitohealth` — **API vendor** (tRPC `marketplace.catalog.search`, paginated). $9/mo membership:
     each product variant has member + non-member prices (no codes → name-matched). We rank on the
     non-member price and store the member price (`Offering.memberPrice` + `Vendor.membershipNote`),
-    shown as an inline secondary line on the test page (not a tooltip — mobile-friendly).
+    shown as an inline secondary line on the test page (not a tooltip — mobile-friendly). Pagination cap
+    raised 6→50 pages 2026-09-09: hardcoded at 6 (600 products) when this adapter was built, silently
+    truncating a since-grown catalog of 1,078+ — a real product ("Testosterone, Free Blood Test", past
+    the old cutoff) kept reading as unmatched/broken no matter how many times its URL was pinned. Same
+    "an old count baked into the code stopped matching reality" shape as the DrSays/GoodLabs/True Health
+    Labs catalog-completeness bugs the same week — check for a hardcoded page/result cap first whenever
+    a catalog vendor's match rate looks stuck.
   - `walkinlab` — custom server-rendered store (not Magento), plain HTTP, **paginated** catalog listing
     (`/categories/view/all-products?page=N`, 40+ pages — see "Paginated catalogs" below). A product
     page exposes **both** lab codes together ("Test Code(s): 001453, 496") rather than one ambiguous
