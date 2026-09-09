@@ -9,6 +9,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, matcher: singular/plural name tolerance)
+- **The name matcher (`catalog/matcher.ts`, shared by every catalog vendor) didn't know "Antibody" and
+  "Antibodies" are the same word.** GoodLabs' real product page for Thyroid Peroxidase Antibodies has
+  matching Quest/LabCorp codes and a real price — but is named singular ("Thyroid Peroxidase Antibody
+  (TPO)") against our plural test name and every one of its aliases, so the catalog-narrowing pass
+  never even fetched the page. `nameTokens` now singularizes ("-ies"→"-y", a bare trailing "-s" dropped
+  except after s/u/i to avoid stemming non-plurals like "status"/"virus") before the subset check. This
+  is shared code — fixed for GoodLabs live (Thyroid Peroxidase Antibodies now matches, $5), and
+  potentially unblocks similar singular/plural near-misses on every other catalog vendor.
+
 ### Changed (2026-09-09, GoodLabs catalog discovery)
 - **GoodLabs catalog discovery was silently missing most of the real catalog.** The JSON-LD `ItemList`
   we relied on only carries ~50 of ~200+ real tests — DHEA-Sulfate and Prolactin both had real, priced

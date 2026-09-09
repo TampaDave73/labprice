@@ -14,6 +14,7 @@ const cmp = product('goodlabs-cmp.html');
 const mens = product('goodlabs-comprehensive-mens.html');
 const testoTotalMs = product('goodlabs-testosterone-total-ms.html');
 const testoFreeTotalMs = product('goodlabs-testosterone-free-total-ms.html');
+const tpo = product('goodlabs-thyroid-peroxidase-antibody-tpo.html');
 
 // Our seed tests (packages/database/prisma/seed.ts).
 const T = {
@@ -21,6 +22,8 @@ const T = {
   cmp: { id: 't2', name: 'Comprehensive Metabolic Panel', questCode: '10231', labcorpCode: '322000' },
   testosterone: { id: 't3', name: 'Testosterone Total', questCode: '873', labcorpCode: '004226' },
   unknown: { id: 't4', name: 'Zzz Nonexistent Assay', questCode: '999999', labcorpCode: '888888' },
+  // Real, verified codes — matches on code alone; the plural mismatch only broke narrowing, not this.
+  tpo: { id: 't5', name: 'Thyroid Peroxidase Antibodies', questCode: '5081', labcorpCode: '006676' },
 } satisfies Record<string, TestKey>;
 
 describe('matchTestToProducts — code match (the clean path)', () => {
@@ -45,6 +48,16 @@ describe('matchTestToProducts — code match (the clean path)', () => {
     expect(r.status).toBe('matched');
     expect(r.matchedBy).toBe('labcorp');
     expect(r.price).toBe(15);
+  });
+
+  // Regression 2026-09-09: real product, real matching Quest/LabCorp codes — this tier always worked.
+  // The bug was upstream, in the catalog-narrowing pass deciding whether to fetch this page at all
+  // (see the nameMatches singular/plural test below); this pins the matching side stays correct.
+  it('matches Thyroid Peroxidase Antibodies by Quest code despite the vendor naming it singular', () => {
+    const r = matchTestToProducts(T.tpo, [tpo]);
+    expect(r.status).toBe('matched');
+    expect(r.matchedBy).toBe('quest');
+    expect(r.price).toBe(5);
   });
 });
 
@@ -100,6 +113,22 @@ describe('nameMatches', () => {
     expect(nameMatches('Testosterone Total', 'Testosterone, Total, MS')).toBe(true);
     expect(nameMatches('TSH (Thyroid Stimulating Hormone)', 'TSH')).toBe(true);
     expect(nameMatches('Ferritin', 'Vitamin D, 25-Hydroxy')).toBe(false);
+  });
+
+  // Regression 2026-09-09: found live on GoodLabs — our test is "Thyroid Peroxidase Antibodies"
+  // (plural, same for every one of its aliases), the vendor's own product is named "Thyroid
+  // Peroxidase Antibody (TPO)" (singular). Exact Quest/LabCorp code match on the actual page, but this
+  // subset check ran first (during catalog narrowing) and never saw it as a candidate at all — plain
+  // string tokens don't know "antibody" and "antibodies" are the same word.
+  it('is tolerant of a plain singular/plural mismatch', () => {
+    expect(nameMatches('Thyroid Peroxidase Antibodies', 'Thyroid Peroxidase Antibody (TPO)')).toBe(true);
+    expect(nameMatches('Allergies Panel', 'Allergy')).toBe(true);
+  });
+
+  it('does not let naive singularization create a false match', () => {
+    // "status" ends in "s" but isn't a plural — must not stem to "statu" and accidentally overlap
+    // with an unrelated word that happens to start the same way.
+    expect(nameMatches('Iron Status', 'Iron Statue')).toBe(false);
   });
 });
 

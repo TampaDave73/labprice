@@ -373,6 +373,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Matching** (`catalog/matcher.ts`): resolve each of our tests by **Quest code → LabCorp code →
   name** (first tier with a hit wins; tiers aren't blended). Bundle panels (`isPanel:true`) are
   excluded — we price the test itself, never the panel it's part of.
+- **`nameTokens` singularizes** ("-ies"→"-y", trailing "-s" dropped except after s/u/i) — this is what
+  the catalog-narrowing pass (`nameMatches`) AND the name-tier match both key off. Found live
+  2026-09-09: GoodLabs' own product is "Thyroid Peroxidase Antibody (TPO)" (singular) against our test
+  "Thyroid Peroxidase Antibodies" (plural, same for every alias) — real, correct Quest/LabCorp codes on
+  the actual page, but the plain-string subset check never even fetched it, since "antibody" ⊄
+  "antibodies" as bare strings. Deliberately narrow rules, not general stemming — see the module
+  comment on `singularize` for the collision guard reasoning.
 - **Ambiguity**: if the winning tier yields >1 distinct price (e.g. "Testosterone Total" name-matches
   several products), we **do not guess** — stage the lowest as `PENDING` with a review note listing
   every candidate, so it lands in the Change Queue. Configurable via `MatchOptions`

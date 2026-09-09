@@ -231,6 +231,20 @@ export function normalizeName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+// Naive singularization so "Antibody" and "Antibodies" count as the same token. Regression found live
+// 2026-09-09: GoodLabs' own product name is "Thyroid Peroxidase Antibody (TPO)" (singular) against our
+// test "Thyroid Peroxidase Antibodies" (plural, and every one of its aliases is plural too) — exact
+// Quest/LabCorp code matches on the actual detail page, but the SUBSET-match narrowing pass
+// (`nameMatches`, catalog-scraper.ts) never even fetched that page, because plain string tokens don't
+// consider "antibody" ⊆ "antibodies". Deliberately narrow rules, not general stemming: "-ies" → "-y" is
+// unambiguous (antibodies/antibody, allergies/allergy), and a bare trailing "-s" is dropped EXCEPT after
+// "s"/"u"/"i" — guards real non-plural words that happen to end in "s" ("status", "virus", "analysis").
+function singularize(token: string): string {
+  if (token.length > 4 && token.endsWith('ies')) return token.slice(0, -3) + 'y';
+  if (token.length > 3 && token.endsWith('s') && !/[sui]s$/.test(token)) return token.slice(0, -1);
+  return token;
+}
+
 /** Normalize a test name to significant tokens (lowercase, punctuation-stripped, stopwords removed). */
 export function nameTokens(name: string): Set<string> {
   return new Set(
@@ -238,6 +252,7 @@ export function nameTokens(name: string): Set<string> {
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, ' ')
       .split(/\s+/)
+      .map(singularize)
       .filter((t) => t.length > 1 && !STOPWORDS.has(t)),
   );
 }
