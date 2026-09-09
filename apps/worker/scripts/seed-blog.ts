@@ -57,25 +57,25 @@ Around five minutes from sitting down to standing up, with most of that spent on
 
 A single tube holds roughly 2 to 6 mL. A typical requisition fills one to four tubes, so most draws collect somewhere between 10 and 30 mL — about two tablespoons at the high end.
 
-For scale, a standard blood donation takes around 470 mL, and an adult's total blood volume is roughly 4.5 to 5.5 litres. A routine diagnostic draw is a very small fraction of that, which is why you can eat, drive and go back to work immediately afterwards.
+For scale, a standard blood donation takes around 470 mL, and an adult's total blood volume is roughly 4.5 to 5.5 liters. A routine diagnostic draw is a very small fraction of that, which is why you can eat, drive and go back to work immediately afterwards.
 
 ## Why are there different coloured tube caps?
 
-Each colour is a different additive, and the additive determines what the lab can measure from that tube. It isn't decoration — putting blood in the wrong tube ruins the sample.
+Each color is a different additive, and the additive determines what the lab can measure from that tube. It isn't decoration — putting blood in the wrong tube ruins the sample.
 
-| Cap colour | What's inside | Commonly used for |
+| Cap color | What's inside | Commonly used for |
 | --- | --- | --- |
 | Lavender | EDTA (stops clotting, preserves cells) | Complete blood count |
 | Gold or red | Clot activator, often with separator gel | Chemistry panels, lipids, hormones, vitamin levels |
 | Light green | Lithium heparin with separator gel | Many chemistry tests |
 | Light blue | Sodium citrate | Clotting studies |
-| Grey | Fluoride and oxalate (stops glucose breaking down) | Glucose, lactate |
+| Gray | Fluoride and oxalate (stops glucose breaking down) | Glucose, lactate |
 
 This is also why one draw can cover several unrelated tests: the phlebotomist simply fills the tubes those tests need, from the same needle stick.
 
 ## What happens to your blood after the draw?
 
-The labelled tubes are batched and couriered to a laboratory — usually a regional processing facility rather than the building you visited. Most are spun in a centrifuge to separate serum or plasma from the cells, then loaded onto analysers that run the specific assays your requisition ordered.
+The labeled tubes are batched and couriered to a laboratory — usually a regional processing facility rather than the building you visited. Most are spun in a centrifuge to separate serum or plasma from the cells, then loaded onto analysers that run the specific assays your requisition ordered.
 
 Routine results are commonly back within one to three business days. Specialised assays — anything sent to a reference laboratory, or a test that requires a culture or mass spectrometry — take longer.
 
@@ -145,7 +145,7 @@ Glucose and insulin tests require it, and so does any panel that includes them. 
 | [Comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) | Yes — it includes glucose |
 | [Lipid panel](/test/lipid-panel) | Sometimes — increasingly ordered non-fasting |
 | [Iron and TIBC](/test/iron-tibc) | Often, and usually a morning draw |
-| [Haemoglobin A1c](/test/hemoglobin-a1c) | No |
+| [Hemoglobin A1c](/test/hemoglobin-a1c) | No |
 | [Complete blood count](/test/complete-blood-count-w-differential-platelets) | No |
 | [TSH and thyroid tests](/test/tsh-thyroid-stimulating-hormone) | No |
 | [Vitamin D](/test/vitamin-d-25-hydroxy) and [vitamin B12](/test/vitamin-b12) | No |
@@ -182,7 +182,7 @@ Saying nothing produces the genuinely bad outcome: a technically normal-looking 
 
 Because some measurements are literally reporting what is circulating at that moment. Glucose rises within minutes of a meal. Triglycerides climb for several hours after eating fat. Those are the results a fast is protecting.
 
-Other measurements don't work that way. Haemoglobin A1c reflects average glucose over roughly the previous three months, so a single meal cannot move it — which is exactly why it needs no fast.
+Other measurements don't work that way. Hemoglobin A1c reflects average glucose over roughly the previous three months, so a single meal cannot move it — which is exactly why it needs no fast.
 
 > If you're not sure whether your test needs a fast, book a morning appointment and fast anyway. Fasting for a test that didn't need it costs you a skipped breakfast. Not fasting for one that did costs you the appointment.
 
@@ -209,7 +209,7 @@ A: It depends on the laboratory. Some allow black coffee, others ask for water o
 Q: Does a lipid panel need to be fasting?
 A: Sometimes. Non-fasting lipid panels are increasingly accepted for routine screening, but some ordering providers still request a fast. Triglycerides are the number most affected by a recent meal.
 
-Q: Does haemoglobin A1c require fasting?
+Q: Does hemoglobin A1c require fasting?
 A: No. A1c reflects average blood glucose over about three months, so a recent meal cannot change it.
 
 Q: What if you accidentally ate before a fasting test?
@@ -357,7 +357,7 @@ Because it is broad, a CMP quite often returns one value slightly outside its re
 
 Quite a lot, and it is worth knowing the gaps:
 
-- It does not measure long-term blood sugar control. That is [haemoglobin A1c](/test/hemoglobin-a1c), which reflects roughly three months rather than this morning.
+- It does not measure long-term blood sugar control. That is [hemoglobin A1c](/test/hemoglobin-a1c), which reflects roughly three months rather than this morning.
 - It does not include cholesterol. That is a separate [lipid panel](/test/lipid-panel).
 - It does not include thyroid function, iron status, vitamin levels or inflammatory markers.
 - It does not count blood cells.

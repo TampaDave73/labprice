@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, US English)
+- **Published copy had British spellings.** "Dearest" (British for "most expensive") in the price
+  chart's legend, table header and aria-label; "haemoglobin" four times across two articles, on a site
+  whose own test is named *Hemoglobin A1c*; plus litres, colour, Grey, labelled, and "patient service
+  centre" in the draw-steps diagram. All converted to US English, and post dates now format `en-US`
+  ("September 9, 2026") rather than `en-GB` ("9 September 2026").
+- The article generator's prompt and the `seo-aeo` skill both now require US English, so it can't
+  recur. The AI-drafted article's own prose was already clean — this was mine.
+
 ### Added (2026-09-09, article visuals)
 - **`[PRICE-CHART:slug,slug,…]`** — a live bar chart of the price spread for those tests: solid bar to
   the cheapest anyone charges, faded continuation to the dearest. Read from the same offerings query

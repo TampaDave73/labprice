@@ -50,9 +50,12 @@ export function readingTimeMinutes(body: string): number {
   return Math.max(1, Math.round(words / 220));
 }
 
-/** 9 September 2026 — spelled out, unambiguous across locales, stable between server and client. */
+/**
+ * "September 9, 2026" — spelled out so it can't be misread as D/M/Y, and en-US because the audience
+ * is American. Fixed to UTC so the server and the client never disagree about which day it is.
+ */
 export function formatPostDate(d: Date): string {
-  return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
+  return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
 
 // ─────────────────────────── Live price tokens ───────────────────────────

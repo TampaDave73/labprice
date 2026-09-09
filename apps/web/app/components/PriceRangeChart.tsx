@@ -2,8 +2,11 @@
 //
 // The site's whole thesis is "the same test costs wildly different amounts depending where you buy
 // it", and that is a magnitude comparison — so: horizontal bars from a zero baseline, solid up to the
-// cheapest price anyone charges, then a lighter continuation up to the dearest. Solid is what you can
+// cheapest price anyone charges, then a lighter continuation up to the highest. Solid is what you can
 // pay; the faded tail is what you'd pay by not comparing.
+//
+// Copy is US English throughout — this is a US consumer site. "Dearest" shipped here once and had
+// to be corrected; it means "most expensive" in British English and nothing useful in American.
 //
 // Deliberate choices, in the order they were made:
 //  - Form: bars from a single zero baseline, not a floating min–max range. A floating bar has no
@@ -76,7 +79,7 @@ export default function PriceRangeChart({ rows: allRows }: { rows: ChartRow[] })
   const height = TOP + rows.length * ROW_H + 34;
 
   const summary = rows
-    .map((r) => `${r.name}: cheapest ${usd(r.min)}, dearest ${usd(r.max)}, across ${r.count} services`)
+    .map((r) => `${r.name}: cheapest ${usd(r.min)}, highest ${usd(r.max)}, across ${r.count} services`)
     .join('. ');
 
   return (
@@ -158,7 +161,7 @@ export default function PriceRangeChart({ rows: allRows }: { rows: ChartRow[] })
           </text>
           <rect x={PLOT_X + 132} y={TOP + rows.length * ROW_H + 18} width="11" height="11" rx="3" fill={TAIL} />
           <text x={PLOT_X + 149} y={TOP + rows.length * ROW_H + 27} fontSize="11.5" fill={MUTED}>
-            Up to the dearest listing
+            Up to the highest listing
           </text>
         </g>
       </svg>
@@ -172,7 +175,7 @@ export default function PriceRangeChart({ rows: allRows }: { rows: ChartRow[] })
         </caption>
         <thead>
           <tr>
-            {['Test', 'Cheapest', 'Dearest', 'Services'].map((h, i) => (
+            {['Test', 'Cheapest', 'Highest', 'Services'].map((h, i) => (
               <th
                 key={h}
                 scope="col"

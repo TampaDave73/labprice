@@ -54,7 +54,13 @@ and link to the pages it talks about. Everything below is a specific case of tha
       "Best price" in words.
 - [ ] **No text below 12px.** Sub-12px reads as a mobile-readability failure, and per-row labels
       multiply fast — 27 elements on one test page, from four styles.
-- [ ] **Dates are `<time dateTime="ISO">`.** Visible text alone is not a date signal.
+- [ ] **Dates are `<time dateTime="ISO">`.** Visible text alone is not a date signal. Format them
+      `en-US` — "September 9, 2026", not "9 September 2026".
+- [ ] **US English in everything a visitor reads.** color, liter, center, hemoglobin, gray, "most
+      expensive" — never colour, litre, centre, haemoglobin, grey, "dearest". The audience is
+      American and the catalog's own test names use US spellings, so a British spelling is both
+      off-register and inconsistent with the product. This shipped once, in a chart legend, a table
+      header and four places across two published articles.
 
 ## Checklist: structured data
 

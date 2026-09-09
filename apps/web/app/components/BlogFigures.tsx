@@ -36,7 +36,7 @@ function DrawSteps() {
   const steps = [
     { n: '1', t: 'Order online', s: 'Pay the ordering\nservice' },
     { n: '2', t: 'Get requisition', s: 'Emailed, usually\nin minutes' },
-    { n: '3', t: 'Visit the lab', s: 'A Quest or LabCorp\npatient service centre' },
+    { n: '3', t: 'Visit the lab', s: 'A Quest or LabCorp\npatient service center' },
     { n: '4', t: 'Blood drawn', s: 'One to a few tubes,\nabout 5 minutes' },
     { n: '5', t: 'Results', s: 'Back to you, often\nin 1–3 days' },
   ];
@@ -44,7 +44,7 @@ function DrawSteps() {
   const gap = 124;
 
   return (
-    <svg {...svgProps('0 0 660 190')} aria-label="The five steps of a self-pay blood test: order online, receive a requisition by email, visit a Quest or LabCorp patient service centre, have blood drawn in about five minutes, and receive results in one to three days.">
+    <svg {...svgProps('0 0 660 190')} aria-label="The five steps of a self-pay blood test: order online, receive a requisition by email, visit a Quest or LabCorp patient service center, have blood drawn in about five minutes, and receive results in one to three days.">
       <line x1={x0} y1={46} x2={x0 + gap * 4} y2={46} stroke={LINE} strokeWidth="2" />
       {steps.map((s, i) => {
         const cx = x0 + gap * i;
