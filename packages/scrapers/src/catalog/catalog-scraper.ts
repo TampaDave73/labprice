@@ -123,6 +123,11 @@ export async function buildCatalogIndexDetailed(
   const delay = cfg.rateLimitMs ?? 800;
   for (let i = 0; i < selected.length; i++) {
     const entry = selected[i]!;
+    // Logged BEFORE the fetch, not after — a hung run (e.g. a browser-fetch vendor stuck clearing a
+    // per-page JS challenge) then shows exactly which page it stalled on instead of going silent for
+    // the whole crawl (found live 2026-09-09: a Request A Test run sat with no output for 20+ minutes
+    // and had to be killed blind, no way to tell which of 91 pages it was stuck on).
+    deps.onLog?.(`  fetching ${i + 1}/${selected.length}: ${entry.slug}`);
     try {
       const product = await fetchProduct(deps, cfg, entry.slug);
       if (product) products.push(product);

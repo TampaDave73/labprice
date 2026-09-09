@@ -9,11 +9,12 @@
 // Needs DATABASE_URL pointed at a REACHABLE Postgres. Production's default DATABASE_URL uses Railway's
 // internal-only hostname, which doesn't resolve outside Railway's network — reaching production from
 // home needs a public TCP proxy on the Postgres service (Railway dashboard → Postgres → Settings →
-// Networking → TCP Proxy) and a `.env.production` (or similar) pointed at that public host:port.
+// Networking → TCP Proxy) and a `.env.scrape-prod` (gitignored — holds the production DB password,
+// never commit it) pointed at that public host:port.
 //
 // Usage (from apps/worker):
 //   npx tsx -r dotenv/config scripts/scrape-pinned.ts <vendor-slug>
-//   DOTENV_CONFIG_PATH=path\to\.env.production npx tsx scripts/scrape-pinned.ts request-a-test
+//   DOTENV_CONFIG_PATH=path\to\.env.scrape-prod npx tsx scripts/scrape-pinned.ts request-a-test
 import 'dotenv/config';
 import { prisma } from '@labprice/database';
 import { runVendorDiscovery, publishStagedChange, adapterNeedsBrowser } from '@labprice/scrapers/src/catalog/persist';

@@ -9,6 +9,13 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, per-page progress logging on catalog crawls)
+- **A stalled catalog crawl gave no clue which page it was stuck on.** A local Request A Test run sat
+  silent for 20+ minutes and had to be killed blind — no per-page output, just "narrowed to 91/871" at
+  the start and a summary line at the end that never came. `buildCatalogIndexDetailed` now logs
+  `fetching i/N: <slug>` immediately BEFORE each product-page fetch (not after), so the last line printed
+  names the page that's hanging instead of leaving a silent gap.
+
 ### Added (2026-09-09, pinned-URL-only scrape, for a WAF-blocked vendor)
 - **Request A Test's `/tests` catalog listing is Cloudflare-JS-challenged from Railway's datacenter IP**
   (confirmed live from inside the scrape-worker container — the challenge title never clears even with
