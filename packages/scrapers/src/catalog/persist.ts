@@ -151,11 +151,13 @@ const ADAPTER_DEFAULTS: Record<
   // page: that sitemap turned out to list well under 200 of the site's real ~1,900 products. The `sku`
   // field literally encodes "<Lab>_<code>", explicitly labelled per product — strict per-lab tiers, no
   // codeMatchAnyProvider needed.
-  // needsBrowser REMOVED 2026-09-08 (before the fetchAll switch, still true today): a WAF 403'd
-  // Railway's datacenter IP at one point; retested from inside the scrape-worker container and plain
-  // HTTP works fine. If a 403 ever returns, verify from inside the container before assuming a block —
-  // don't just re-add the flag.
-  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/wp-json/wc/store/v1/products' },
+  // needsBrowser: true RE-ADDED 2026-09-09 (was removed 2026-07-08, then this vendor moved to the
+  // Store API entirely — see above). Cloudflare started 403-ing the Store API from Railway's datacenter
+  // IP; verified from inside the scrape-worker container per the old comment's own advice before
+  // re-adding the flag (plain fetch: 403 + "Just a moment..."; the stealth browser path other vendors
+  // already use: clears it fine, 1.5MB of real JSON). `browser-fetch.ts` needed a JSON-viewer unwrap
+  // (Chromium wraps a raw JSON response in a lone `<pre>`) — see its module comment.
+  truehealthlabs: { baseUrl: 'https://truehealthlabs.com', catalogPath: '/wp-json/wc/store/v1/products', needsBrowser: true },
   // Quest's own first-party store (Salesforce Commerce Cloud). Sitemap embeds the Quest order code
   // directly in the URL; every product is Quest-fulfilled by definition.
   questhealth: { baseUrl: 'https://www.questhealth.com', catalogPath: '/sitemap_0.xml' },

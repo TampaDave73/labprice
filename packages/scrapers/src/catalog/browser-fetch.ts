@@ -57,7 +57,24 @@ export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<s
       const xml = await page.evaluate(
         () => document.getElementById('webkit-xml-viewer-source-xml')?.innerHTML ?? null,
       );
-      return xml ?? (await page.content());
+      if (xml) return xml;
+      // JSON API responses (True Health Labs' Store API needed this 2026-09-09: Cloudflare started
+      // 403-ing it from Railway's datacenter IP even though the browser path already used for other
+      // vendors clears it fine): Chromium's JSON viewer puts the raw body in a `<pre>` directly under
+      // `<body>` — page.content() would return the viewer chrome around it, not the JSON, so
+      // parseStoreRows' JSON.parse would silently fail closed (empty array, no error). Unwrap it when
+      // present. NOT "the sole child of body" — live DOM has a second, empty `<div>` sibling (found
+      // live: `document.body.children` was `[PRE, DIV]`, not just `[PRE]` as first assumed) — so this
+      // matches ANY direct `<pre>` child of body whose content looks like JSON, not an exclusive one.
+      const json = await page.evaluate(() => {
+        for (const child of document.body?.children ?? []) {
+          if (child.tagName !== 'PRE') continue;
+          const text = child.textContent?.trim() ?? '';
+          if (text.startsWith('{') || text.startsWith('[')) return text;
+        }
+        return null;
+      });
+      return json ?? (await page.content());
     } finally {
       await context.close();
     }

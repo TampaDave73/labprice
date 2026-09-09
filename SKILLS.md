@@ -593,6 +593,13 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     (`Quest_17306_303`). Strict per-lab tiers. **No price-sanity gap**: an out-of-stock product is
     priced `0` in the Store API and would otherwise legitimately match — dropped whenever price isn't
     `> 0` (a real self-pay lab test is never actually free) rather than passed downstream.
+    **`needsBrowser: true`** (re-added 2026-09-09): Cloudflare started 403-ing the Store API from
+    Railway's datacenter IP specifically — verify from inside the container before assuming a block
+    ever returns/changes (gotcha applies here same as everywhere else). The stealth browser path
+    clears it fine; needed a JSON-viewer unwrap in `browser-fetch.ts` for it (Chromium puts a raw JSON
+    response in a `<pre>` under `<body>`, alongside a second empty `<div>` sibling — not the page's
+    sole child, so match ANY direct `<pre>` child of `body` whose content looks like JSON, not an
+    exclusive one).
   - `questhealth` — Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware).
     `sitemap_0.xml` (single fetch, ~160 products) embeds the Quest order code directly in the URL
     (`/product/hemoglobin-a1c-test/496M.html` → 496), also confirmed via `data-pid` on the page. Every

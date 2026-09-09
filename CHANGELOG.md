@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, True Health Labs 403 — Cloudflare started blocking the Store API from Railway)
+- **True Health Labs' Store API started returning 403 ("Just a moment...") from Railway's datacenter
+  IP** — verified from inside the scrape-worker container (plain fetch: 403; the stealth browser path
+  other vendors already use: clears it fine). Re-added `needsBrowser: true` to this adapter and fixed
+  `discover-truehealthlabs.ts` to pass `browserFetchHtml()` (same missing-override mistake as
+  `discover-personalabs.ts` earlier this week). `browser-fetch.ts` needed a new JSON-viewer unwrap for
+  this: Chromium puts a raw JSON response in a `<pre>` under `<body>`, so `page.content()` returned the
+  viewer chrome around it, not the JSON — `parseStoreRows`' `JSON.parse` was silently failing closed
+  (empty array, no error). First attempt assumed the `<pre>` was body's ONLY child; live DOM actually
+  has a second, empty `<div>` sibling, so the unwrap matches any direct `<pre>` child of body whose
+  content looks like JSON instead. Verified live: 1,710 products, DHEA-Sulfate $119.
+
 ### Added (2026-09-09, per-page progress logging on catalog crawls)
 - **A stalled catalog crawl gave no clue which page it was stuck on.** A local Request A Test run sat
   silent for 20+ minutes and had to be killed blind — no per-page output, just "narrowed to 91/871" at
