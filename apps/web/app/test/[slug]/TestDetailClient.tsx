@@ -95,6 +95,16 @@ const BEST = {
 
 const ACCENT = 'oklch(0.58 0.136 260)';
 
+// Section headings are phrased as the questions people actually search ("how do you prepare for a
+// vitamin D test?") rather than as labels ("How To Prepare") — that's the unit search and answer
+// engines segment a page by, and this page previously had no <h2> at all. Most of our test names are
+// bare analytes ("Ferritin") that read wrong without a trailing noun, but some already carry one
+// ("Arsenic Blood Test", "Lipid Panel"), so only add "test" when it isn't already there.
+const HAS_NOUN = /\b(test|panel|profile|screen|screening|count)\b\.?$/i;
+function testPhrase(name: string): string {
+  return HAS_NOUN.test(name.trim()) ? name : `${name} test`;
+}
+
 // 'quest' | 'labcorp' → 'Quest' | 'LabCorp' for the dual-lab secondary-price line.
 function labLabel(provider: string | null): string {
   if (provider === 'quest') return 'Quest';
@@ -123,14 +133,26 @@ export default function TestDetailClient({ test, offerings }: Props) {
   const savings = cheapest && most ? most.price - cheapest.price : 0;
 
   // Matches the prototype's four fixed accordion sections (no biomarkers section).
+  const phrase = testPhrase(test.name);
   const sections = [
-    { id: 'about', title: 'About This Test', content: [test.description, test.purpose].filter(Boolean).join(' ') },
-    { id: 'procedure', title: 'How It\'s Performed', content: test.procedure },
-    { id: 'prep', title: 'How To Prepare', content: test.preparation },
-    { id: 'ranges', title: 'Normal Ranges', content: test.normalRange },
+    { id: 'about', title: `What does a ${phrase} measure?`, content: [test.description, test.purpose].filter(Boolean).join(' ') },
+    { id: 'procedure', title: `How is a ${phrase} performed?`, content: test.procedure },
+    { id: 'prep', title: `How do you prepare for a ${phrase}?`, content: test.preparation },
+    { id: 'ranges', title: `What is a normal ${test.name} result?`, content: test.normalRange },
   ].filter((s) => s.content);
 
   const isPriceSorted = sortBy === 'price';
+
+  // Order-code clause for the summary. Stated in prose as well as in the header chips because the
+  // codes are how someone verifies we're comparing the same test across services — and a chip
+  // reading "Quest #17306" doesn't extract as a fact the way a sentence does.
+  const codeSentence = test.questCode && test.labcorpCode
+    ? ` It is Quest test code ${test.questCode} and LabCorp test code ${test.labcorpCode}.`
+    : test.questCode
+      ? ` It is Quest test code ${test.questCode}.`
+      : test.labcorpCode
+        ? ` It is LabCorp test code ${test.labcorpCode}.`
+        : '';
 
   const sortBtn = (active: boolean): React.CSSProperties => ({
     display: 'flex',
@@ -153,6 +175,9 @@ export default function TestDetailClient({ test, offerings }: Props) {
         .td-grid { display: grid; grid-template-columns: 360px 1fr; gap: 28px; align-items: start; margin-top: 28px; }
         .td-left { position: sticky; top: 80px; }
         .td-acc-header:hover { background: oklch(0.99 0.008 260); }
+        /* Belt-and-braces: [hidden] is a UA default, but any later display rule on this element
+           would silently override it and re-expose every collapsed section. */
+        .td-acc-body[hidden] { display: none; }
         .td-home-link:hover { text-decoration: underline; }
         .td-row:hover { background: oklch(0.97 0.02 260); }
         .td-row-best:hover { background: oklch(0.95 0.06 155); }
@@ -162,8 +187,8 @@ export default function TestDetailClient({ test, offerings }: Props) {
         }
       `}</style>
 
-      {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 20, fontSize: 13, color: 'oklch(0.58 0.04 260)' }}>
+      {/* Breadcrumb — <nav>, matching category/[slug] and search, which already used one here. */}
+      <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 20, fontSize: 13, color: 'oklch(0.58 0.04 260)' }}>
         <Link href="/" className="td-home-link" style={{ color: 'oklch(0.52 0.093 260)', fontWeight: 500, textDecoration: 'none' }}>
           Home
         </Link>
@@ -176,8 +201,8 @@ export default function TestDetailClient({ test, offerings }: Props) {
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
           <path d="M3.5 2l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span style={{ color: 'oklch(0.2 0.04 260)', fontWeight: 600 }}>{test.name}</span>
-      </div>
+        <span aria-current="page" style={{ color: 'oklch(0.2 0.04 260)', fontWeight: 600 }}>{test.name}</span>
+      </nav>
 
       {/* Test header */}
       <div style={{ marginBottom: 10 }}>
@@ -241,7 +266,11 @@ export default function TestDetailClient({ test, offerings }: Props) {
                         <path d={icon.path} stroke={icon.color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.2 0.04 260)', textAlign: 'left' }}>{sec.title}</span>
+                    {/* An <h2> inside the disclosure button: the heading is the question, and the
+                        question is what you click. Purely semantic — styling is unchanged. */}
+                    <h2 style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.2 0.04 260)', textAlign: 'left', margin: 0 }}>
+                      {sec.title}
+                    </h2>
                   </div>
                   <svg
                     width="16"
@@ -253,11 +282,18 @@ export default function TestDetailClient({ test, offerings }: Props) {
                     <path d="M4 6l4 4 4-4" stroke="oklch(0.6 0.04 260)" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
                 </button>
-                {isOpen && (
-                  <div style={{ padding: '4px 18px 18px', borderTop: '1px solid oklch(0.94 0.01 260)' }}>
-                    <p style={{ fontSize: 14, color: 'oklch(0.42 0.03 260)', lineHeight: 1.75, marginTop: 14 }}>{sec.content}</p>
-                  </div>
-                )}
+                {/* Always mounted, hidden with [hidden] rather than `{isOpen && ...}`. Collapsed
+                    sections used to be absent from the HTML entirely, so the preparation
+                    instructions and reference ranges — the most quotable content on the page —
+                    were invisible to crawlers and to anything reading the page without running JS.
+                    The disclosure behaves identically for users. */}
+                <div
+                  className="td-acc-body"
+                  hidden={!isOpen}
+                  style={{ padding: '4px 18px 18px', borderTop: '1px solid oklch(0.94 0.01 260)' }}
+                >
+                  <p style={{ fontSize: 14, color: 'oklch(0.42 0.03 260)', lineHeight: 1.75, marginTop: 14 }}>{sec.content}</p>
+                </div>
               </div>
             );
           })}
@@ -311,6 +347,32 @@ export default function TestDetailClient({ test, offerings }: Props) {
 
         {/* Right: Price comparison */}
         <div>
+          {/* Answer-first summary. The page's own question is "what does this cost and where" and
+              until now that was answered only by a star badge and some colored numbers — nothing an
+              answer engine (or a screen reader) could lift as a sentence. Every figure is derived
+              from the same offerings the table renders, so the two can't disagree. */}
+          {cheapest && (
+            <section aria-labelledby="price-summary-heading" style={{ marginBottom: 18 }}>
+              <h2
+                id="price-summary-heading"
+                style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'oklch(0.18 0.04 260)', marginBottom: 8 }}
+              >
+                How much does a {phrase} cost?
+              </h2>
+              <p style={{ fontSize: 14.5, color: 'oklch(0.4 0.03 260)', lineHeight: 1.7 }}>
+                The cheapest self-pay {phrase} is <strong>${cheapest.price.toFixed(2)}</strong> at{' '}
+                <strong>{cheapest.vendorName}</strong>, out of {offerings.length} ordering service
+                {offerings.length === 1 ? '' : 's'} compared.
+                {most && savings > 0 && (
+                  <> The highest listed price is ${most.price.toFixed(2)} at {most.vendorName}, a difference of ${savings.toFixed(2)}.</>
+                )}
+                {codeSentence}{' '}
+                Prices are self-pay cash rates read from each service&rsquo;s own public catalog
+                {lastChecked ? `, last verified ${relativeTime(lastChecked)}` : ''}.
+              </p>
+            </section>
+          )}
+
           {/* Sort controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'oklch(0.52 0.04 260)' }}>Sort by:</span>
@@ -351,85 +413,119 @@ export default function TestDetailClient({ test, offerings }: Props) {
             </div>
           )}
 
-          {/* Price table */}
+          {/* Price comparison. A real <table>, not the CSS grid of <div>s this used to be: the
+              vendor↔price pairing is the single most valuable fact on the site, and in a grid it
+              existed only as a visual coincidence of column order. Column widths come from the
+              <colgroup> + table-layout:fixed, which reproduces the old '1fr 90px 80px' exactly. */}
           <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid oklch(0.92 0.02 260)', overflow: 'hidden' }}>
-            {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', padding: '11px 20px', borderBottom: '1.5px solid oklch(0.92 0.02 260)', background: 'oklch(0.97 0.015 260)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Ordering Service</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Price</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px', textAlign: 'right' }}>Order</span>
-            </div>
-            {offerings.length === 0 && test.thirdPartyOnly ? (
-              <div style={{ padding: '28px 20px', textAlign: 'center', fontSize: 14, color: 'oklch(0.5 0.04 260)' }}>
-                Not offered by Quest or LabCorp — this is a specialty/third-party test.
-              </div>
-            ) : offerings.length === 0 ? (
-              <div style={{ padding: '28px 20px', textAlign: 'center', fontSize: 14, color: 'oklch(0.5 0.04 260)' }}>
-                No ordering services currently list this test.
-              </div>
-            ) : (
-              sorted.map((row) => {
-                const isBest = cheapest != null && row.price === cheapest.price;
-                return (
-                  <div
-                    key={row.id}
-                    className={isBest ? 'td-row-best' : 'td-row'}
-                    style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px', alignItems: 'center', padding: '13px 20px', borderBottom: '1px solid oklch(0.96 0.01 260)', transition: 'background 0.1s', background: isBest ? BEST.rowBg : '#fff' }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: isBest ? 700 : 500, color: isBest ? BEST.label : 'oklch(0.2 0.04 260)' }}>
-                        {row.vendorName}
-                      </div>
-                      {isBest && (
-                        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
-                          &#10003; Best Price
-                        </div>
-                      )}
-                      {row.checkedAt && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
-                          <span
-                            style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
-                            aria-hidden="true"
-                          />
-                          <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.112 260)' }}>
-                        ${row.price.toFixed(2)}
-                      </span>
-                      {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
-                          above is the compared/ranked one; this is the discounted member alternative. */}
-                      {row.memberPrice != null && row.memberPrice < row.price && (
-                        <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
-                          ${row.memberPrice.toFixed(2)} for members
-                          {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 260)' }}> ({row.membershipNote})</span> : null}
-                        </div>
-                      )}
-                      {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
-                          LabCorp — the price above is the cheaper; the other lab is still an option. */}
-                      {row.altLabPrice != null && (
-                        <div style={{ fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
-                          ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <a
-                        href={`/api/v1/go/${row.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => trackEvent('vendor_click', { test_name: test.name, vendor_name: row.vendorName, price: row.price })}
-                        style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.087 260)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 260)' }}
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              {/* Visually hidden: the heading and summary above already say this on screen, but the
+                  caption is what names the table for a screen reader or an extractor that meets the
+                  <table> without its surrounding context. */}
+              <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>
+                {test.name} self-pay prices by ordering service
+                {lastChecked ? `, last checked ${relativeTime(lastChecked)}` : ''}
+              </caption>
+              <colgroup>
+                <col />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 80 }} />
+              </colgroup>
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid oklch(0.92 0.02 260)', background: 'oklch(0.97 0.015 260)' }}>
+                  <th scope="col" style={{ padding: '11px 8px 11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                    Ordering Service
+                  </th>
+                  <th scope="col" style={{ padding: '11px 8px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                    Price
+                  </th>
+                  <th scope="col" style={{ padding: '11px 20px 11px 8px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                    Order
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {offerings.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ padding: '28px 20px', textAlign: 'center', fontSize: 14, color: 'oklch(0.5 0.04 260)' }}>
+                      {test.thirdPartyOnly
+                        ? 'Not offered by Quest or LabCorp — this is a specialty/third-party test.'
+                        : 'No ordering services currently list this test.'}
+                    </td>
+                  </tr>
+                ) : (
+                  sorted.map((row) => {
+                    const isBest = cheapest != null && row.price === cheapest.price;
+                    const cell: React.CSSProperties = {
+                      padding: '13px 8px',
+                      verticalAlign: 'middle',
+                      borderBottom: '1px solid oklch(0.96 0.01 260)',
+                    };
+                    return (
+                      <tr
+                        key={row.id}
+                        className={isBest ? 'td-row-best' : 'td-row'}
+                        style={{ transition: 'background 0.1s', background: isBest ? BEST.rowBg : '#fff' }}
                       >
-                        Order
-                      </a>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                        <th scope="row" style={{ ...cell, paddingLeft: 20, textAlign: 'left', fontWeight: 'normal' }}>
+                          <span style={{ display: 'block', fontSize: 15, fontWeight: isBest ? 700 : 500, color: isBest ? BEST.label : 'oklch(0.2 0.04 260)' }}>
+                            {row.vendorName}
+                          </span>
+                          {/* The cheapest row is also flagged in words, not only by the row tint —
+                              color carries no meaning to anything reading the markup. */}
+                          {isBest && (
+                            <span style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
+                              &#10003; Best Price
+                            </span>
+                          )}
+                          {row.checkedAt && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
+                              <span
+                                style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
+                                aria-hidden="true"
+                              />
+                              <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
+                            </span>
+                          )}
+                        </th>
+                        <td style={{ ...cell, textAlign: 'right' }}>
+                          <span style={{ fontSize: 18, fontWeight: 700, color: isBest ? BEST.price : 'oklch(0.38 0.112 260)' }}>
+                            ${row.price.toFixed(2)}
+                          </span>
+                          {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
+                              above is the compared/ranked one; this is the discounted member alternative. */}
+                          {row.memberPrice != null && row.memberPrice < row.price && (
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                              ${row.memberPrice.toFixed(2)} for members
+                              {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 260)' }}> ({row.membershipNote})</span> : null}
+                            </span>
+                          )}
+                          {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
+                              LabCorp — the price above is the cheaper; the other lab is still an option. */}
+                          {row.altLabPrice != null && (
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                              ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ ...cell, paddingRight: 20, textAlign: 'right' }}>
+                          <a
+                            href={`/api/v1/go/${row.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => trackEvent('vendor_click', { test_name: test.name, vendor_name: row.vendorName, price: row.price })}
+                            aria-label={`Order ${test.name} from ${row.vendorName} for $${row.price.toFixed(2)}`}
+                            style={{ display: 'inline-block', padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', border: '1.5px solid', background: isBest ? BEST.solid : '#fff', color: isBest ? '#fff' : 'oklch(0.45 0.087 260)', borderColor: isBest ? BEST.solid : 'oklch(0.84 0.04 260)' }}
+                          >
+                            Order
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
 
           {/* Disclaimer */}

@@ -150,28 +150,30 @@ export default async function TestDetailPage({ params }: Props) {
       />
       <PageViewTracker testId={test.id} />
       <Navbar />
-      <TestDetailClient
-        test={{
-          id: test.id,
-          name: test.name,
-          slug: test.slug,
-          category: test.category.name,
-          categorySlug: test.category.slug,
-          description: test.description,
-          purpose: test.purpose,
-          procedure: test.procedure,
-          preparation: test.preparation,
-          normalRange: test.normalRange,
-          questCode,
-          labcorpCode,
-          thirdPartyOnly: test.thirdPartyOnly,
-          confidence: test.confidence,
-          notes: test.notes,
-          cardioIq: test.cardioIq,
-          labVariant: test.labVariant,
-        }}
-        offerings={offerings}
-      />
+      <main>
+        <TestDetailClient
+          test={{
+            id: test.id,
+            name: test.name,
+            slug: test.slug,
+            category: test.category.name,
+            categorySlug: test.category.slug,
+            description: test.description,
+            purpose: test.purpose,
+            procedure: test.procedure,
+            preparation: test.preparation,
+            normalRange: test.normalRange,
+            questCode,
+            labcorpCode,
+            thirdPartyOnly: test.thirdPartyOnly,
+            confidence: test.confidence,
+            notes: test.notes,
+            cardioIq: test.cardioIq,
+            labVariant: test.labVariant,
+          }}
+          offerings={offerings}
+        />
+      </main>
       <Footer />
     </div>
   );
