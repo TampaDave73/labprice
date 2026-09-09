@@ -43,10 +43,18 @@ const TOP = 16;
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 
-/** A round upper bound so the axis ticks land on readable numbers. */
-function niceMax(max: number): number {
-  const steps = [10, 20, 25, 50, 100, 150, 200, 250, 500, 1000];
-  return steps.find((s) => s >= max) ?? Math.ceil(max / 100) * 100;
+/**
+ * An axis whose ticks are round numbers. Quartering a "nice" maximum isn't enough — 150/4 gives
+ * $38, $75, $113, which reads as noise. Pick the step first, then let the top follow from it.
+ */
+function niceScale(max: number): { top: number; ticks: number[] } {
+  const steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+  // 3–5 intervals: fewer and the axis is uninformative, more and the labels crowd.
+  const step = steps.find((st) => max / st <= 5) ?? Math.ceil(max / 5 / 100) * 100;
+  const top = Math.ceil(max / step) * step;
+  const ticks: number[] = [];
+  for (let t = 0; t <= top; t += step) ticks.push(t);
+  return { top, ticks };
 }
 
 // Past about eight bars the figure is taller than the screen and the rows stop being comparable at a
@@ -62,11 +70,10 @@ export default function PriceRangeChart({ rows: allRows }: { rows: ChartRow[] })
   const rows = ranked.slice(0, MAX_BARS);
   const overflow = ranked.length - rows.length;
 
-  const top = niceMax(Math.max(...rows.map((r) => r.max)));
+  const { top, ticks } = niceScale(Math.max(...rows.map((r) => r.max)));
   const plotW = PLOT_R - PLOT_X;
   const x = (v: number) => PLOT_X + (v / top) * plotW;
   const height = TOP + rows.length * ROW_H + 34;
-  const ticks = [0, top * 0.25, top * 0.5, top * 0.75, top];
 
   const summary = rows
     .map((r) => `${r.name}: cheapest ${usd(r.min)}, dearest ${usd(r.max)}, across ${r.count} services`)
