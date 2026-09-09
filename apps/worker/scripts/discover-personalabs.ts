@@ -1,10 +1,21 @@
 // End-to-end DB test for the Personalabs catalog scraper (adapter='personalabs'). Sets up Personalabs
 // as a catalog-mode vendor, links a spread of seed tests, runs discovery against the live site + real
 // Postgres, publishes auto-approved changes, and prints the result.
+//
+// MUST pass `fetchHtml: browserFetchHtml()` (see persist.ts's `needsBrowser` on this adapter): a
+// "Discount Rules for WooCommerce" plugin recalculates the real price client-side via JS, so plain HTTP
+// reads the crossed-out "Reg. $X" pre-discount price off the static HTML, not the actual price. This
+// script omitted that override until 2026-09-09 — it predates `needsBrowser` being added to this
+// adapter (2026-07-26) and was never updated — and a run in the meantime silently priced (and
+// auto-published four of) every offering off the wrong "Reg." price. `runVendorDiscovery` itself has no
+// way to know an adapter needs a browser (Playwright can't be pulled into persist.ts — see
+// browser-fetch.ts's module comment); every caller must pass this explicitly, same as
+// discover-requestatest.ts already does for the same reason.
 // Run (from apps/worker):  DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-personalabs.ts
 import 'dotenv/config';
 import { prisma } from '@labprice/database';
 import { runVendorDiscovery, publishStagedChange } from '../src/discovery';
+import { browserFetchHtml } from '@labprice/scrapers/src/catalog/browser-fetch';
 
 const SELECTORS = { mode: 'catalog', adapter: 'personalabs', catalogPath: '/products/all-test/' };
 const SEED_TEST_SLUGS = [
@@ -36,7 +47,7 @@ async function main() {
   console.log(`Personalabs vendor ${vendor.id} · linked ${tests.length}/${SEED_TEST_SLUGS.length} seed tests\n`);
 
   const t0 = Date.now();
-  const summary = await runVendorDiscovery({ vendorId: vendor.id, triggeredBy: 'MANUAL', onLog: (m) => console.log('·', m) });
+  const summary = await runVendorDiscovery({ vendorId: vendor.id, triggeredBy: 'MANUAL', fetchHtml: browserFetchHtml(), onLog: (m) => console.log('·', m) });
   for (const id of summary.autoApprovedStagedIds) await publishStagedChange(id);
   console.log(`\n=== ${((Date.now() - t0) / 1000).toFixed(1)}s: ${summary.matched} matched, ${summary.ambiguous} ambiguous, ${summary.unmatched} unmatched, ${summary.autoApprovedStagedIds.length} published ===\n`);
 

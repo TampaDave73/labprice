@@ -660,7 +660,16 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   both the worker's `scrape-discover.ts` processor AND the web route must independently check
   `adapterNeedsBrowser` (found live 2026-07-04: the worker processor never checked this either, so even
   scheduled runs for Request A Test silently used plain HTTP and 403'd). The admin sees "queued — needs
-  `pnpm dev:worker` running" instead of an inline result summary for these vendors.
+  `pnpm dev:worker` running" instead of an inline result summary for these vendors. **Every caller of
+  `runVendorDiscovery` for a `needsBrowser` adapter must pass `fetchHtml: browserFetchHtml()` itself** —
+  `runVendorDiscovery`/`persist.ts` has no way to default this (Playwright can't be imported there, see
+  above), so it's opt-in per call site, not automatic. Bit a THIRD time 2026-09-09:
+  `discover-personalabs.ts` predates Personalabs getting `needsBrowser: true` (2026-07-26) and was never
+  updated, so every run of it priced (and once, auto-published four offerings from) the crossed-out
+  "Reg. $X" pre-discount price instead of the real one — `discover-requestatest.ts` already gets this
+  right, `discover-personalabs.ts` didn't. If you add or copy an E2E `discover-<vendor>.ts` script,
+  check whether its adapter is in the `needsBrowser` list above and pass `browserFetchHtml()` explicitly
+  if so — nothing enforces it for you.
   Not every WAF is passable this way — Ulta Lab Tests escalates to an actual image CAPTCHA even with
   this, which is a different, unsolved problem (see `STATE.md`).
 - **Windows Redis gotcha, second location**: `localhost` intermittently resolves to IPv6 (`::1`) on

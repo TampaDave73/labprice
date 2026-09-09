@@ -9,6 +9,20 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, Personalabs prices were the pre-discount "Reg." price)
+- **`discover-personalabs.ts` was scraping the crossed-out "Reg. $X" price, not the real discounted
+  one.** Personalabs' displayed price is recalculated client-side by a WooCommerce discount plugin —
+  `needsBrowser: true` was added to this adapter 2026-07-26 for exactly that reason, but this one E2E
+  script predates that and was never updated to pass `browserFetchHtml()`, unlike
+  `discover-requestatest.ts` (same `needsBrowser` reason) which already did. A run of it today priced
+  every offering off the wrong pre-discount number and auto-published four of them live (Homocysteine,
+  Hemoglobin A1c, Magnesium RBC, Testosterone Free (Calculation)) — caught from a user report ("most if
+  not all of the prices in the Change Queue are wrong") after Vitamin B12 staged $81 (the "Reg." price)
+  against a real live price of $56.70. Cleaned up: the 4 wrongly-published prices reverted, the run's
+  `PriceHistory` rows and 23 bad `StagedPriceChange` PENDING rows deleted, script fixed and re-run
+  clean. The web admin's own "Scrape now" button was never affected — it correctly queues
+  `needsBrowser` vendors to the worker, which already passes the browser fetcher.
+
 ### Changed (2026-09-09, MitoHealth catalog pagination cap)
 - **MitoHealth's catalog crawl was hardcoded to stop after 6 pages (600 products).** The real catalog
   has grown to 1,078+ — found chasing the pinned-URL bug below: "Testosterone, Free Blood Test" is a
