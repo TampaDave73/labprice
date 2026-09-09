@@ -9,6 +9,32 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, article visuals)
+- **`[PRICE-CHART:slug,slug,…]`** — a live bar chart of the price spread for those tests: solid bar to
+  the cheapest anyone charges, faded continuation to the dearest. Read from the same offerings query
+  the `[PRICE:…]` tokens use, so it cannot go stale or contradict the prose, and adding one costs no
+  extra query. Plot caps at the 8 cheapest; the table underneath lists every row, so no value is
+  reachable by colour or hover alone. Colours are the site's own oklch tokens, validated rather than
+  eyeballed (ΔE 20.2 deutan, 22.7 normal, ≥3:1 contrast).
+- **Generated drafts now carry visuals.** The generator must include a price chart when it names two
+  or more related tests, and may use a named `[FIG:…]` diagram only where the article genuinely covers
+  that subject — from an enumerated list, with an explicit instruction never to invent a name.
+- **Drafts get a hero image** from three generic lab photos, picked from the slug so it is stable and
+  varies between articles, swappable in `/admin/blog`. `backfill-post-visuals.ts` retro-fits posts
+  drafted before any of this existed.
+
+### Fixed (2026-09-09, question queue)
+- **A drafted article looked like it had vanished.** Drafting moved the candidate to `DRAFTED`, so it
+  left the tab you were on, and the empty state then told you to run the harvester. Drafting now lands
+  on the Drafted tab with a banner linking to the draft and its preview, and every empty state is
+  tab-aware.
+- **The queue filled with half-typed words** (`Tezt`, `insi`). Root cause: the autocomplete endpoint
+  logs every keystroke as a search, which has also been polluting the zero-result view in
+  `/admin/analytics`. Added `search_logs.committed` (autocomplete writes false; the search page and
+  API write true) and tightened the text filter — a candidate must be multi-word or at least six
+  characters, since a four-character fragment passes any length-only test. Plus bulk "Reject all
+  shown" for one-click triage.
+
 ### Added (2026-09-09, question research queue)
 - **`QuestionCandidate` + `/admin/questions`** — a holding queue of questions people are actually
   asking, from two sources: our own zero-result site searches (highest intent, needs no

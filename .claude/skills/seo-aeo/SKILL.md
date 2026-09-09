@@ -82,6 +82,10 @@ and link to the pages it talks about. Everything below is a specific case of tha
 - [ ] **The LCP image loads eagerly at `fetchPriority="high"`; everything else is `loading="lazy"`.**
       Lazy-loading the largest above-fold image is a hard audit failure.
 - [ ] **Alt text under 125 characters**, describing the image rather than restating the caption.
+- [ ] **An article with no figure is unfinished.** Use `[PRICE-CHART:slug,slug]` (live prices, always
+      current) or a named `[FIG:…]` diagram where it genuinely fits. Every chart carries a table view
+      underneath — that is both the accessible equivalent and the version an answer engine can quote.
+      Load the `dataviz` skill before writing any new chart.
 
 ## Checklist: internal linking
 

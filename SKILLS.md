@@ -69,7 +69,9 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `apps/worker/scripts/migrate-posts.ts`, never `db:push` (see gotcha 15).
   **Prices in article copy are never literals** — `[PRICE:slug]` / `[PRICE-RANGE:slug]` /
   `[PRICE-COUNT:slug]` / `[PRICE-DATE:slug]` resolve at request time from the same offerings query
-  the price cards use (`lib/blog.ts`, resolved in `blog/[slug]/page.tsx`).
+  the price cards use (`lib/blog.ts`, resolved in `blog/[slug]/page.tsx`). `[PRICE-CHART:a,b,c]` on
+  its own line renders `components/PriceRangeChart.tsx` — a live bar chart of the spread for those
+  tests, capped at 8 bars with every row in a table beneath it.
   Article bodies may link **externally** with `[text](https://…)`, rendered `rel="nofollow noopener"`
   — that's how the E-E-A-T citation signal is fed; verify a URL returns 200 before publishing it.
   Hero images are `<name>-1600.webp` with an 800px sibling; `heroSrcSet()` derives the srcset from
