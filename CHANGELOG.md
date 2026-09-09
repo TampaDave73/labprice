@@ -20,7 +20,7 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   title-cased guess off the slug — `test-lipoproteina` title-cases to "Lipoproteina" (one word), which
   shares no token with our "Lipoprotein(a)" test and so never survived narrowing even though the
   product page itself was fine; the real title, "Test-Lipoprotein(a)", has the correct word split. Net:
-  DrSays went from 9 to 29 of 30 linked tests priced, verified live.
+  DrSays went from 9 to 30 of 30 linked tests priced, verified live.
 - **A pinned product URL now overrides the panel exclusion.** `priceFromPinnedUrl` resolved the right
   product and then discarded it whenever that product was `isPanel`, returning null — the offering
   stayed priceless while the scrape reported success, so the admin's URL looked ignored. The exclusion
