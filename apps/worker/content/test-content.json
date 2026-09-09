@@ -1,0 +1,222 @@
+[
+  {
+    "slug": "cortisol-total",
+    "name": "Cortisol, Total",
+    "description": "Cortisol, Total measures the total amount of cortisol in the blood. Cortisol is a hormone produced by the adrenal glands that helps regulate metabolism, blood sugar, blood pressure, and the body's response to stress. Levels of cortisol naturally rise and fall throughout the day, following a daily (circadian) rhythm.",
+    "purpose": "This test is used to help evaluate how the adrenal glands and the pituitary gland are working. It may be ordered when a doctor is checking for conditions related to too much cortisol (such as Cushing syndrome) or too little cortisol (such as Addison disease or adrenal insufficiency). It is also sometimes used to monitor treatment for these conditions.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a small needle. The sample is then sent to a laboratory for analysis.",
+    "preparation": "Cortisol levels change throughout the day, so blood is often collected at a specific time, commonly in the morning (around 8 a.m.) and sometimes again later in the day. Follow any timing instructions your provider gives. Recent stress, illness, physical activity, and certain medications can affect results. Tell your provider about any medications or supplements you take, and follow any fasting or other instructions given.",
+    "normalRange": "Reference ranges vary by laboratory, time of day, and individual factors. As a general guide, morning (around 8 a.m.) total cortisol in adults is often about 6 to 23 micrograms per deciliter (mcg/dL), with lower values later in the day. Always interpret results using the reference range provided by the testing laboratory and in consultation with your healthcare provider.",
+    "generatedAt": "2026-09-09T20:18:10.336Z"
+  },
+  {
+    "slug": "c-reactive-protein-high-sensitivity",
+    "name": "C-Reactive Protein, High Sensitivity",
+    "description": "C-Reactive Protein, High Sensitivity (hs-CRP) is a blood test that measures very low levels of C-reactive protein, a substance the liver produces in response to inflammation in the body. The high-sensitivity version can detect smaller amounts of CRP than a standard CRP test, allowing it to identify low-grade inflammation.",
+    "purpose": "This test is often used to help assess a person's risk of heart disease and related cardiovascular events, since low-grade inflammation in blood vessels is linked to that risk. It may be ordered alongside cholesterol and other tests as part of a broader cardiovascular risk evaluation. It is generally not used to detect the higher levels of inflammation seen with acute infections or flare-ups of inflammatory conditions, which are better measured with a standard CRP test.",
+    "procedure": "A healthcare professional draws a sample of blood from a vein in the arm using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The process usually takes only a few minutes.",
+    "preparation": "No special preparation such as fasting is typically required, though your provider may give specific instructions. Because recent infection, injury, or other inflammation can temporarily raise CRP levels, testing is often done when you are well. Tell your provider about any illnesses, medications, or supplements you are taking.",
+    "normalRange": "Reference ranges vary by laboratory, and interpretation may differ by individual. For cardiovascular risk assessment, commonly cited categories are lower than 1 mg/L for lower risk, 1 to 3 mg/L for average risk, and greater than 3 mg/L for higher risk. Levels above 10 mg/L often suggest another source of inflammation, such as an infection, and may prompt retesting. Discuss your results with your healthcare provider.",
+    "generatedAt": "2026-09-09T20:18:19.913Z"
+  },
+  {
+    "slug": "estradiol-ultrasensitive-lc-ms-ms",
+    "name": "Estradiol, Ultrasensitive (LC/MS-MS)",
+    "description": "This test measures the level of estradiol, the main form of estrogen, in the blood using liquid chromatography-tandem mass spectrometry (LC/MS-MS). The ultrasensitive method can accurately detect very low estradiol concentrations, which makes it useful when estradiol levels are expected to be low, such as in children, men, and postmenopausal women.",
+    "purpose": "The test is used to evaluate estrogen levels, particularly when very low or precise measurements are needed. It may be ordered to assess menstrual and reproductive issues, evaluate low estrogen states, monitor certain hormone-related treatments, or investigate early or delayed puberty. Because it is highly sensitive, it is often preferred when standard estradiol tests are not precise enough.",
+    "procedure": "A healthcare provider collects a blood sample from a vein in the arm using a needle. The sample is then sent to a laboratory for analysis by mass spectrometry.",
+    "preparation": "No special preparation is usually required. Because estradiol levels can vary with the menstrual cycle, your provider may ask you to have the sample drawn on a specific day of your cycle. Tell your provider about any hormone medications or supplements you take, as these can affect results. Follow any specific instructions given by your provider or the lab.",
+    "normalRange": "Reference ranges vary by laboratory and depend on sex, age, menstrual cycle phase, and menopausal status. Levels are typically low in men, children, and postmenopausal women, and vary widely across the menstrual cycle in premenopausal women. Your lab report will list the specific reference range that applies to you.",
+    "generatedAt": "2026-09-09T20:18:29.090Z"
+  },
+  {
+    "slug": "ferritin",
+    "name": "Ferritin",
+    "description": "Ferritin is a blood protein that stores iron inside your cells. A ferritin test measures the amount of ferritin in your blood, which reflects how much iron your body has stored. It is one of the most useful indicators of your body's total iron reserves.",
+    "purpose": "This test is commonly used to help evaluate the amount of iron stored in the body. Low ferritin can indicate iron deficiency, while high ferritin can point to iron overload or may occur with inflammation, infection, or certain other conditions. It is often ordered when someone has anemia or symptoms such as fatigue, or to monitor known iron-related conditions.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in your arm using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The draw itself usually takes only a few minutes.",
+    "preparation": "No special preparation is typically required for a ferritin test, and fasting is generally not needed. Because ferritin levels can rise with inflammation or illness, your provider may consider your overall health when interpreting results. Follow any specific instructions given by your provider or the lab.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age. As a general guide, typical adult ranges are often reported as roughly 24 to 336 nanograms per milliliter for men and about 11 to 307 nanograms per milliliter for women, though labs differ. Always compare your result to the reference range listed on your own lab report.",
+    "generatedAt": "2026-09-09T20:18:37.301Z"
+  },
+  {
+    "slug": "hemoglobin-a1c",
+    "name": "Hemoglobin A1c",
+    "description": "Hemoglobin A1c is a blood test that measures the percentage of hemoglobin, the oxygen-carrying protein in red blood cells, that has glucose attached to it. Because red blood cells live about three months, this test reflects average blood sugar levels over roughly the past two to three months.",
+    "purpose": "The test is commonly used to help identify and monitor diabetes and prediabetes, and to track how well blood sugar is being controlled over time. It provides a longer-term view of glucose levels than a single blood sugar measurement.",
+    "procedure": "A healthcare professional collects a sample of blood, usually drawn from a vein in the arm. The sample is then analyzed in a laboratory.",
+    "preparation": "No fasting is generally required for this test, and it can be done at any time of day. You should follow any specific instructions provided by your healthcare provider or the testing lab.",
+    "normalRange": "Reference ranges vary by laboratory, and results may be affected by certain medical conditions. In general, an HbA1c below 5.7 percent is considered normal, 5.7 to 6.4 percent is often associated with prediabetes, and 6.5 percent or higher may indicate diabetes. Your healthcare provider interprets results in the context of your overall health.",
+    "generatedAt": "2026-09-09T20:18:44.539Z"
+  },
+  {
+    "slug": "homocysteine",
+    "name": "Homocysteine",
+    "description": "Homocysteine is an amino acid that the body produces during the metabolism of methionine, another amino acid found in protein-rich foods. Blood levels of homocysteine are influenced by vitamin status, particularly folate (vitamin B9), vitamin B12, and vitamin B6, as these vitamins help break it down. This test measures the amount of homocysteine in the blood.",
+    "purpose": "This test is used to evaluate homocysteine levels, which may be checked when assessing cardiovascular risk, investigating a suspected vitamin B12 or folate deficiency, or evaluating a rare inherited condition called homocystinuria. Elevated homocysteine can be associated with these conditions, though the test is often interpreted alongside other laboratory results.",
+    "procedure": "A healthcare professional draws a blood sample from a vein, usually in the arm, using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The process typically takes only a few minutes.",
+    "preparation": "Fasting for approximately 8 to 12 hours before the test is often recommended, as recent food intake can affect results. Follow any specific instructions provided by your healthcare provider or the testing laboratory, including guidance about vitamin supplements or medications.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age. A commonly reported normal range for adults is roughly 5 to 15 micromoles per liter (µmol/L), though laboratories may use different cutoffs. Always compare your result to the reference range listed on your specific lab report.",
+    "generatedAt": "2026-09-09T20:18:53.130Z"
+  },
+  {
+    "slug": "igf-1-lc-ms",
+    "name": "IGF-1 (LC/MS)",
+    "description": "IGF-1 (insulin-like growth factor 1) is a hormone produced mainly by the liver in response to growth hormone (GH). This version of the test measures IGF-1 in the blood using liquid chromatography-mass spectrometry (LC/MS), a highly specific laboratory method. Because IGF-1 levels are more stable throughout the day than growth hormone, the test is often used as a reflection of overall growth hormone activity.",
+    "purpose": "This test is used to help evaluate conditions related to too much or too little growth hormone, such as acromegaly (excess GH in adults) and growth hormone deficiency. It may also be used to monitor treatment for these conditions and to help assess certain pituitary gland disorders. It provides information about the body's growth hormone status but is interpreted along with other tests and clinical findings.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a needle. The sample is then sent to a laboratory for analysis by liquid chromatography-mass spectrometry.",
+    "preparation": "No special preparation is usually required, though some laboratories may ask you to fast beforehand. Follow any specific instructions from your provider or the testing lab, and let them know about any medications or supplements you take, since some can affect results.",
+    "normalRange": "Reference ranges for IGF-1 vary widely by laboratory, and especially by age and sex, because normal levels change throughout life and are highest during adolescence. Because of this variability, there is no single standard adult value; results should be compared against the age- and sex-specific reference range provided by the testing laboratory.",
+    "generatedAt": "2026-09-09T20:19:02.174Z"
+  },
+  {
+    "slug": "insulin-fasting",
+    "name": "Insulin, Fasting",
+    "description": "The fasting insulin test measures the amount of insulin in your blood after a period without eating. Insulin is a hormone made by the pancreas that helps move glucose (sugar) from the bloodstream into cells for energy. This test is often used alongside a fasting glucose measurement to evaluate how your body manages blood sugar.",
+    "purpose": "This test helps assess how much insulin the body is producing and can provide information about insulin resistance or unusually high or low insulin levels. It is sometimes ordered along with glucose testing to help evaluate conditions related to blood sugar regulation. Results are interpreted by a healthcare provider in the context of other tests and your overall health.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in your arm using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The process usually takes only a few minutes.",
+    "preparation": "This test typically requires fasting, meaning no food or drink other than water for a set period (often 8 to 12 hours) before the blood draw. Follow the specific fasting instructions given by your provider or the lab, and tell them about any medications or supplements you take, as some may affect results.",
+    "normalRange": "Reference ranges vary by laboratory and by the method used, and may be affected by age and other factors. A commonly cited fasting insulin range for adults is roughly 2 to 25 microInternational units per milliliter (uIU/mL), but your lab report will list the specific range used to interpret your result. Discuss your results with your healthcare provider.",
+    "generatedAt": "2026-09-09T20:19:10.775Z"
+  },
+  {
+    "slug": "iron-tibc",
+    "name": "Iron & TIBC",
+    "description": "This blood test measures the amount of iron in your blood along with the total iron-binding capacity (TIBC), which reflects how much iron your blood can carry. TIBC is largely a measure of transferrin, the protein that transports iron. The test panel often also reports transferrin saturation, the percentage of iron-binding sites that are occupied by iron.",
+    "purpose": "It is used to help evaluate the body's iron status. It can help assess whether iron levels are too low or too high and is often used when iron-deficiency anemia, iron overload, or other conditions affecting iron are being considered. Results are typically interpreted together with other tests such as ferritin.",
+    "procedure": "A healthcare professional collects a blood sample from a vein in your arm using a needle. The sample is then sent to a laboratory for analysis.",
+    "preparation": "Fasting is often requested, and the sample is commonly drawn in the morning because iron levels can vary during the day. Certain supplements and medications, including iron pills and multivitamins, can affect results. Follow the specific instructions given by your provider or the testing lab.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age, and the lab report should be used for interpretation. Typical adult ranges are roughly 60 to 170 micrograms per deciliter for serum iron, about 240 to 450 micrograms per deciliter for TIBC, and about 20 to 50 percent for transferrin saturation.",
+    "generatedAt": "2026-09-09T20:19:19.228Z"
+  },
+  {
+    "slug": "lipid-panel",
+    "name": "Lipid Panel",
+    "description": "A lipid panel is a blood test that measures the amounts of certain fats and fat-related substances in your blood. It typically reports total cholesterol, LDL (low-density lipoprotein) cholesterol, HDL (high-density lipoprotein) cholesterol, and triglycerides. Some panels also calculate ratios such as total cholesterol to HDL.",
+    "purpose": "The test is used to assess the levels of cholesterol and triglycerides in the blood, which are factors used to estimate the risk of cardiovascular conditions such as heart disease and stroke. It is often used for routine screening and to monitor people who are being managed for abnormal cholesterol levels.",
+    "procedure": "A healthcare professional draws a sample of blood from a vein, usually in the arm, using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The blood draw itself typically takes only a few minutes.",
+    "preparation": "Some labs and providers ask you to fast for 9 to 12 hours before the test, drinking only water, while others allow non-fasting samples. Follow the specific instructions given by your provider or the testing lab. Tell your provider about any medications or supplements you take.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age, and results are interpreted alongside your overall risk factors. As general adult guidelines, total cholesterol below 200 mg/dL is often considered desirable, LDL cholesterol below 100 mg/dL is considered optimal, HDL cholesterol of 40 mg/dL or higher (60 mg/dL or above is considered protective), and triglycerides below 150 mg/dL are considered normal. Your lab report will list the specific ranges used.",
+    "generatedAt": "2026-09-09T20:19:28.466Z"
+  },
+  {
+    "slug": "lipoprotein-a",
+    "name": "Lipoprotein(a)",
+    "description": "Lipoprotein(a), often written as Lp(a), is a type of lipoprotein particle in the blood that is similar to LDL (low-density lipoprotein) but has an additional protein called apolipoprotein(a) attached to it. Levels of Lp(a) are largely determined by genetics and tend to remain relatively stable throughout a person's life. This test measures the amount of Lp(a) in a blood sample.",
+    "purpose": "This test is used to help assess a person's risk for cardiovascular disease, including heart attack and stroke. Because Lp(a) is inherited, testing may be considered for people with a personal or family history of early heart disease or high cholesterol that is not fully explained by other risk factors. Results are typically interpreted alongside other lipid measurements and overall risk assessment.",
+    "procedure": "A healthcare professional draws a sample of blood from a vein in the arm using a small needle. The sample is collected into a tube and sent to a laboratory for analysis. The process usually takes only a few minutes.",
+    "preparation": "No special preparation is generally required for this test. Because Lp(a) levels are mainly genetic and stable, fasting is usually not necessary, though your provider may ask you to fast if the test is drawn together with a standard lipid panel. Follow any specific instructions given by your provider or the lab.",
+    "normalRange": "Reference ranges vary by laboratory and by the measurement method used, and results may be reported in mg/dL or nmol/L. In general, lower levels are considered more favorable, and higher levels are associated with increased cardiovascular risk. A commonly cited threshold for elevated Lp(a) is above about 50 mg/dL or roughly 125 nmol/L, but interpretation should be based on the specific lab's reference range and your overall health picture.",
+    "generatedAt": "2026-09-09T20:19:38.008Z"
+  },
+  {
+    "slug": "magnesium-rbc",
+    "name": "Magnesium, RBC",
+    "description": "Magnesium, RBC measures the amount of magnesium inside red blood cells rather than in the liquid part of the blood (serum). Because most of the body's magnesium is stored inside cells, this test can reflect magnesium status differently than a standard serum magnesium test. Magnesium is a mineral involved in many body processes, including muscle and nerve function, energy production, and maintaining normal heart rhythm.",
+    "purpose": "This test is used to help assess a person's magnesium status. Some clinicians consider RBC magnesium a way to evaluate longer-term or intracellular magnesium levels, which may not always be reflected by serum magnesium. It may be ordered when magnesium deficiency is suspected despite a normal serum result, or to monitor magnesium status over time.",
+    "procedure": "A healthcare professional draws a sample of blood from a vein in the arm using a needle. The blood is collected into a tube and sent to a laboratory, where red blood cells are separated and analyzed for their magnesium content.",
+    "preparation": "No special preparation is typically required. Follow any specific instructions provided by your healthcare provider or the testing laboratory, and let them know about any supplements or medications you take, as some can affect magnesium levels.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age, and RBC magnesium is reported differently than serum magnesium. A commonly cited adult range is roughly 4.0 to 6.4 mg/dL, but you should compare your result to the reference range listed on your own lab report.",
+    "generatedAt": "2026-09-09T20:19:46.784Z"
+  },
+  {
+    "slug": "prolactin",
+    "name": "Prolactin",
+    "description": "Prolactin is a hormone made by the pituitary gland, a small gland at the base of the brain. It is best known for stimulating milk production in the breasts during and after pregnancy, but it is present in both women and men. This test measures the amount of prolactin in the blood.",
+    "purpose": "This test is often used to help evaluate the cause of irregular or absent menstrual periods, infertility, and unexpected breast milk production. In men it may be used when looking into low testosterone, reduced sex drive, or erectile difficulties. It can also help detect and monitor a type of pituitary growth called a prolactinoma and to check the effect of certain medications on prolactin levels.",
+    "procedure": "A healthcare professional collects a blood sample from a vein in your arm using a needle. The sample is then sent to a laboratory for analysis. Because prolactin levels can rise with stress, sleep, exercise, and eating, blood is sometimes drawn a few hours after waking and after a period of rest.",
+    "preparation": "No special fasting is usually required, but follow any instructions from your provider or the lab. Because levels can be affected by stress, physical activity, sleep, and breast stimulation, the sample is often taken in the morning after you have been awake and calm for a few hours. Tell your provider about any medications, as some can raise prolactin levels.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and pregnancy status, so use the range on your own report. As a general guide, typical adult non-pregnant values are roughly 4 to 23 nanograms per milliliter in women and about 3 to 15 nanograms per milliliter in men, though exact cutoffs differ between labs. Levels are normally much higher during pregnancy and breastfeeding.",
+    "generatedAt": "2026-09-09T20:19:56.979Z"
+  },
+  {
+    "slug": "psa-total",
+    "name": "PSA, Total",
+    "description": "The PSA, Total test measures the total amount of prostate-specific antigen (PSA) in the blood. PSA is a protein produced by cells in the prostate gland, and both normal and abnormal prostate tissue can release it into the bloodstream. It is reported in nanograms per milliliter (ng/mL).",
+    "purpose": "This test is commonly used to screen for and monitor prostate conditions, including prostate cancer, benign prostatic hyperplasia (an enlarged prostate), and prostatitis (inflammation of the prostate). It may also be used to track response to treatment or to watch for recurrence after prostate cancer therapy. Results are interpreted by a healthcare provider along with other clinical information.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm, usually using a small needle. The sample is collected into a tube and sent to a laboratory for analysis. The blood draw typically takes only a few minutes.",
+    "preparation": "No special fasting is generally required. Certain activities and factors, such as recent ejaculation, vigorous exercise (like cycling), a recent prostate exam or procedure, urinary tract infection, or some medications, can affect PSA levels. Tell your provider about any recent activities, symptoms, or medications, and follow any specific instructions they give.",
+    "normalRange": "Reference ranges vary by laboratory and increase with age. A commonly used general reference cutoff for adult men is a total PSA below 4.0 ng/mL, though age-specific ranges are often applied and some guidelines use lower thresholds. Your provider will interpret your result based on your age, medical history, and lab reference values.",
+    "generatedAt": "2026-09-09T20:20:06.205Z"
+  },
+  {
+    "slug": "t3-free",
+    "name": "T3, Free",
+    "description": "The Free T3 test measures the amount of unbound (free) triiodothyronine in the blood. T3 is one of the two main hormones produced by the thyroid gland. Most T3 in the blood is attached to proteins, but only the free portion is biologically active and available for the body to use. This test focuses on that active fraction.",
+    "purpose": "This test is used to help evaluate thyroid function, particularly when thyroid disease is suspected. It is often ordered along with other thyroid tests, such as TSH and Free T4, to help assess conditions related to an overactive or underactive thyroid. Results are interpreted by a healthcare provider in the context of other tests and symptoms.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a small needle. The sample is collected in a tube and sent to a laboratory for analysis. The process usually takes only a few minutes.",
+    "preparation": "No special preparation is typically required for this test. Some medications and supplements, including those containing biotin or thyroid hormones, can affect thyroid test results, so tell your healthcare provider about anything you are taking. Follow any specific instructions given by your provider or the lab.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age, and results should be interpreted by the lab that performed the test. A commonly reported typical adult range for Free T3 is approximately 2.3 to 4.2 pg/mL, but your lab's stated range may differ.",
+    "generatedAt": "2026-09-09T20:20:14.868Z"
+  },
+  {
+    "slug": "t4-free",
+    "name": "T4, Free",
+    "description": "The Free T4 test measures the amount of unbound (free) thyroxine in the blood. Thyroxine (T4) is a hormone produced by the thyroid gland. Most T4 in the blood is attached to proteins, while a small portion circulates freely and is available for the body to use. This test measures only the free portion, which reflects thyroid activity independent of protein levels.",
+    "purpose": "This test is used to help evaluate how well the thyroid gland is functioning. It is often ordered along with a TSH (thyroid-stimulating hormone) test to help assess conditions such as an overactive or underactive thyroid, and to monitor people who are receiving treatment for thyroid disorders.",
+    "procedure": "The test is performed on a blood sample, which is usually collected from a vein in the arm using a small needle. The sample is then sent to a laboratory for analysis.",
+    "preparation": "No special preparation is typically required. Certain medications and supplements, including biotin and thyroid medications, can affect results, so tell the ordering provider about anything you take. Follow any specific instructions given by the provider or laboratory.",
+    "normalRange": "Reference ranges vary by laboratory, age, and the method used. A commonly reported adult range is approximately 0.8 to 1.8 nanograms per deciliter (ng/dL), but the exact range on your report should be used for interpretation.",
+    "generatedAt": "2026-09-09T20:20:22.893Z"
+  },
+  {
+    "slug": "testosterone-free-calculation",
+    "name": "Testosterone, Free (Calculation)",
+    "description": "This test estimates the amount of free (unbound) testosterone in the blood using a calculation. Rather than measuring free testosterone directly, it is derived from measured total testosterone, sex hormone binding globulin (SHBG), and sometimes albumin. Most testosterone in the blood is bound to proteins, and only a small fraction circulates freely and is biologically active. The calculated free testosterone provides an estimate of this active portion.",
+    "purpose": "This test is used to help evaluate testosterone status when total testosterone results may be affected by changes in binding proteins. It can be ordered to help assess symptoms that may be related to low or high testosterone, such as changes in libido, fatigue, or fertility concerns, and to help evaluate conditions involving hormone imbalance. Results are interpreted by a healthcare provider along with other findings.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a needle. The laboratory measures total testosterone and SHBG (and sometimes albumin), then calculates the free testosterone value using a standard formula.",
+    "preparation": "No special preparation is usually required, but testosterone levels vary throughout the day and are often highest in the morning, so samples are commonly collected in the morning. Follow any specific fasting or timing instructions given by your provider or the lab, and tell them about any medications or supplements you take, as some can affect results.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age, and calculated free testosterone results depend on the formula used. As a general guide, typical adult male values are often reported in the range of roughly 35 to 155 pg/mL, with much lower values in adult females. Because ranges differ between labs, interpret your result using the reference range printed on your own lab report.",
+    "generatedAt": "2026-09-09T20:20:33.586Z"
+  },
+  {
+    "slug": "testosterone-total",
+    "name": "Testosterone, Total",
+    "description": "This test measures the total amount of testosterone in the blood, including both the testosterone that is bound to proteins (such as sex hormone-binding globulin and albumin) and the small portion that circulates freely. Testosterone is a hormone produced mainly in the testicles in men and in smaller amounts by the ovaries and adrenal glands in women.",
+    "purpose": "The test is used to evaluate testosterone levels in the body. In men, it may help assess symptoms that can be associated with low or high testosterone. In women, it may be used to look into elevated testosterone levels or related symptoms. It can also be used to monitor certain hormone-related conditions over time.",
+    "procedure": "A healthcare professional collects a blood sample, usually drawn from a vein in the arm using a needle. The sample is then sent to a laboratory for analysis.",
+    "preparation": "Testosterone levels can vary throughout the day, and blood is often collected in the morning when levels tend to be highest. Some labs may ask you to fast beforehand or to avoid certain supplements or medications. Follow any specific instructions provided by your ordering provider or the testing lab.",
+    "normalRange": "Reference ranges vary by lab, sex, and age, and results should be interpreted with your provider. As a general guide, typical adult male ranges are often reported around 250 to 1100 nanograms per deciliter (ng/dL), while adult female ranges are much lower, often around 8 to 60 ng/dL. Your lab report will list the specific reference range used.",
+    "generatedAt": "2026-09-09T20:20:42.488Z"
+  },
+  {
+    "slug": "thyroid-peroxidase-antibodies",
+    "name": "Thyroid Peroxidase Antibodies",
+    "description": "Thyroid Peroxidase Antibodies (TPO antibodies) is a blood test that measures the level of antibodies your immune system may produce against thyroid peroxidase, an enzyme involved in the production of thyroid hormones. Elevated levels indicate that the immune system is targeting the thyroid gland.",
+    "purpose": "This test is commonly used to help evaluate the cause of thyroid dysfunction and to identify autoimmune thyroid conditions such as Hashimoto's thyroiditis and Graves' disease. It is often ordered alongside other thyroid tests when abnormal thyroid function is detected.",
+    "procedure": "The test is performed on a sample of blood, usually drawn from a vein in your arm using a small needle. The sample is then sent to a laboratory for analysis.",
+    "preparation": "No special preparation is typically required for this test. You can usually eat and drink normally beforehand. Follow any specific instructions provided by your doctor or the testing laboratory.",
+    "normalRange": "Reference ranges vary by laboratory, testing method, sex, and age. In general, lower or undetectable levels are considered normal, while higher levels suggest thyroid autoimmunity. Many labs report values below approximately 9 IU/mL or 35 IU/mL as normal, but you should compare your result to the reference range listed on your specific lab report.",
+    "generatedAt": "2026-09-09T20:20:50.124Z"
+  },
+  {
+    "slug": "uric-acid",
+    "name": "Uric Acid",
+    "description": "The uric acid blood test measures the level of uric acid in the blood. Uric acid is a waste product formed when the body breaks down purines, which are substances found in the body's cells and in certain foods. Uric acid is normally filtered by the kidneys and passed out of the body in urine.",
+    "purpose": "This test is commonly used to help evaluate gout, a condition in which high uric acid levels can lead to crystal buildup in the joints. It may also be used to monitor uric acid levels in people undergoing certain cancer treatments, to help assess kidney function, and to investigate the cause of kidney stones.",
+    "procedure": "A healthcare professional draws a sample of blood from a vein, usually in the arm, using a needle. The sample is collected into a tube and sent to a laboratory for analysis.",
+    "preparation": "Fasting is sometimes requested before this test. Follow any specific instructions given by your healthcare provider or the testing laboratory, and let them know about any medications or supplements you take, as some can affect uric acid levels.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age. Typical adult ranges are roughly 3.5 to 7.2 mg/dL for men and 2.6 to 6.0 mg/dL for women. Your lab report will list the specific reference range used.",
+    "generatedAt": "2026-09-09T20:20:57.922Z"
+  },
+  {
+    "slug": "vitamin-b12",
+    "name": "Vitamin B12",
+    "description": "The Vitamin B12 test measures the amount of vitamin B12 (cobalamin) in the blood. Vitamin B12 is a nutrient obtained from foods such as meat, fish, eggs, and dairy, and it is important for red blood cell formation, nerve function, and DNA synthesis.",
+    "purpose": "This test is used to check whether a person has an adequate level of vitamin B12. It may help evaluate the cause of certain types of anemia, unexplained fatigue, or symptoms affecting the nervous system such as numbness or tingling. It can also be used to monitor people at risk of deficiency, including some older adults, vegetarians or vegans, and those with digestive conditions that affect nutrient absorption.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a needle. The sample is collected into a tube and sent to a laboratory for analysis. The blood draw usually takes only a few minutes.",
+    "preparation": "No special preparation is usually required. Some laboratories may ask you to fast for several hours beforehand, especially if the test is drawn with other tests. Tell your provider about any supplements or medications you take, since vitamin B12 supplements and certain drugs can affect results. Follow any specific instructions given by your provider or the testing lab.",
+    "normalRange": "Reference ranges vary by laboratory, sex, and age. A commonly reported adult range is roughly 200 to 900 picograms per milliliter (pg/mL), though the exact cutoffs differ between labs. Always compare your result to the reference range shown on your lab report.",
+    "generatedAt": "2026-09-09T20:21:06.775Z"
+  },
+  {
+    "slug": "vitamin-d-25-hydroxy",
+    "name": "Vitamin D, 25-Hydroxy",
+    "description": "The Vitamin D, 25-Hydroxy test measures the level of 25-hydroxyvitamin D in the blood, which is the main circulating form of vitamin D and the most commonly used marker of overall vitamin D status. Vitamin D comes from sunlight exposure, certain foods, and supplements, and it helps the body absorb calcium and support bone health, immune function, and other processes. This test reflects vitamin D from both dietary and sun-related sources.",
+    "purpose": "This test is used to evaluate a person's vitamin D status, including whether levels are low (deficient or insufficient), adequate, or elevated. It is often ordered for people with bone disorders, low calcium levels, certain chronic conditions, limited sun exposure, or symptoms that may relate to vitamin D deficiency, and it can be used to monitor people taking vitamin D supplements.",
+    "procedure": "A healthcare professional draws a blood sample from a vein in the arm using a small needle. The sample is collected into a tube and sent to a laboratory for analysis. The blood draw itself usually takes only a few minutes.",
+    "preparation": "No special preparation such as fasting is typically required for this test. You should follow any specific instructions provided by your healthcare provider or the testing laboratory, and it can be helpful to tell them about any vitamin D or other supplements you are taking.",
+    "normalRange": "Reference ranges vary by laboratory, and may differ by age and other factors. A commonly used general guideline reports 25-hydroxyvitamin D levels of about 30 to 100 ng/mL as sufficient, 20 to 29 ng/mL as insufficient, and below 20 ng/mL as deficient, though some labs use slightly different cutoffs. Your results should be interpreted by your healthcare provider in the context of your overall health.",
+    "generatedAt": "2026-09-09T20:21:16.783Z"
+  }
+]

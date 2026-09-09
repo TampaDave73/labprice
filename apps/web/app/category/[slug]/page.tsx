@@ -6,6 +6,8 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import TestCard from '../../components/TestCard';
 import PageViewTracker from '../../components/PageViewTracker';
+import GuideLinks from '../../components/GuideLinks';
+import { guidesForTests } from '@/lib/guides';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -72,6 +74,8 @@ export default async function CategoryPage({ params }: Props) {
       };
     });
 
+  const guides = await guidesForTests(tests.map((t) => t.slug));
+
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <PageViewTracker />
@@ -112,6 +116,7 @@ export default async function CategoryPage({ params }: Props) {
             No tests available in this category yet.
           </p>
         )}
+        <GuideLinks guides={guides} heading={`Guides for ${category.name.toLowerCase()} testing`} />
       </main>
       <Footer />
     </div>

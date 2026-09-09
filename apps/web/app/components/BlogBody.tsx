@@ -11,20 +11,23 @@
 //   [FIG:name]            → a diagram from BlogFigures
 //   anything else         → <p>
 //
-// Inline: **bold** and [text](/path) links only. Links are restricted to same-site paths — an
-// article body is admin-authored, but keeping it to relative paths means a post can never quietly
-// become an outbound link farm, and it keeps every link crawlable as part of this site.
+// Inline: **bold**, [text](/path) links, and [PRICE…:slug] tokens resolved from live offerings.
+// Links are restricted to same-site paths — an article body is admin-authored, but keeping it to
+// relative paths means a post can never quietly become an outbound link farm, and it keeps every
+// link crawlable as part of this site.
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
+import { renderPriceToken, type PriceFacts } from '@/lib/blog';
 
 const INK = 'oklch(0.2 0.04 260)';
 const BODY = 'oklch(0.35 0.03 260)';
 
 // **bold** and [label](/path). Split on both at once so they can appear in the same line.
-const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((\/[^)\s]*)\))/g;
+// The link alternative requires a following "(", so a bare [PRICE:slug] falls through to the third.
+const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((\/[^)\s]*)\)|\[PRICE(?:-RANGE|-COUNT|-DATE)?:[a-z0-9-]+\])/g;
 
-function inline(text: string, keyPrefix: string): React.ReactNode[] {
+function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNode[] {
   return text.split(INLINE).filter((p) => p != null && p !== '' && !p.startsWith('/')).map((part, i) => {
     const key = `${keyPrefix}-${i}`;
     if (part.startsWith('**') && part.endsWith('**')) {
@@ -33,6 +36,10 @@ function inline(text: string, keyPrefix: string): React.ReactNode[] {
           {part.slice(2, -2)}
         </strong>
       );
+    }
+    if (part.startsWith('[PRICE')) {
+      // Resolved server-side from the same offerings the price cards use, so prose and cards agree.
+      return <Fragment key={key}>{renderPriceToken(part, prices[/:([a-z0-9-]+)\]$/.exec(part)?.[1] ?? ''])}</Fragment>;
     }
     const link = /^\[([^\]]+)\]\((\/[^)\s]*)\)$/.exec(part);
     if (link) {
@@ -46,7 +53,7 @@ function inline(text: string, keyPrefix: string): React.ReactNode[] {
   });
 }
 
-function TableBlock({ lines, k }: { lines: string[]; k: string }) {
+function TableBlock({ lines, k, prices }: { lines: string[]; k: string; prices: Prices }) {
   // `| a | b |` rows. A `|---|---|` separator row is conventional in the source but carries no data.
   const rows = lines
     .map((l) => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()))
@@ -75,11 +82,11 @@ function TableBlock({ lines, k }: { lines: string[]; k: string }) {
               {r.map((c, j) =>
                 j === 0 ? (
                   <th key={j} scope="row" style={{ ...cell, fontWeight: 600, color: INK }}>
-                    {inline(c, `${k}-${i}-${j}`)}
+                    {inline(c, `${k}-${i}-${j}`, prices)}
                   </th>
                 ) : (
                   <td key={j} style={{ ...cell, color: BODY }}>
-                    {inline(c, `${k}-${i}-${j}`)}
+                    {inline(c, `${k}-${i}-${j}`, prices)}
                   </td>
                 ),
               )}
@@ -91,7 +98,9 @@ function TableBlock({ lines, k }: { lines: string[]; k: string }) {
   );
 }
 
-export default function BlogBody({ body }: { body: string }) {
+export type Prices = Record<string, PriceFacts>;
+
+export default function BlogBody({ body, prices = {} }: { body: string; prices?: Prices }) {
   const blocks = body.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
 
   return (
@@ -120,18 +129,18 @@ export default function BlogBody({ body }: { body: string }) {
         if (block.startsWith('> ')) {
           return (
             <aside key={k} style={{ margin: '24px 0', padding: '14px 18px', borderLeft: '3px solid oklch(0.6 0.12 260)', background: 'oklch(0.97 0.015 260)', borderRadius: '0 10px 10px 0', fontSize: 14.5, color: BODY, lineHeight: 1.7 }}>
-              {inline(lines.map((l) => l.replace(/^>\s?/, '')).join(' '), k)}
+              {inline(lines.map((l) => l.replace(/^>\s?/, '')).join(' '), k, prices)}
             </aside>
           );
         }
         if (lines.every((l) => l.startsWith('| '))) {
-          return <TableBlock key={k} lines={lines} k={k} />;
+          return <TableBlock key={k} lines={lines} k={k} prices={prices} />;
         }
         if (lines.every((l) => l.startsWith('- '))) {
           return (
             <ul key={k} style={{ margin: '18px 0', paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 9, fontSize: 16, color: BODY, lineHeight: 1.75, listStyle: 'disc' }}>
               {lines.map((l, j) => (
-                <li key={j}>{inline(l.slice(2).trim(), `${k}-${j}`)}</li>
+                <li key={j}>{inline(l.slice(2).trim(), `${k}-${j}`, prices)}</li>
               ))}
             </ul>
           );
@@ -140,7 +149,7 @@ export default function BlogBody({ body }: { body: string }) {
           return (
             <ol key={k} style={{ margin: '18px 0', paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 9, fontSize: 16, color: BODY, lineHeight: 1.75, listStyle: 'decimal' }}>
               {lines.map((l, j) => (
-                <li key={j}>{inline(l.replace(/^\d+\.\s*/, ''), `${k}-${j}`)}</li>
+                <li key={j}>{inline(l.replace(/^\d+\.\s*/, ''), `${k}-${j}`, prices)}</li>
               ))}
             </ol>
           );
@@ -148,7 +157,7 @@ export default function BlogBody({ body }: { body: string }) {
 
         return (
           <p key={k} style={{ margin: '0 0 18px', fontSize: 16.5, color: BODY, lineHeight: 1.78 }}>
-            {inline(lines.join(' '), k)}
+            {inline(lines.join(' '), k, prices)}
           </p>
         );
       })}

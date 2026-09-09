@@ -10,8 +10,10 @@ import Link from 'next/link';
 import { prisma } from '@labprice/database';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-import BlogBody from '../../components/BlogBody';
-import { parseFaq, readingTimeMinutes, formatPostDate } from '@/lib/blog';
+import BlogBody, { type Prices } from '../../components/BlogBody';
+import GuideLinks from '../../components/GuideLinks';
+import { parseFaq, readingTimeMinutes, formatPostDate, priceTokenSlugs } from '@/lib/blog';
+import { relatedGuides } from '@/lib/guides';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -54,6 +56,45 @@ async function getRelated(slugs: string[]) {
     .sort((a, b) => slugs.indexOf(a.slug) - slugs.indexOf(b.slug));
 }
 
+/**
+ * Resolves the `[PRICE…:slug]` tokens a body uses. Reads the same offerings — with the same vendor
+ * filter — as the "compare prices" cards below the article, so a quoted price and a card price can
+ * never disagree. A slug with no live prices simply isn't in the map; the renderer has word
+ * fallbacks for that case.
+ */
+async function getPrices(body: string): Promise<Prices> {
+  const slugs = priceTokenSlugs(body);
+  if (slugs.length === 0) return {};
+
+  const tests = await prisma.test.findMany({
+    where: { slug: { in: slugs }, deletedAt: null },
+    select: {
+      slug: true,
+      offerings: {
+        where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
+        select: { currentPrice: true, lastCheckedAt: true, priceUpdatedAt: true },
+      },
+    },
+  });
+
+  const out: Prices = {};
+  for (const t of tests) {
+    const prices = t.offerings.map((o) => Number(o.currentPrice));
+    if (prices.length === 0) continue;
+    const checks = t.offerings
+      .map((o) => o.lastCheckedAt ?? o.priceUpdatedAt)
+      .filter((d): d is Date => d != null)
+      .sort((a, b) => b.getTime() - a.getTime());
+    out[t.slug] = {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      count: prices.length,
+      checkedAt: checks[0] ?? null,
+    };
+  }
+  return out;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug).catch(() => null);
@@ -80,8 +121,18 @@ export default async function BlogPostPage({ params }: Props) {
   if (!post) notFound();
 
   const faqs = parseFaq(post.faq);
-  const related = await getRelated(post.relatedTests);
+  const [related, prices, guides] = await Promise.all([
+    getRelated(post.relatedTests),
+    getPrices(post.body),
+    relatedGuides(post.slug, post.relatedTests),
+  ]);
   const url = `${BASE}/blog/${post.slug}`;
+
+  // Only surfaced when the article has actually been revised since publication — an "Updated" line
+  // on a piece that has never changed is noise, and freshness signals should be true ones.
+  const updated = post.publishedAt && post.updatedAt.getTime() - post.publishedAt.getTime() > 86_400_000
+    ? post.updatedAt
+    : null;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -151,6 +202,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div style={{ fontSize: 13.5, color: 'oklch(0.52 0.03 260)', marginBottom: 26 }}>
             By <span style={{ fontWeight: 600, color: 'oklch(0.32 0.04 260)' }}>{post.author}</span>
             {post.publishedAt ? ` · ${formatPostDate(post.publishedAt)}` : ''} · {readingTimeMinutes(post.body)} min read
+            {updated && <> · Updated {formatPostDate(updated)}</>}
           </div>
 
           {post.heroUrl && (
@@ -179,7 +231,7 @@ export default async function BlogPostPage({ params }: Props) {
             {post.excerpt}
           </p>
 
-          <BlogBody body={post.body} />
+          <BlogBody body={post.body} prices={prices} />
 
           {faqs.length > 0 && (
             <section aria-labelledby="faq-heading" style={{ marginTop: 44 }}>
@@ -224,6 +276,8 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           </section>
         )}
+
+        <GuideLinks guides={guides} heading="More guides" />
 
         <p style={{ marginTop: 40, padding: '14px 18px', background: 'oklch(0.97 0.01 260)', border: '1px solid oklch(0.92 0.015 260)', borderRadius: 10, fontSize: 12.5, color: 'oklch(0.5 0.03 260)', lineHeight: 1.65 }}>
           This article is general information about how lab testing works, not medical advice, and it

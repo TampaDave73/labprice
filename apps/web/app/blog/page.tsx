@@ -43,9 +43,40 @@ async function getPosts() {
 
 export default async function BlogIndexPage() {
   const posts = await getPosts();
+  const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
+
+  // The index was only inheriting the root layout's Organization/WebSite, so the collection itself
+  // wasn't a described entity. Blog + itemListElement gives the set an identity and names its parts.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    '@id': `${base}/blog#blog`,
+    name: 'Guides to lab testing',
+    description:
+      'Plain-English guides to blood tests and self-pay lab work: how a draw works, when fasting matters, what each panel measures, and what it should cost.',
+    url: `${base}/blog`,
+    publisher: { '@id': `${base}/#organization` },
+    blogPost: posts.map((p) => ({
+      '@type': 'BlogPosting',
+      '@id': `${base}/blog/${p.slug}#article`,
+      headline: p.title,
+      description: p.excerpt,
+      url: `${base}/blog/${p.slug}`,
+      author: { '@type': 'Person', name: p.author },
+      ...(p.publishedAt && { datePublished: p.publishedAt.toISOString() }),
+      ...(p.heroUrl && { image: `${base}${p.heroUrl}` }),
+    })),
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 260)' }}>
+      <script
+        type="application/ld+json"
+        // JSON.stringify doesn't escape "<"; escaping it stops a stray "</script>" in a title or
+        // excerpt breaking out of this tag. Note the DOUBLE backslash — a single one is parsed by
+        // TypeScript as the character "<", which makes the whole replace a silent no-op.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
+      />
       <Navbar />
       <main style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px 80px' }}>
         <h1 style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.8px', color: 'oklch(0.15 0.04 260)', marginBottom: 12 }}>

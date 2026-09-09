@@ -54,3 +54,59 @@ export function readingTimeMinutes(body: string): number {
 export function formatPostDate(d: Date): string {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
 }
+
+// ─────────────────────────── Live price tokens ───────────────────────────
+//
+// An article that quotes a price goes stale the moment a scraper runs. Rather than banning prices
+// from the copy — they're the most citable thing we have — a post body writes a token and the
+// renderer resolves it at request time from the same offerings the "compare prices" cards use, so
+// the prose and the cards can never disagree.
+//
+//   [PRICE:lipid-panel]        → $7.42            (cheapest live price)
+//   [PRICE-RANGE:lipid-panel]  → $7.42 to $59.00
+//   [PRICE-COUNT:lipid-panel]  → 17               (services with a live price)
+//   [PRICE-DATE:lipid-panel]   → 9 September 2026 (freshest price check)
+
+export interface PriceFacts {
+  min: number;
+  max: number;
+  count: number;
+  checkedAt: Date | null;
+}
+
+export const PRICE_TOKEN = /\[PRICE(-RANGE|-COUNT|-DATE)?:([a-z0-9-]+)\]/;
+const PRICE_TOKEN_G = new RegExp(PRICE_TOKEN.source, 'g');
+
+/** Every test slug a body asks for a price of — the page fetches exactly these, and nothing else. */
+export function priceTokenSlugs(body: string): string[] {
+  return Array.from(new Set(Array.from(body.matchAll(PRICE_TOKEN_G), (m) => m[2]!)));
+}
+
+/**
+ * Resolves one token. Fallbacks are deliberately words rather than blanks or zeros: a test that
+ * loses all its live prices must leave the sentence still reading as English ("a lipid panel runs
+ * varies by service" is worse than a stale number, so the fallbacks are chosen to fit the phrasing
+ * the articles actually use).
+ */
+export function renderPriceToken(token: string, facts: PriceFacts | undefined): string {
+  const m = PRICE_TOKEN.exec(token);
+  if (!m) return token;
+  const kind = m[1] ?? '';
+
+  if (!facts || facts.count === 0) {
+    if (kind === '-COUNT') return 'several';
+    if (kind === '-DATE') return 'our last check';
+    return 'a price that varies by service';
+  }
+
+  switch (kind) {
+    case '-RANGE':
+      return `$${facts.min.toFixed(2)} to $${facts.max.toFixed(2)}`;
+    case '-COUNT':
+      return String(facts.count);
+    case '-DATE':
+      return facts.checkedAt ? formatPostDate(facts.checkedAt) : 'our last check';
+    default:
+      return `$${facts.min.toFixed(2)}`;
+  }
+}

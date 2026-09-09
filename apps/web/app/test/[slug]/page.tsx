@@ -5,6 +5,8 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import PageViewTracker from '../../components/PageViewTracker';
 import TestDetailClient from './TestDetailClient';
+import GuideLinks from '../../components/GuideLinks';
+import { guidesForTest } from '@/lib/guides';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -57,6 +59,10 @@ export default async function TestDetailPage({ params }: Props) {
   const { slug } = await params;
   const test = await getTest(slug);
   if (!test) notFound();
+
+  // Articles link heavily into these pages; this is the link back. Reads Post.relatedTests, so the
+  // graph is maintained in one place (set a post's related tests and both directions follow).
+  const guides = await guidesForTest(slug);
 
   const offerings = test.offerings.map((o) => ({
     id: o.id,
@@ -172,6 +178,12 @@ export default async function TestDetailPage({ params }: Props) {
             labVariant: test.labVariant,
           }}
           offerings={offerings}
+        />
+        <GuideLinks
+          guides={guides}
+          heading={`Guides about ${test.name}`}
+          intro="Plain-English explanations of what this test measures and how it's done."
+          maxWidth={1240}
         />
       </main>
       <Footer />

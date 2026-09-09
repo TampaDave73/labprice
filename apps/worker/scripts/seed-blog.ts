@@ -11,8 +11,9 @@
 //    question outright. Context comes after the answer, never before it.
 //  - Nothing clinical is asserted that isn't standard, checkable reference material, and nothing
 //    tells a reader what their own result means or what to do about it.
-//  - Prices are stated with the date they were true and a pointer to the live page, because they are
-//    scraped values that move.
+//  - Prices are never written as literals. `[PRICE…:slug]` tokens are resolved at request time from
+//    the same offerings the price cards use (see lib/blog.ts), so an article cannot go stale and
+//    cannot contradict the table underneath it.
 import 'dotenv/config';
 import { prisma } from '@labprice/database';
 
@@ -257,9 +258,9 @@ Neither replaces a lipid panel. Both are ordered as separate tests, and both are
 
 ## How much does a lipid panel cost without insurance?
 
-Far less than most people expect, and the spread between services is large. As of September 2026, the self-pay prices we track for a [lipid panel](/test/lipid-panel) ran from **$7.42 to $59.00** across 17 ordering services — the same test, at the same laboratories, at an eight-fold difference in price.
+Far less than most people expect, and the spread between services is large. The self-pay prices we track for a [lipid panel](/test/lipid-panel) currently run from **[PRICE-RANGE:lipid-panel]** across [PRICE-COUNT:lipid-panel] ordering services — the same test, at the same laboratories, at several times the price.
 
-Prices move, so the live figures on the test page are the ones to trust. The point of the comparison is that the cheapest and most expensive listings are not buying you a different test.`,
+Those figures are read live from our own price checks each time this page loads, most recently on [PRICE-DATE:lipid-panel]. The point of the comparison is that the cheapest and most expensive listings are not buying you a different test.`,
     faq: `Q: What does a lipid panel test for?
 A: Total cholesterol, LDL cholesterol, HDL cholesterol and triglycerides, from a single blood sample. Most reports also derive non-HDL cholesterol from those values.
 
@@ -276,7 +277,7 @@ Q: Are triglycerides part of total cholesterol?
 A: No. Triglycerides are a separate type of blood fat that a lipid panel reports alongside cholesterol, not a component of the total cholesterol figure.
 
 Q: How much does a lipid panel cost without insurance?
-A: Self-pay prices we tracked in September 2026 ranged from $7.42 to $59.00 across 17 ordering services. Current prices are on the lipid panel comparison page.`,
+A: Self-pay prices vary widely between ordering services for the identical test — often by several times. The live range across every service we track is shown on the lipid panel comparison page.`,
   },
 
   {
@@ -347,9 +348,9 @@ A CMP being normal is reassuring about the specific systems it covers, and says 
 
 ## How much does a comprehensive metabolic panel cost?
 
-As of September 2026, the self-pay prices we track for a [comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) ranged from **$4.99 to $59.00** across 18 ordering services. It is among the cheapest panels available precisely because it is so routine — the laboratories run enormous volumes of it.
+The self-pay prices we track for a [comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) currently run from **[PRICE-RANGE:comprehensive-metabolic-panel-14]** across [PRICE-COUNT:comprehensive-metabolic-panel-14] ordering services. It is among the cheapest panels available precisely because it is so routine — the laboratories run enormous volumes of it.
 
-Live prices are on the test page; the ones quoted here are a snapshot.`,
+Those figures come from our own price checks, most recently on [PRICE-DATE:comprehensive-metabolic-panel-14].`,
     faq: `Q: What does a comprehensive metabolic panel test for?
 A: Fourteen measurements covering kidney function (BUN, creatinine), liver function (ALT, AST, ALP, bilirubin), electrolytes and fluid balance (sodium, potassium, chloride, carbon dioxide, calcium) and sugar and protein (glucose, albumin, total protein).
 
@@ -404,15 +405,15 @@ That is exactly why price comparison works here. When the underlying product is 
 
 ## How much do blood tests cost without insurance?
 
-Less than most people assume, with an enormous spread between services for the identical test. These are prices we tracked in September 2026:
+Less than most people assume, with an enormous spread between services for the identical test. These are live prices from the services we track:
 
-| Test | Cheapest | Most expensive | Services compared |
+| Test | Cheapest | Full range | Services compared |
 | --- | --- | --- | --- |
-| [Comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) | $4.99 | $59.00 | 18 |
-| [Lipid panel](/test/lipid-panel) | $7.42 | $59.00 | 17 |
-| [Vitamin D, 25-hydroxy](/test/vitamin-d-25-hydroxy) | $13.63 | $99.00 | 18 |
+| [Comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) | [PRICE:comprehensive-metabolic-panel-14] | [PRICE-RANGE:comprehensive-metabolic-panel-14] | [PRICE-COUNT:comprehensive-metabolic-panel-14] |
+| [Lipid panel](/test/lipid-panel) | [PRICE:lipid-panel] | [PRICE-RANGE:lipid-panel] | [PRICE-COUNT:lipid-panel] |
+| [Vitamin D, 25-hydroxy](/test/vitamin-d-25-hydroxy) | [PRICE:vitamin-d-25-hydroxy] | [PRICE-RANGE:vitamin-d-25-hydroxy] | [PRICE-COUNT:vitamin-d-25-hydroxy] |
 
-Scraped prices move, so treat these as a snapshot and check the live figure on each test page. The pattern, though, is stable: the same test routinely differs by five to ten times in price depending purely on where you buy the requisition.
+Every figure in that table is read from our own price checks when the page loads, so it is current rather than a snapshot — most recently checked on [PRICE-DATE:lipid-panel]. The pattern is the stable part: the same test routinely differs by several times in price depending purely on where you buy the requisition.
 
 ## Why do prices vary so much for the same test?
 
@@ -447,7 +448,7 @@ Q: Are self-pay blood tests the same as tests ordered by a doctor?
 A: Yes. The sample goes to the same Quest or LabCorp laboratory, runs on the same analysers against the same reference ranges, and produces the same report.
 
 Q: How much do blood tests cost without insurance?
-A: Routine panels are often between $5 and $60 self-pay. In September 2026 a comprehensive metabolic panel ranged from $4.99 to $59.00 and a lipid panel from $7.42 to $59.00 across the services we track.
+A: Routine panels are commonly in the tens of dollars self-pay rather than the hundreds, and the same panel often differs several-fold between ordering services. Each test's comparison page shows the current range across every service we track.
 
 Q: Why does the same blood test cost different amounts at different services?
 A: The laboratory work is identical. What differs is the ordering service's markup, its negotiated volume rate, and whether it is pricing low to sell a membership or a larger panel.

@@ -27,6 +27,15 @@ export default function Navbar() {
           <Logo variant="light" iconSize={32} wordmarkSize={18} />
         </Link>
         <div className="flex-1" />
+        {/* The blog was reachable only from the footer, so the site's strongest pages sent it
+            nothing. A nav link is the cheapest inbound path there is. */}
+        <Link
+          href="/blog"
+          className="no-underline"
+          style={{ fontSize: 14, fontWeight: 500, color: 'oklch(0.35 0.05 260)', marginRight: 20 }}
+        >
+          Guides
+        </Link>
         <NavAuth />
       </div>
     </nav>
