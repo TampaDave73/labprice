@@ -50,29 +50,47 @@ describe('parseRequestATestProduct', () => {
   });
 });
 
-describe('Request A Test matching (strict per-lab tiers, GoodLabs-shaped)', () => {
+describe('Request A Test matching (mergeCodeTiers → cheapest lab)', () => {
   const ferritin = product('requestatest-ferritin.html');
   const drugTest = product('requestatest-drug-test-10panel.html');
+  const OPTS = { mergeCodeTiers: true };
 
-  it('matches Ferritin by Quest code', () => {
+  it('matches Ferritin and takes the cheaper lab (Quest $29 < LabCorp $39)', () => {
     const test: TestKey = { id: 't', name: 'Ferritin', questCode: '457', labcorpCode: '004598' };
-    const r = matchTestToProducts(test, [ferritin]);
+    const r = matchTestToProducts(test, [ferritin], OPTS);
     expect(r.status).toBe('matched');
+    expect(r.price).toBe(29);
+    expect(r.provider).toBe('quest');
   });
 
-  it('matched tier reports the cheaper of the two labs when both survive (no code narrows it)', () => {
-    // Matching by Quest code alone picks only the Quest offering ($29); matching by name (no codes)
-    // would see both providers and correctly flag ambiguous — verified via the code tier here.
-    const test: TestKey = { id: 't', name: 'Ferritin', questCode: '457', labcorpCode: '999999' };
-    const r = matchTestToProducts(test, [ferritin]);
+  // Regression 2026-09-09: every product page has BOTH a LabCorp and a Quest price, genuinely
+  // different — checked live across 7 real tests, LabCorp was cheaper every time. The default tier
+  // priority (quest before labcorp, first hit wins, never blended — what this vendor used before
+  // mergeCodeTiers) would report the Quest price regardless of which lab was actually cheaper, the
+  // opposite of what a price-comparison site should show. Ferritin's own fixture happens to have Quest
+  // cheaper, which wouldn't have caught this — construct the reverse (LabCorp cheaper) explicitly.
+  it('takes LabCorp when IT is the cheaper lab, not whichever tier comes first', () => {
+    const labCorpCheaper = {
+      ...ferritin,
+      providers: ferritin.providers.map((p) => (p.labProvider === 'labcorp' ? { ...p, price: 19 } : p)),
+    };
+    const test: TestKey = { id: 't', name: 'Ferritin', questCode: '457', labcorpCode: '004598' };
+    const r = matchTestToProducts(test, [labCorpCheaper], OPTS);
     expect(r.status).toBe('matched');
-    expect(r.matchedBy).toBe('quest');
-    expect(r.price).toBe(29);
+    expect(r.price).toBe(19);
+    expect(r.provider).toBe('labcorp');
+  });
+
+  it('surfaces the pricier lab as altPrice/altProvider instead of dropping it', () => {
+    const test: TestKey = { id: 't', name: 'Ferritin', questCode: '457', labcorpCode: '004598' };
+    const r = matchTestToProducts(test, [ferritin], OPTS);
+    expect(r.altPrice).toBe(39);
+    expect(r.altProvider).toBe('labcorp');
   });
 
   it('unmatched when neither code nor name matches', () => {
     const test: TestKey = { id: 't', name: 'Zzz Nonexistent', questCode: '999999', labcorpCode: '888888' };
-    const r = matchTestToProducts(test, [ferritin, drugTest]);
+    const r = matchTestToProducts(test, [ferritin, drugTest], OPTS);
     expect(r.status).toBe('unmatched');
   });
 });

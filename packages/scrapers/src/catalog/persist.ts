@@ -138,7 +138,14 @@ const ADAPTER_DEFAULTS: Record<
   },
   // Cloudflare JS-challenges every path except the homepage — see `needsBrowser` above. Otherwise a
   // standard GoodLabs-shaped vendor: each product page has per-lab price + labelled Test Code.
-  requestatest: { baseUrl: 'https://requestatest.com', catalogPath: '/tests', needsBrowser: true },
+  // mergeCodeTiers (2026-09-09): each product page has BOTH a LabCorp and a Quest price, genuinely
+  // different — checked live across 7 tests, LabCorp was cheaper every time (by $4 to $34). The default
+  // tier priority (quest → labcorp → name, first hit wins, tiers never blended) meant this vendor always
+  // reported the Quest price regardless of which lab was actually cheaper, the opposite of what a
+  // price-comparison site should show — found from a user report ("pulling the more expensive one").
+  // Same fix as Dirt Cheap Labs: rank on the cheaper lab, surface the pricier one as the secondary
+  // altLabPrice/altLabProvider rather than discarding it.
+  requestatest: { baseUrl: 'https://requestatest.com', catalogPath: '/tests', needsBrowser: true, mergeCodeTiers: true },
   // API vendor: the Angular SPA store needs JS to render, but its underlying JSON API (categoryID-
   // scoped, no "list all" endpoint — see directlabs-parser.ts) is plain, ungated HTTP. No lab codes
   // anywhere → name-only, like MitoHealth/Private MD Labs.

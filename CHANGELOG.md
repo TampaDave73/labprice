@@ -9,6 +9,16 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, Request A Test was reporting the more expensive lab)
+- **Request A Test always showed the Quest price, even when LabCorp was cheaper.** Every product page
+  has both a LabCorp and a Quest price, genuinely different — checked live across 7 real tests, LabCorp
+  was cheaper every single time (by $4 to $34). The default tier priority (quest before labcorp, first
+  code hit wins, tiers never blended) meant this vendor always reported whichever lab's code matched
+  first, not whichever was actually cheaper — the opposite of what a price-comparison site should show.
+  Caught from a direct user report. Same fix as Dirt Cheap Labs: `mergeCodeTiers: true` ranks on the
+  cheaper lab and surfaces the pricier one as a secondary `altLabPrice`/`altLabProvider` instead of
+  discarding it.
+
 ### Fixed (2026-09-09, True Health Labs 403 — Cloudflare started blocking the Store API from Railway)
 - **True Health Labs' Store API started returning 403 ("Just a moment...") from Railway's datacenter
   IP** — verified from inside the scrape-worker container (plain fetch: 403; the stealth browser path

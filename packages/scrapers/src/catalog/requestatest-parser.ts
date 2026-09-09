@@ -10,6 +10,12 @@
 // and a labelled `Test Code:` — like GoodLabs, not like Walk-In Lab's "both codes together." A lab
 // missing for a product gets a `noTest` modifier class and no price/code (e.g. drug panels are
 // LabCorp-only) — we simply don't find a match for that lab and skip it, no special-casing needed.
+//
+// The two labs' prices are genuinely different, not a display quirk — checked live across 7 real
+// tests, LabCorp was cheaper every time (by $4 to $34). `mergeCodeTiers: true` in persist.ts's
+// ADAPTER_DEFAULTS ranks on the cheaper lab (found live 2026-09-09 from a user report: the default
+// tier priority — quest before labcorp, first hit wins — was reporting the Quest price regardless of
+// which lab actually undercut it, same reasoning as Dirt Cheap Labs).
 import type { CatalogEntry, CatalogProduct, ProviderOffering } from './types';
 
 const CARD_RE = /<h4 class="RATpanel1[^"]*">\s*<a href="(\/[a-z0-9-]+)">\s*([^<]+?)\s*<\/a>/g;

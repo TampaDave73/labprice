@@ -572,6 +572,11 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     (`panel LabLC`/`panel LabQD`) price + labelled `Test Code:`; a lab with no test gets a `noTest` class
     and simply produces no offering. Codes aren't universal even for a carried lab (drug panels have a
     price but no code) — offering keeps the price with an empty code list rather than being dropped.
+    **`mergeCodeTiers: true`** (2026-09-09, from a user report — "pulling the more expensive one"): the
+    two labs' prices are genuinely different, LabCorp cheaper on every one of 7 real tests checked live.
+    Default tier priority (quest before labcorp, first hit wins, never blended) reported the Quest price
+    regardless of which lab actually undercut it — same fix/reasoning as Dirt Cheap Labs, rank on the
+    cheaper lab and surface the other as `altLabPrice`/`altLabProvider`.
   - `directlabs` — **API vendor** (`fetchAll`, like DCL/MitoHealth): the marketing site is irrelevant;
     the real store is an Angular SPA needing JS, but its JSON API
     (`store.directlabs.com/api/LabTests/GetTestsByCategoryID`) is plain ungated HTTP. No "list
