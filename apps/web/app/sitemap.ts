@@ -11,7 +11,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [tests, categories] = await Promise.all([
     prisma.test.findMany({
       where: { deletedAt: null },
-      select: { slug: true, updatedAt: true },
+      select: {
+        slug: true,
+        updatedAt: true,
+        // lastModified should track price freshness, which is what actually changes daily here.
+        // `test.updatedAt` only moves when an admin edits the test's own copy, so on its own it
+        // reported a page as unchanged for months while its prices were re-verified nightly.
+        offerings: {
+          where: { isActive: true, deletedAt: null, vendor: { isActive: true, deletedAt: null } },
+          select: { lastCheckedAt: true },
+          orderBy: { lastCheckedAt: 'desc' },
+          take: 1,
+        },
+      },
     }),
     prisma.category.findMany({
       // Only categories with at least one live test — matches the homepage filter (page.tsx,
@@ -27,9 +39,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const testEntries: MetadataRoute.Sitemap = tests.map((t) => ({
     url: `${BASE_URL}/test/${t.slug}`,
-    lastModified: t.updatedAt,
+    lastModified: t.offerings[0]?.lastCheckedAt ?? t.updatedAt,
     changeFrequency: 'daily' as const,
     priority: 0.8,
+  }));
+
+  // Static routes. /order-services is a real content page (every vendor + their catalog) and was
+  // simply missing; the legal pages are low-priority but should still be discoverable.
+  const staticEntries: MetadataRoute.Sitemap = [
+    { path: '/order-services', changeFrequency: 'daily' as const, priority: 0.7 },
+    { path: '/about', changeFrequency: 'monthly' as const, priority: 0.5 },
+    { path: '/disclaimer', changeFrequency: 'yearly' as const, priority: 0.3 },
+    { path: '/privacy', changeFrequency: 'yearly' as const, priority: 0.3 },
+    { path: '/terms', changeFrequency: 'yearly' as const, priority: 0.3 },
+  ].map((e) => ({
+    url: `${BASE_URL}${e.path}`,
+    lastModified: new Date(),
+    changeFrequency: e.changeFrequency,
+    priority: e.priority,
   }));
 
   const categoryEntries: MetadataRoute.Sitemap = categories.map((c) => ({
@@ -46,6 +73,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 1.0,
     },
+    ...staticEntries,
     ...categoryEntries,
     ...testEntries,
   ];
