@@ -241,6 +241,19 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     — schema.org defines `offers` on Product/Service, not on MedicalTest — and every public route sets
     its own `alternates.canonical`. `SKILLS.md` → "SEO / AEO surface" has the full list.
 
+19. **The blog's content pipeline has two rules worth not breaking.** `Post.body` is stored as
+    markup and rendered by `BlogBody.tsx` — never HTML, so an admin-authored post can't inject tags,
+    and inline links are restricted to same-site paths. And `Post.faq` is the single source for both
+    the visible FAQ section and the `FAQPage` JSON-LD: emitting FAQ structured data for questions
+    that aren't rendered is what gets rich results pulled, so don't split them. Articles are seeded
+    and edited in bulk by `apps/worker/scripts/seed-blog.ts` (upsert by slug — re-running it is the
+    edit path, not a duplicate-maker). One-off scripts live in `apps/worker/scripts` because that is
+    the only workspace with both `tsx` and `dotenv`; run them as
+    `DOTENV_CONFIG_PATH=<repo>/.env pnpm --filter @labprice/worker exec tsx scripts/<name>.ts`, and
+    on production as `railway ssh --service scrape-worker "pnpm --filter @labprice/worker exec tsx
+    scripts/<name>.ts"` (the prod `DATABASE_URL` is `postgres.railway.internal`, so it is only
+    reachable from inside a Railway service — not from your machine).
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

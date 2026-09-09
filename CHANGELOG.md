@@ -9,6 +9,27 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, blog)
+- **A blog at `/blog`, with five launch articles**, written to be quotable by search and answer
+  engines and to route readers into the comparison tables: how a blood draw works, whether you need
+  to fast, what a lipid panel measures, what a CMP measures, and how to get lab work without
+  insurance. Author byline "Dave S.".
+- **`Post` model + `/admin/blog` editor.** Body is stored as markup, never HTML, so admin-entered
+  content can't inject tags. `BlogBody` renders `##`/`###` headings, `-`/`1.` lists, `| … |` tables,
+  `>` callouts, `**bold**`, same-site `[text](/path)` links, and `[FIG:name]` figure slots.
+- **`BlogFigures`** — authored inline SVG diagrams (draw steps, fasting clock, lipid breakdown, CMP
+  groups, self-pay vs insurance). Inline SVG rather than images so the labels stay real text; a
+  diagram locked inside a bitmap is invisible to exactly the readers these articles target.
+- **Article + FAQPage + BreadcrumbList JSON-LD** on each post. FAQPage is emitted only from the `faq`
+  column that also renders visibly on the page, so the structured data can never describe content a
+  visitor can't see. Posts join the sitemap; "Guides" added to the footer.
+- **`migrate-posts.ts`** creates the table additively (`CREATE TABLE IF NOT EXISTS` + the exact DDL
+  `prisma migrate diff` emits) for databases that predate the model — `db push` would destroy prod's
+  `search_vector` drift. `seed-blog.ts` upserts the five articles by slug, so it doubles as the edit
+  path for them.
+- Hero photos are self-hosted under `public/blog` (Unsplash licence, credited per article) rather
+  than hotlinked.
+
 ### Changed (2026-09-09, SEO/AEO audit sweep — the test template was largely unreadable to crawlers)
 - **Collapsed accordion sections never reached the HTML.** `TestDetailClient` rendered section bodies
   as `{isOpen && …}` with `openSection` defaulting to `about`, so "How It's Performed", "How To

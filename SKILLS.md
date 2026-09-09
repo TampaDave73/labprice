@@ -59,6 +59,14 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `POST /api/v1/reports/result-error` → `ResultErrorReport` row (test/offering ids validated; the
   offering must belong to the test), admin email alert, triaged in the "Result error reports" panel
   at `/admin/suggestions` (`kind: 'report'` on the PATCH).
+- **Blog** (`/blog`, `/blog/[slug]`) — editorial articles, edited at `/admin/blog`. `Post.body` is
+  markup, not HTML (grammar in `components/BlogBody.tsx`); `[FIG:name]` pulls an authored inline SVG
+  diagram from `components/BlogFigures.tsx`. `Post.faq` is `Q:`/`A:` lines, parsed once by
+  `lib/blog.ts` and used twice — rendered on the page AND emitted as FAQPage JSON-LD, so the two can
+  never disagree. `Post.relatedTests` holds test slugs, resolved at render time into "compare
+  prices" cards and silently skipped if a slug has no live priced offerings. Seeded/edited in bulk by
+  `apps/worker/scripts/seed-blog.ts` (upsert by slug); the table is created on an older database by
+  `apps/worker/scripts/migrate-posts.ts`, never `db:push` (see gotcha 15).
 - **SEO / AEO surface** (2026-09-09 audit sweep) — what the site exposes to search engines and answer
   engines, and the rules that keep it working:
   - **Metadata**: root defaults + OG/Twitter in `app/layout.tsx`; every public route sets its own
@@ -80,8 +88,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     comparison is a real `<table>` with a caption, `scope="col"` headers and a `scope="row"` vendor
     cell; and an **answer-first summary** above the table states the cheapest/highest price in prose,
     derived from the same `offerings` array the table renders.
-  - **Not done yet**: no FAQ content or `FAQPage` schema (needs a Test-linked FAQ model and
-    human-sourced answers — YMYL, don't generate them), and no named author/reviewer anywhere.
+  - **Blog posts** carry Article + FAQPage + BreadcrumbList; see the Blog entry above.
+  - **Not done yet**: no FAQ content or `FAQPage` schema on *test* pages (needs a Test-linked FAQ
+    model and human-sourced answers — YMYL, don't generate them), and no medically-reviewed-by
+    attribution anywhere.
 - **Public read API (v1)** — `/api/v1/tests` (paginated, `category`/`sort`/`cursor`/`limit`),
   `/api/v1/tests/popular`, `/api/v1/tests/[slug]`, `/api/v1/categories`, `/api/v1/trends/[testId]`,
   `/api/v1/search`. Read-only, zod-validated, no UI callers by design — kept as a deliberate API
