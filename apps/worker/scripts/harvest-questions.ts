@@ -123,6 +123,11 @@ async function harvestReddit(): Promise<Candidate[]> {
 /**
  * Searches on our own site that returned nothing. Someone wanted this and we had no answer, which is
  * a stronger signal than an upvote — and it needs no third party at all.
+ *
+ * The raw log is noisy in a specific way: the search box logs a query per keystroke, so a single
+ * person typing "semaglutide" leaves "Sem", "Sema", "Semag"… behind. Three filters clean that up —
+ * drop fragments, drop bare numbers (those are people pasting a Quest/LabCorp order code, not a
+ * topic), and drop any query that is a strict prefix of a longer one we also captured.
  */
 async function harvestSearchLogs(): Promise<Candidate[]> {
   const rows = await prisma.searchLog.groupBy({
@@ -130,19 +135,32 @@ async function harvestSearchLogs(): Promise<Candidate[]> {
     where: { resultsCount: 0, createdAt: { gte: new Date(Date.now() - 180 * 86_400_000) } },
     _count: { query: true },
     orderBy: { _count: { query: 'desc' } },
-    take: 100,
+    take: 400,
   });
 
-  return rows
-    .filter((r) => r.query.trim().length > 2)
-    .map((r) => ({
-      source: 'SEARCH_LOG' as const,
-      // The query itself is the stable identity — the same search recurring is the same candidate.
-      sourceId: r.query.trim().toLowerCase(),
-      origin: 'site search (0 results)',
-      title: r.query.trim(),
-      score: r._count.query,
-    }));
+  const cleaned = rows
+    .map((r) => ({ q: r.query.trim(), n: r._count.query }))
+    .filter(({ q }) => q.length >= 4)
+    .filter(({ q }) => !/^[\d\s.-]+$/.test(q)) // an order code, not a subject
+    .filter(({ q }) => !REJECT.test(q)); // same scope rule as the forums: markers, not compounds
+
+  // Keep the longest form of any query someone typed their way into.
+  const byLength = [...cleaned].sort((a, b) => b.q.length - a.q.length);
+  const kept: typeof cleaned = [];
+  for (const row of byLength) {
+    const lower = row.q.toLowerCase();
+    const isPrefix = kept.some((k) => k.q.toLowerCase().startsWith(lower) && k.q.length > row.q.length);
+    if (!isPrefix) kept.push(row);
+  }
+
+  return kept.map(({ q, n }) => ({
+    source: 'SEARCH_LOG' as const,
+    // The query itself is the stable identity — the same search recurring is the same candidate.
+    sourceId: q.toLowerCase(),
+    origin: 'site search (0 results)',
+    title: q,
+    score: n,
+  }));
 }
 
 /** Rough tie to something we can price. A topic we can't link to a test makes a weaker article. */
