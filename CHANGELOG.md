@@ -9,6 +9,33 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, live prices in articles, and a real internal link graph)
+- **Article prices are now read live.** `[PRICE:slug]`, `[PRICE-RANGE:slug]`, `[PRICE-COUNT:slug]`
+  and `[PRICE-DATE:slug]` resolve at request time from the same offerings query the "compare prices"
+  cards use, so an article can't go stale and can't contradict the table beneath it. The three
+  articles that quoted figures now use tokens instead of literals. Fallbacks are words, not blanks,
+  so a test losing all its prices leaves the sentence still reading as English.
+- **The blog is no longer footer-only.** "Guides" in the top nav; test pages carry
+  "Guides about <test>"; category pages carry guides covering their tests; articles carry sibling
+  guides ranked by shared tests. All of it reads `Post.relatedTests`, so the graph is maintained in
+  one place and both directions follow. Measured before this: every page had exactly one inbound
+  link to `/blog`, and the 30 test pages sent it nothing.
+- **`Blog` + `BlogPosting` JSON-LD on `/blog`** — the index was only inheriting the root
+  `Organization`/`WebSite` and wasn't a described entity.
+- **"Updated <date>" on articles**, shown only when a post has genuinely been revised since
+  publication.
+
+### Fixed (2026-09-09)
+- **Every live test now has patient-facing copy.** The 2026-09-07 catalog reset left all 30 tests
+  with null `description`/`purpose`/`procedure`/`preparation`/`normalRange`, so the test template's
+  whole left column — and its four question headings — rendered empty. 22 were generated via the
+  same Claude call the admin "✨ Auto-fill" button uses (`generate-test-content.ts` → reviewed JSON in
+  `apps/worker/content/` → `apply-test-content.ts`), the other 8 were already filled.
+- A price token wrapped in `**bold**` rendered literally — the bold alternative in the inline regex
+  matched the whole run, so the token never reached the branch that resolves it.
+- A JSON-LD escape on `/blog` was written as a single-backslash `'<'`, which TypeScript parses
+  as the character `<`, making the whole `replace` a silent no-op.
+
 ### Added (2026-09-09, blog)
 - **A blog at `/blog`, with five launch articles**, written to be quotable by search and answer
   engines and to route readers into the comparison tables: how a blood draw works, whether you need
