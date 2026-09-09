@@ -133,6 +133,16 @@ const navItems = [
     ),
   },
   {
+    label: 'Blog',
+    href: '/admin/blog',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M3 4h14v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4z" />
+        <path d="M6 8h8M6 11h8M6 14h5" />
+      </svg>
+    ),
+  },
+  {
     label: 'Pages',
     href: '/admin/pages',
     icon: (

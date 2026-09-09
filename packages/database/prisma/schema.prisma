@@ -896,3 +896,45 @@ model ResultErrorReport {
   @@index([testId])
   @@map("result_error_reports")
 }
+
+/// Blog post (`/blog`, `/blog/[slug]`). Editorial content written to be quotable by search and
+/// answer engines — question-shaped headings, short factual answers, tables — and to funnel readers
+/// into the price-comparison pages via `relatedTests`.
+///
+/// `body` is the same "no raw HTML" convention as the static pages, widened for articles: see
+/// `apps/web/app/components/BlogBody.tsx` for the block grammar (## / ### headings, `- ` and `1. `
+/// lists, `| … |` tables, `> ` callouts, `[FIG:name]` diagram slots). Storing markup rather than
+/// HTML keeps admin-entered content unable to inject tags.
+model Post {
+  id       String @id @default(cuid())
+  slug     String @unique
+  title    String
+  /// One or two sentences. Doubles as the meta description and the index-card summary, so it must
+  /// read as a standalone answer, not a teaser.
+  excerpt  String
+  body     String
+  author   String @default("Dave S.")
+
+  /// Hero image. `heroCredit` is the photographer/source attribution line rendered under it.
+  heroUrl    String? @map("hero_url")
+  heroAlt    String? @map("hero_alt")
+  heroCredit String? @map("hero_credit")
+
+  /// `Q: …` / `A: …` pairs, one per line. Rendered as a FAQ section AND emitted as FAQPage JSON-LD —
+  /// so this must never contain a question that isn't also visible on the page.
+  faq String?
+
+  /// Test slugs this article should link to ("compare prices for X"). Resolved at render time, so a
+  /// slug that no longer exists is skipped rather than 404ing the article.
+  relatedTests String[] @default([]) @map("related_tests")
+
+  isPublished Boolean   @default(false) @map("is_published")
+  publishedAt DateTime? @map("published_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([isPublished, publishedAt])
+  @@map("posts")
+}

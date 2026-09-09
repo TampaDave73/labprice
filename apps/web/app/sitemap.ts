@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [tests, categories] = await Promise.all([
+  const [tests, categories, posts] = await Promise.all([
     prisma.test.findMany({
       where: { deletedAt: null },
       select: {
@@ -35,6 +35,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       where: { testCategories: { some: { test: { deletedAt: null } } } },
       select: { slug: true, updatedAt: true },
     }),
+    prisma.post.findMany({
+      where: { isPublished: true, deletedAt: null },
+      select: { slug: true, updatedAt: true },
+    }),
   ]);
 
   const testEntries: MetadataRoute.Sitemap = tests.map((t) => ({
@@ -46,8 +50,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Static routes. /order-services is a real content page (every vendor + their catalog) and was
   // simply missing; the legal pages are low-priority but should still be discoverable.
+  const postEntries: MetadataRoute.Sitemap = posts.map((p) => ({
+    url: `${BASE_URL}/blog/${p.slug}`,
+    lastModified: p.updatedAt,
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+
   const staticEntries: MetadataRoute.Sitemap = [
     { path: '/order-services', changeFrequency: 'daily' as const, priority: 0.7 },
+    { path: '/blog', changeFrequency: 'weekly' as const, priority: 0.6 },
     { path: '/about', changeFrequency: 'monthly' as const, priority: 0.5 },
     { path: '/disclaimer', changeFrequency: 'yearly' as const, priority: 0.3 },
     { path: '/privacy', changeFrequency: 'yearly' as const, priority: 0.3 },
@@ -76,5 +88,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticEntries,
     ...categoryEntries,
     ...testEntries,
+    ...postEntries,
   ];
 }
