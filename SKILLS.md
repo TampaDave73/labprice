@@ -701,6 +701,15 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   rather than silently getting reassigned). This is vendor-agnostic shared code (`priceFromPinnedUrl`),
   so a bug here affects every vendor at once — don't assume a "no price on a pinned URL" report is
   specific to whichever vendor it was noticed on; check `persist.ts` first.
+- **`runVendorDiscovery({ pinnedOnly: true })`** skips the catalog crawl entirely and prices ONLY
+  offerings with `urlPinned: true` — each fetched directly via its own `externalUrl`, page-based
+  adapters only. Added 2026-09-09 for Request A Test: its `/tests` catalog listing is Cloudflare-JS-
+  challenged from Railway's datacenter IP (confirmed live — works fine from a residential IP) which
+  fails the WHOLE run before a single pinned URL ever gets tried, even though pinned pricing never
+  needed the catalog listing to begin with. `apps/worker/scripts/scrape-pinned.ts <vendor-slug>` is a
+  standalone entry point meant to run from home (a `.bat` wrapper — `scrape-pinned-requestatest.bat` —
+  makes it double-click-able / Task-Scheduler-able) against a REACHABLE production Postgres (needs a
+  public TCP proxy on the DB — production's default `DATABASE_URL` is Railway-internal-only).
 - **To onboard another catalog vendor**: add a `<vendor>-parser.ts` in `packages/scrapers/src/catalog/`
   exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
   add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,

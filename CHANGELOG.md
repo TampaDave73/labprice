@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, pinned-URL-only scrape, for a WAF-blocked vendor)
+- **Request A Test's `/tests` catalog listing is Cloudflare-JS-challenged from Railway's datacenter IP**
+  (confirmed live from inside the scrape-worker container — the challenge title never clears even with
+  the stealth headless-browser path already used for this vendor; the identical fetch works fine from a
+  residential IP). That failed the whole discovery run before a single pinned product URL ever got
+  tried, despite pricing a pin never needing the catalog listing at all. Added
+  `runVendorDiscovery({ pinnedOnly: true })`, which skips the crawl and prices only offerings with
+  `urlPinned: true`, plus `apps/worker/scripts/scrape-pinned.ts <vendor-slug>` (+ a `.bat` wrapper for
+  Request A Test) as a standalone, home-runnable entry point — meant to run from a residential
+  connection on a schedule or by hand, against production Postgres via a public TCP proxy.
+
 ### Fixed (2026-09-09, Personalabs prices were the pre-discount "Reg." price)
 - **`discover-personalabs.ts` was scraping the crossed-out "Reg. $X" price, not the real discounted
   one.** Personalabs' displayed price is recalculated client-side by a WooCommerce discount plugin —

@@ -42,6 +42,16 @@ export interface DiscoveryOptions {
    * so the safer/more-complete behavior takes precedence over the cheaper one.
    */
   narrowToAllTests?: boolean;
+  /**
+   * Skip the catalog crawl entirely and price ONLY offerings with `urlPinned: true` (each fetched
+   * directly via its own `externalUrl`, page-based adapters only). For a vendor whose catalog listing
+   * is itself blocked (Request A Test's `/tests` is Cloudflare-JS-challenged from Railway's datacenter
+   * IP, confirmed live 2026-09-09 — works fine from a residential IP, so this is meant to be run from
+   * one), the normal crawl fails outright before any pinned URL ever gets a chance, even though pricing
+   * a pinned URL never needed the catalog listing in the first place (see `priceFromPinnedUrl`). Every
+   * other offering (no pin) is left untouched, not reported as unmatched.
+   */
+  pinnedOnly?: boolean;
   /** Inject a fetcher for tests; defaults to plain HTTP (no browser needed). */
   fetchHtml?: (url: string) => Promise<string>;
   onLog?: (msg: string) => void;
@@ -230,6 +240,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       isActive: true,
       deletedAt: null,
       ...(opts.offeringIds ? { id: { in: opts.offeringIds } } : {}),
+      ...(opts.pinnedOnly ? { urlPinned: true, externalUrl: { not: null } } : {}),
     },
     include: {
       test: {
@@ -237,7 +248,7 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       },
     },
   });
-  log(`${offerings.length} active offering(s) to price`);
+  log(`${offerings.length} ${opts.pinnedOnly ? 'pinned' : 'active'} offering(s) to price`);
 
   const tests: TestKey[] = offerings.map((o) => ({
     id: o.test.id,
@@ -286,24 +297,36 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   let catalogProducts: CatalogProduct[] = [];
   let catalogEntries: CatalogEntry[] = [];
   try {
-    // exhaustive wins over narrowToAllTests if both are somehow passed (see DiscoveryOptions doc) —
-    // `narrow: !opts.exhaustive` already forces a full crawl in that case, so narrowTests is simply
-    // unused (and left undefined above, since we skip loading it when exhaustive is set).
-    const result = await discover(
-      tests,
-      { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log },
-      cfg,
-      { narrow: !opts.exhaustive, narrowTests },
-    );
-    matches = result.matches;
-    catalogProducts = result.products;
-    catalogEntries = result.entries;
-    // A real catalog is never empty — 0 products means the crawl was silently blocked (an
-    // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
-    // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
-    // scrape that matched nothing.
-    if (catalogProducts.length === 0) {
-      throw new Error(`catalog crawl returned 0 products for ${vendor.name} — likely blocked (WAF/challenge page) or the site layout changed`);
+    if (opts.pinnedOnly) {
+      // No catalog crawl at all — every offering here is already `urlPinned` (see the query above), so
+      // seed `matches` with a placeholder 'unmatched' result per test. The per-test loop below tries
+      // the pin whenever `offering.urlPinned` is true regardless of this status (see its own comment),
+      // fetching each pinned URL directly — exactly what a page-based adapter's `priceFromPinnedUrl`
+      // already does without ever touching the catalog listing.
+      matches = tests.map((test) => ({
+        test,
+        result: { status: 'unmatched', matchedBy: null, price: null, provider: null, sourceUrl: null, candidates: [], reason: 'pinnedOnly run' },
+      }));
+    } else {
+      // exhaustive wins over narrowToAllTests if both are somehow passed (see DiscoveryOptions doc) —
+      // `narrow: !opts.exhaustive` already forces a full crawl in that case, so narrowTests is simply
+      // unused (and left undefined above, since we skip loading it when exhaustive is set).
+      const result = await discover(
+        tests,
+        { fetchHtml: opts.fetchHtml ?? httpFetchHtml(45_000, cfg.extraHeaders), onLog: log },
+        cfg,
+        { narrow: !opts.exhaustive, narrowTests },
+      );
+      matches = result.matches;
+      catalogProducts = result.products;
+      catalogEntries = result.entries;
+      // A real catalog is never empty — 0 products means the crawl was silently blocked (an
+      // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
+      // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
+      // scrape that matched nothing.
+      if (catalogProducts.length === 0) {
+        throw new Error(`catalog crawl returned 0 products for ${vendor.name} — likely blocked (WAF/challenge page) or the site layout changed`);
+      }
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
