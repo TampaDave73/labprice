@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('about');
-  return { title: c.title, description: 'What LabTestCompare does and why we built it.' };
+  return { title: c.title, description: 'What LabTestCompare does and why we built it.', alternates: { canonical: '/about' } };
 }
 
 export default async function AboutPage() {

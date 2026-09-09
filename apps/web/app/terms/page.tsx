@@ -8,7 +8,7 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('terms');
-  return { title: c.title, description: 'Terms of Service for LabTestCompare.' };
+  return { title: c.title, description: 'Terms of Service for LabTestCompare.', alternates: { canonical: '/terms' } };
 }
 
 export default async function TermsPage() {

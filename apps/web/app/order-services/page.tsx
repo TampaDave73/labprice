@@ -11,6 +11,13 @@ import VendorAccordionList from './VendorAccordionList';
 export const metadata: Metadata = {
   title: 'Order Services — Compare Lab Test Vendors',
   description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
+  alternates: { canonical: '/order-services' },
+  openGraph: {
+    title: 'Order Services — Compare Lab Test Vendors | LabTestCompare',
+    description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
+    url: '/order-services',
+    type: 'website',
+  },
 };
 
 // Rendered on demand (not prerendered at build) so the build needs no DB. At request time it queries

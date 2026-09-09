@@ -40,9 +40,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const category = await getCategory(slug);
   if (!category) return { title: 'Category Not Found' };
+  const description = `Compare prices for ${category.name} blood tests across ordering services. Find the cheapest ${category.name.toLowerCase()} lab tests.`;
   return {
     title: `${category.name} Tests — Compare Prices`,
-    description: `Compare prices for ${category.name} blood tests across ordering services. Find the cheapest ${category.name.toLowerCase()} lab tests.`,
+    description,
+    alternates: { canonical: `/category/${category.slug}` },
+    openGraph: {
+      title: `${category.name} Tests — Compare Prices | LabTestCompare`,
+      description,
+      url: `/category/${category.slug}`,
+      type: 'website',
+    },
   };
 }
 

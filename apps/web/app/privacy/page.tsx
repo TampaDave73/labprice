@@ -8,7 +8,7 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('privacy');
-  return { title: c.title, description: 'Privacy Policy for LabTestCompare.' };
+  return { title: c.title, description: 'Privacy Policy for LabTestCompare.', alternates: { canonical: '/privacy' } };
 }
 
 export default async function PrivacyPage() {
