@@ -133,6 +133,16 @@ const navItems = [
     ),
   },
   {
+    label: 'Questions',
+    href: '/admin/questions',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="10" cy="10" r="7.5" />
+        <path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.15-.6.5-.6.9v.7M10 14.2h.01" />
+      </svg>
+    ),
+  },
+  {
     label: 'Blog',
     href: '/admin/blog',
     icon: (

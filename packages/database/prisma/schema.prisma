@@ -938,3 +938,53 @@ model Post {
   @@index([isPublished, publishedAt])
   @@map("posts")
 }
+
+/// Where a harvested question came from. Reddit is the forum listener; SEARCH_LOG is our own
+/// zero-result search data, which is higher-intent and unambiguously ours.
+enum QuestionSource {
+  REDDIT
+  SEARCH_LOG
+  MANUAL
+}
+
+enum QuestionStatus {
+  NEW
+  APPROVED
+  REJECTED
+  DRAFTED
+}
+
+/// A question people are actually asking, captured for topic research — the holding queue that feeds
+/// article ideas. Nothing here is published, and nothing here becomes a post without a human
+/// approving it at /admin/questions: that review gate is the whole point, because auto-publishing
+/// harvested topics on a health site is precisely the pattern search engines treat as scaled content
+/// abuse.
+///
+/// Reddit content is stored as a title, a score and a link back to the thread — enough to judge a
+/// topic, not a copy of the post. We quote nobody and republish nothing.
+model QuestionCandidate {
+  id     String         @id @default(cuid())
+  source QuestionSource
+  /// Stable id from the source (Reddit's `t3_xxx`), so re-harvesting updates rather than duplicates.
+  sourceId  String
+  sourceUrl String?      @map("source_url")
+  /// Subreddit, or the search term for SEARCH_LOG rows.
+  origin    String?
+  /// The question itself, as asked.
+  title     String
+  /// Upvotes, or the number of times a zero-result search was run. Ranking signal only.
+  score     Int          @default(0)
+  /// Test slugs this question looks related to — how a topic gets tied to something we can price.
+  matchedTests String[]  @default([]) @map("matched_tests")
+  status    QuestionStatus @default(NEW)
+  /// Set when a draft post is created from this candidate.
+  postId    String?      @map("post_id")
+  notes     String?
+
+  capturedAt DateTime @default(now()) @map("captured_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([source, sourceId])
+  @@index([status, score])
+  @@map("question_candidates")
+}

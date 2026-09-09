@@ -120,6 +120,11 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   object/form-action locked down; inline styles+scripts allowed because public pages need them).
 
 ### Admin panel (`apps/web/app/admin`, gated to ADMIN/SUPER_ADMIN)
+- **Question research** (`/admin/questions`) — review queue of harvested questions
+  (`QuestionCandidate`). Populated by `apps/worker/scripts/harvest-questions.ts` from zero-result
+  site searches and, when `REDDIT_CLIENT_ID`/`REDDIT_CLIENT_SECRET` are set, Reddit's OAuth API
+  (anonymous JSON is 403 now). Approve → **Draft article** calls `lib/ai/article-draft.ts` and
+  creates an **unpublished** `Post`. Nothing in this path can publish — deliberately.
 - **Dashboard** — a "Needs attention" row (pending price changes, low-trust vendors, scrape failures
   last 7 days, pending suggestions — each card counts waiting work and deep-links to the filtered
   view: `/admin/changes?status=PENDING`, `/admin/vendors?sort=trust&dir=asc`,

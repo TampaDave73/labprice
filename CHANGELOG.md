@@ -9,6 +9,26 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-09, question research queue)
+- **`QuestionCandidate` + `/admin/questions`** — a holding queue of questions people are actually
+  asking, from two sources: our own zero-result site searches (highest intent, needs no
+  configuration) and forum threads. Approve a question, then "Draft article" creates an
+  **unpublished** post to read and publish at `/admin/blog`. Nothing in the pipeline can publish;
+  that gate is deliberate, because auto-publishing harvested topics on a health site is the pattern
+  search engines treat as scaled content abuse.
+- **`harvest-questions.ts`** stores a question, a ranking signal and a link back — no post bodies, no
+  comments, no usernames. Forum harvesting keeps only questions about **tests and panels**: a
+  `REJECT` pattern drops anything reading as a question about compounds, dosing, cycles or sourcing,
+  so the angle is always the markers a community tracks rather than the substances.
+- **Reddit needs a registered app.** Anonymous requests to Reddit's public JSON endpoints now return
+  403, so the harvester uses the official OAuth API with `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`
+  (a free "script" app at reddit.com/prefs/apps). Unset, it says so and harvests search logs only.
+- **`migrate-questions.ts`** creates the table and its enums additively for databases that predate
+  the model (`DO $$ … EXCEPTION WHEN duplicate_object`, since Postgres has no
+  `CREATE TYPE IF NOT EXISTS`).
+- **`.claude/skills/seo-aeo/SKILL.md`** — the SEO/AEO/GEO rules as a skill, so a new page ships
+  compliant rather than being retrofitted. Registered as gotcha 20 in CLAUDE.md.
+
 ### Fixed (2026-09-09, SEOmator audit of /blog and /test/comprehensive-metabolic-panel-14)
 - **Only the title was clickable on a `/blog` card.** The whole card is now one link — image, title
   and a "Read the guide" button inside it. One link per card, so anchor text stays descriptive.
