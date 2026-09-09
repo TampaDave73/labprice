@@ -70,6 +70,7 @@ async function getPrices(body: string): Promise<Prices> {
     where: { slug: { in: slugs }, deletedAt: null },
     select: {
       slug: true,
+      name: true,
       offerings: {
         where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
         select: { currentPrice: true, lastCheckedAt: true, priceUpdatedAt: true },
@@ -86,6 +87,7 @@ async function getPrices(body: string): Promise<Prices> {
       .filter((d): d is Date => d != null)
       .sort((a, b) => b.getTime() - a.getTime());
     out[t.slug] = {
+      name: t.name,
       min: Math.min(...prices),
       max: Math.max(...prices),
       count: prices.length,

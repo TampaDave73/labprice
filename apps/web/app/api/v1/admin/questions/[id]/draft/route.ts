@@ -18,6 +18,21 @@ async function requireAdmin() {
   return session;
 }
 
+// A drafted article has no photo of its own, and a hero-less card on /blog looks broken next to the
+// others. These are the generic lab images in public/blog; one is picked from the slug so it is
+// stable across redraws and varies between articles. Swap it for something specific in /admin/blog.
+const GENERIC_HEROES = [
+  { file: 'generic-laboratory', alt: 'A microscope on a laboratory bench.' },
+  { file: 'generic-test-tube', alt: 'A gloved hand holding a laboratory test tube.' },
+  { file: 'generic-lab-supplies', alt: 'Laboratory sample collection supplies on a white surface.' },
+];
+
+function pickHero(slug: string) {
+  const n = [...slug].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const hero = GENERIC_HEROES[n % GENERIC_HEROES.length]!;
+  return { heroUrl: `/blog/${hero.file}-1600.webp`, heroAlt: hero.alt, heroCredit: 'Photo: Unsplash' };
+}
+
 /** Appends -2, -3 … until the slug is free, so a second draft on a similar topic doesn't 409. */
 async function uniqueSlug(base: string): Promise<string> {
   let slug = base || 'draft';
@@ -75,6 +90,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
         body: draft.body,
         faq: draft.faq,
         author: 'Dave S.',
+        ...pickHero(slug),
         relatedTests: draft.relatedTests.length ? draft.relatedTests : candidate.matchedTests,
         isPublished: false, // never auto-publish — see the note at the top of this file
       },

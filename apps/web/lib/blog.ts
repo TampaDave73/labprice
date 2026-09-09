@@ -68,6 +68,8 @@ export function formatPostDate(d: Date): string {
 //   [PRICE-DATE:lipid-panel]   → 9 September 2026 (freshest price check)
 
 export interface PriceFacts {
+  /** Display name, so a chart can label a bar without a second query. */
+  name: string;
   min: number;
   max: number;
   count: number;
@@ -77,9 +79,24 @@ export interface PriceFacts {
 export const PRICE_TOKEN = /\[PRICE(-RANGE|-COUNT|-DATE)?:([a-z0-9-]+)\]/;
 const PRICE_TOKEN_G = new RegExp(PRICE_TOKEN.source, 'g');
 
-/** Every test slug a body asks for a price of — the page fetches exactly these, and nothing else. */
+/** `[PRICE-CHART:a,b,c]` on its own line — a live bar chart of the spread for those tests. */
+export const PRICE_CHART = /^\[PRICE-CHART:([a-z0-9,\-\s]+)\]$/;
+
+/** The slugs a chart block asks for, in the author's order. */
+export function priceChartSlugs(block: string): string[] {
+  const m = PRICE_CHART.exec(block.trim());
+  if (!m) return [];
+  return m[1]!.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * Every test slug a body asks for a price of — inline tokens and chart blocks alike. The page
+ * fetches exactly these and nothing else, so adding a chart never costs an extra round trip.
+ */
 export function priceTokenSlugs(body: string): string[] {
-  return Array.from(new Set(Array.from(body.matchAll(PRICE_TOKEN_G), (m) => m[2]!)));
+  const inline = Array.from(body.matchAll(PRICE_TOKEN_G), (m) => m[2]!);
+  const charts = body.split('\n').flatMap((line) => priceChartSlugs(line));
+  return Array.from(new Set([...inline, ...charts]));
 }
 
 /**

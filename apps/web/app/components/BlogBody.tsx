@@ -9,6 +9,7 @@
 //   | a | b |             → <table>, first row is the header, a |---| separator row is ignored
 //   > text                → callout
 //   [FIG:name]            → a diagram from BlogFigures
+//   [PRICE-CHART:a,b,c]   → a live bar chart of the price spread for those test slugs
 //   anything else         → <p>
 //
 // Inline: **bold**, [text](/path) and [text](https://…) links, and [PRICE…:slug] tokens resolved
@@ -18,7 +19,8 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
-import { renderPriceToken, PRICE_TOKEN, type PriceFacts } from '@/lib/blog';
+import { renderPriceToken, PRICE_TOKEN, priceChartSlugs, type PriceFacts } from '@/lib/blog';
+import PriceRangeChart from './PriceRangeChart';
 
 const INK = 'oklch(0.2 0.04 260)';
 const BODY = 'oklch(0.35 0.03 260)';
@@ -127,6 +129,15 @@ export default function BlogBody({ body, prices = {} }: { body: string; prices?:
 
         const fig = /^\[FIG:([a-z0-9-]+)\]$/.exec(block);
         if (fig) return <BlogFigure key={k} name={fig[1]!} />;
+
+        const chartSlugs = priceChartSlugs(block);
+        if (chartSlugs.length > 0) {
+          // Slugs with no live price are dropped rather than drawn as empty bars.
+          const rows = chartSlugs
+            .map((slug) => (prices[slug] ? { slug, ...prices[slug]! } : null))
+            .filter((r): r is { slug: string } & PriceFacts => r != null);
+          return <PriceRangeChart key={k} rows={rows} />;
+        }
 
         if (block.startsWith('## ')) {
           return (
