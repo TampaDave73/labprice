@@ -254,6 +254,14 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     scripts/<name>.ts"` (the prod `DATABASE_URL` is `postgres.railway.internal`, so it is only
     reachable from inside a Railway service — not from your machine).
 
+20. **Public pages must follow the `seo-aeo` skill** (`.claude/skills/seo-aeo/SKILL.md`). Invoke it
+    before adding or changing any public route, template, metadata block, JSON-LD, or article copy —
+    it carries the canonical/OG/schema/heading/table/image/linking rules the site has been audited
+    against, and the specific traps that have already cost us once each (an `openGraph` override
+    silently dropping `og:image`; a single-backslash `'\u003c'` making a JSON-LD escape a no-op;
+    `{{isOpen && …}}` deleting content from the served HTML). It also lists the two audit findings
+    NOT worth chasing here.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package
