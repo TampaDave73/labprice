@@ -130,6 +130,85 @@ If you think you may have a medical emergency, call your doctor or emergency ser
 Lab tests themselves are ordered from and performed by third-party ordering services and laboratories (e.g. Quest Diagnostics, LabCorp) — LabTestCompare does not draw blood, run tests, or issue results.`,
     },
   },
+  {
+    slug: 'contact',
+    label: 'Contact',
+    default: {
+      title: 'Contact LabTestCompare',
+      updated: null,
+      body: `Email is the fastest way to reach us, and we read everything that arrives.
+
+## Email
+
+hello@labtestcompare.com
+
+We aim to reply to questions about pricing, corrections, and coverage. We cannot answer questions about your own test results or which tests you should have — those belong with a clinician.
+
+## Postal address
+
+LabTestCompare
+217 Hobbs St #107
+Tampa, FL 33619
+United States
+
+## Reporting a wrong price or a dead link
+
+Every test page has a "Report an error" button under the information panels. That routes straight to our review queue with the test and vendor attached, which is faster and more precise than email. See our [editorial policy](/editorial-policy) for how corrections are handled.
+
+## Suggesting a test or an ordering service
+
+Use the "Suggest a Test" and "Suggest a Vendor" buttons in the footer of any page.`,
+    },
+  },
+  {
+    slug: 'editorial-policy',
+    label: 'Editorial Policy',
+    default: {
+      title: 'Editorial Policy',
+      updated: 'September 2026',
+      body: `This page explains where the information on LabTestCompare comes from, how it is checked, and how we decide what to show. If something here does not match what you see on the site, that is a bug — please tell us.
+
+## What we publish
+
+Two things. First, prices: what each ordering service charges for a given lab test. Second, plain-English explanations of what those tests measure and how testing works. We do not publish medical advice, treatment guidance, dosing information, or anything about which tests you personally should have.
+
+## How prices are collected
+
+Prices are read directly from each ordering service's own public catalog or product pages by an automated checker that runs on a schedule. Nothing is typed in by hand, and no ordering service can submit a price to us.
+
+Every listing records the moment it was last verified, and that timestamp is shown next to the price. If a price has not been re-checked recently, the page says so rather than hiding it.
+
+## How we make sure we are comparing the same test
+
+Tests are matched across ordering services by Quest Diagnostics and LabCorp order code, not by marketing name. Two services can sell quite different tests under near-identical names, so a name match alone is not enough to put two prices side by side. Where a code match is uncertain, the test page carries a visible "partially verified" or "unverified" badge instead of presenting the match as settled.
+
+## How results are ranked
+
+Strictly by price, lowest first. Every ordering service we track appears on the test page, not only those with a commercial relationship with us. Some services pay us a referral fee when someone orders through our link, as described on our [About page](/about) — that arrangement has no effect on ranking, inclusion, or the price shown.
+
+## Where health information comes from
+
+Explanatory content is written from public reference sources, principally the National Library of Medicine's MedlinePlus, the National Institutes of Health, and the Centers for Disease Control and Prevention. Articles list their sources at the end so you can check them.
+
+Reference ranges are described as varying by laboratory, sex, and age, because they do. We do not tell readers what their own results mean.
+
+## Use of AI
+
+Some copy on this site — the descriptions of what each test measures, and drafts of our guides — is generated with AI assistance and then reviewed before publication. We disclose this because we think you should know. AI is not used to set prices, choose rankings, or decide which services appear.
+
+## Corrections
+
+If a price is wrong, a link is dead, or an explanation is inaccurate, use the "Report an error" button on any test page or email hello@labtestcompare.com. Reports go to a human review queue. When a price looks wrong we re-check it against the vendor's site rather than simply taking the report at face value, and we correct the page if the report is right.
+
+## Independence
+
+LabTestCompare is independently operated. We are not a laboratory, we do not sell lab tests, and we are not owned by any laboratory or ordering service listed on the site.
+
+## Medical disclaimer
+
+Nothing on this site is medical advice, a diagnosis, or a substitute for care from a qualified clinician. See our [medical disclaimer](/disclaimer) in full.`,
+    },
+  },
 ];
 
 export const PAGE_BY_SLUG: Record<string, PageDef> = Object.fromEntries(PAGE_DEFS.map((p) => [p.slug, p]));

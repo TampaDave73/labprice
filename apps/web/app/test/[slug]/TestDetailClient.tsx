@@ -95,6 +95,10 @@ const BEST = {
 
 const ACCENT = 'oklch(0.58 0.136 260)';
 
+// Nothing on this page renders below 12px. Sub-12px text is flagged as a mobile-readability problem
+// (an audit counted 27 such elements here — the per-row "checked N ago", member-price and best-price
+// labels multiply across ~18 offerings). If you add a secondary line to a row, keep it at 12.
+
 // Section headings are phrased as the questions people actually search ("how do you prepare for a
 // vitamin D test?") rather than as labels ("How To Prepare") — that's the unit search and answer
 // engines segment a page by, and this page previously had no <h2> at all. Most of our test names are
@@ -212,13 +216,13 @@ export default function TestDetailClient({ test, offerings }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           {test.questCode && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'oklch(0.95 0.02 260)', borderRadius: 20, border: '1px solid oklch(0.9 0.03 260)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.06 260)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quest</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.55 0.06 260)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Quest</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.25 0.04 260)' }}>#{test.questCode}</span>
             </div>
           )}
           {test.labcorpCode && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: 'oklch(0.95 0.02 260)', borderRadius: 20, border: '1px solid oklch(0.9 0.03 260)' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.06 260)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>LabCorp</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'oklch(0.55 0.06 260)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>LabCorp</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.25 0.04 260)' }}>#{test.labcorpCode}</span>
             </div>
           )}
@@ -399,14 +403,14 @@ export default function TestDetailClient({ test, offerings }: Props) {
                 &#9733;
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: BEST.title }}>Best Price</div>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', color: BEST.title }}>Best Price</div>
                 <div style={{ fontSize: 17, fontWeight: 700, marginTop: 2, color: BEST.name }}>
                   {cheapest.vendorName} &middot; ${cheapest.price.toFixed(2)}
                 </div>
               </div>
               {savings > 0 && (
                 <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, color: BEST.vs }}>vs. most expensive</div>
+                  <div style={{ fontSize: 12, color: BEST.vs }}>vs. most expensive</div>
                   <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: BEST.savings }}>Save ${savings.toFixed(2)}</div>
                 </div>
               )}
@@ -428,18 +432,18 @@ export default function TestDetailClient({ test, offerings }: Props) {
               </caption>
               <colgroup>
                 <col />
-                <col style={{ width: 90 }} />
+                <col style={{ width: 104 }} />
                 <col style={{ width: 80 }} />
               </colgroup>
               <thead>
                 <tr style={{ borderBottom: '1.5px solid oklch(0.92 0.02 260)', background: 'oklch(0.97 0.015 260)' }}>
-                  <th scope="col" style={{ padding: '11px 8px 11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  <th scope="col" style={{ padding: '11px 8px 11px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                     Ordering Service
                   </th>
-                  <th scope="col" style={{ padding: '11px 8px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  <th scope="col" style={{ padding: '11px 8px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                     Price
                   </th>
-                  <th scope="col" style={{ padding: '11px 20px 11px 8px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                  <th scope="col" style={{ padding: '11px 20px 11px 8px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: 'oklch(0.55 0.05 260)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                     Order
                   </th>
                 </tr>
@@ -474,7 +478,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                           {/* The cheapest row is also flagged in words, not only by the row tint —
                               color carries no meaning to anything reading the markup. */}
                           {isBest && (
-                            <span style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: 1, color: BEST.title }}>
                               &#10003; Best Price
                             </span>
                           )}
@@ -484,7 +488,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                                 style={{ width: 6, height: 6, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: freshnessColor(row.checkedAt) }}
                                 aria-hidden="true"
                               />
-                              <span style={{ fontSize: 11, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
+                              <span style={{ fontSize: 12, color: 'oklch(0.58 0.03 260)' }}>checked {relativeTime(row.checkedAt)}</span>
                             </span>
                           )}
                         </th>
@@ -495,7 +499,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                           {/* Member price shown inline (works on mobile, unlike a tooltip). Non-member price
                               above is the compared/ranked one; this is the discounted member alternative. */}
                           {row.memberPrice != null && row.memberPrice < row.price && (
-                            <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
                               ${row.memberPrice.toFixed(2)} for members
                               {row.membershipNote ? <span style={{ color: 'oklch(0.62 0.03 260)' }}> ({row.membershipNote})</span> : null}
                             </span>
@@ -503,7 +507,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                           {/* Dual-lab vendor (Dirt Cheap Labs): this test is priced through BOTH Quest and
                               LabCorp — the price above is the cheaper; the other lab is still an option. */}
                           {row.altLabPrice != null && (
-                            <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'oklch(0.55 0.04 260)', marginTop: 2, lineHeight: 1.3 }}>
                               ${row.altLabPrice.toFixed(2)} via {labLabel(row.altLabProvider)} also available
                             </span>
                           )}

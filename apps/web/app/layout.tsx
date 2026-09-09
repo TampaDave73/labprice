@@ -45,6 +45,22 @@ const organizationLd = {
   logo: `${BASE_URL}/icon-512.png`,
   description:
     'Independent price comparison for self-pay blood tests ordered through services that draw at Quest Diagnostics and LabCorp patient service centers.',
+  email: 'hello@labtestcompare.com',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: '217 Hobbs St #107',
+    addressLocality: 'Tampa',
+    addressRegion: 'FL',
+    postalCode: '33619',
+    addressCountry: 'US',
+  },
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    email: 'hello@labtestcompare.com',
+    url: `${BASE_URL}/contact`,
+  },
+  publishingPrinciples: `${BASE_URL}/editorial-policy`,
 };
 
 const webSiteLd = {
