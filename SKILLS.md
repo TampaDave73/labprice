@@ -576,13 +576,17 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
     **opportunistic** — only present when a product page happens to link to
     `labcorp.com/tests/<code>/...`; `labProvider` is `'unknown'` (not assumed `'labcorp'`) when that
     link is absent, so the Change Queue never shows a lab attribution we don't actually have.
-  - `truehealthlabs` — WooCommerce, plain HTTP, dedicated product-only sitemap (`product-sitemap.xml`,
-    ~1,736 products, single fetch, no pagination). **Best code exposure of any vendor**: the WooCommerce
-    SKU literally encodes `<Lab>_<code>` (e.g. `Quest_457`), sometimes with a trailing internal variant
-    segment to ignore (`Quest_17306_303`). Strict per-lab tiers. **No price-sanity gap**: an
-    out-of-stock bundle reported a literal GTM `price: 0` that would have legitimately name-matched
-    "Vitamin B12" — the adapter now drops any product whose price isn't `> 0` (a real self-pay lab test
-    is never actually free) rather than passing a bogus price downstream.
+  - `truehealthlabs` — WooCommerce. `fetchAll` against the store's own **public Store API**
+    (`/wp-json/wc/store/v1/products`, paginated), not `product-sitemap.xml` — root-caused 2026-09-09:
+    that sitemap listed well under 200 of the site's real ~1,900 products (DHEA-Sulfate among the
+    missing, despite a real, live, correctly-priced page), the same "official listing source turns out
+    incomplete" shape as DrSays/GoodLabs the same day. The Store API's listing already carries name +
+    price + order code for every product on one page, so this dropped the old per-product-page fetch
+    entirely. **Best code exposure of any vendor**: the WooCommerce SKU literally encodes `<Lab>_<code>`
+    (e.g. `Quest_457`), sometimes with a trailing internal variant segment to ignore
+    (`Quest_17306_303`). Strict per-lab tiers. **No price-sanity gap**: an out-of-stock product is
+    priced `0` in the Store API and would otherwise legitimately match — dropped whenever price isn't
+    `> 0` (a real self-pay lab test is never actually free) rather than passed downstream.
   - `questhealth` — Quest Diagnostics' own first-party store (Salesforce Commerce Cloud/Demandware).
     `sitemap_0.xml` (single fetch, ~160 products) embeds the Quest order code directly in the URL
     (`/product/hemoglobin-a1c-test/496M.html` → 496), also confirmed via `data-pid` on the page. Every

@@ -6,7 +6,8 @@ import 'dotenv/config';
 import { prisma } from '@labprice/database';
 import { runVendorDiscovery, publishStagedChange } from '../src/discovery';
 
-const SELECTORS = { mode: 'catalog', adapter: 'truehealthlabs', catalogPath: '/product-sitemap.xml' };
+// catalogPath is informational only (this adapter is fetchAll — see truehealthlabs-parser.ts).
+const SELECTORS = { mode: 'catalog', adapter: 'truehealthlabs', catalogPath: '/wp-json/wc/store/v1/products' };
 const SEED_TEST_SLUGS = [
   'ferritin', 'comprehensive-metabolic-panel', 'cbc-complete-blood-count', 'lipid-panel',
   'hba1c-hemoglobin-a1c', 'tsh-thyroid-stimulating-hormone', 'vitamin-d-25-hydroxy',

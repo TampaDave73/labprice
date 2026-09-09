@@ -13,7 +13,7 @@ import { parsePrivateMDLabsCatalog, parsePrivateMDLabsProduct, parsePrivateMDLab
 import { parseRequestATestCatalog, parseRequestATestProduct } from './requestatest-parser';
 import { fetchDirectLabsCatalog } from './directlabs-parser';
 import { parseDiscountedLabsCatalog, parseDiscountedLabsProduct } from './discountedlabs-parser';
-import { parseTrueHealthLabsCatalog, parseTrueHealthLabsProduct } from './truehealthlabs-parser';
+import { fetchTrueHealthLabsCatalog } from './truehealthlabs-parser';
 import { parseQuestHealthCatalog, parseQuestHealthProduct } from './questhealth-parser';
 import { parseLabCorpOnDemandCatalog, parseLabCorpOnDemandProduct } from './labcorpondemand-parser';
 import { parseMarekDiagnosticsCatalog, parseMarekDiagnosticsProduct } from './marekdiagnostics-parser';
@@ -114,10 +114,9 @@ export const discountedLabsAdapter: CatalogAdapter = {
 
 export const trueHealthLabsAdapter: CatalogAdapter = {
   name: 'truehealthlabs',
-  parseCatalog: (xml) => parseTrueHealthLabsCatalog(xml),
-  parseProduct: (html, baseUrl, slug) => parseTrueHealthLabsProduct(html, baseUrl, slug),
-  productUrl: (baseUrl, slug) => `${baseUrl}/product/${slug}/`,
-  // Single flat product-sitemap.xml fetch — no pagination (nextCatalogPage omitted).
+  fetchAll: (deps, cfg) => fetchTrueHealthLabsCatalog(deps, cfg),
+  // WooCommerce's own public Store API, not product-sitemap.xml — see truehealthlabs-parser.ts's
+  // module comment: the sitemap was missing ~90% of the real catalog.
 };
 
 export const questHealthAdapter: CatalogAdapter = {

@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, True Health Labs catalog discovery)
+- **True Health Labs' catalog discovery was missing the vast majority of the real catalog.**
+  `product-sitemap.xml` listed well under 200 products; the site's own public WooCommerce Store API
+  (`/wp-json/wc/store/v1/products`) lists ~1,900, DHEA-Sulfate among the ones the sitemap never had —
+  same "official listing turned out incomplete" shape as DrSays and GoodLabs, found the same day.
+  Switched the adapter from a sitemap+per-product-page crawl to `fetchAll` against the Store API, which
+  already returns name + price + order code for every product in one paginated call — no per-product
+  fetch needed at all anymore. Verified live: 1,710 real (non-$0) products found, DHEA-Sulfate $119.
+
 ### Changed (2026-09-09, matcher: singular/plural name tolerance)
 - **The name matcher (`catalog/matcher.ts`, shared by every catalog vendor) didn't know "Antibody" and
   "Antibodies" are the same word.** GoodLabs' real product page for Thyroid Peroxidase Antibodies has
