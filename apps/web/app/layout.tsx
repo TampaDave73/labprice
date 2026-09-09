@@ -26,9 +26,45 @@ export const viewport: Viewport = {
   themeColor: '#0f2647',
 };
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
+
+// Site-wide entity graph. Answer engines resolve "what is LabTestCompare" from Organization; the
+// WebSite/SearchAction node is what lets them address /search directly instead of guessing a URL
+// shape. Emitted once in the root layout so every route carries it — per-page JSON-LD (test pages)
+// is additive, not a replacement.
+const siteJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${BASE_URL}/#organization`,
+      name: 'LabTestCompare',
+      url: BASE_URL,
+      logo: `${BASE_URL}/icon-512.png`,
+      description:
+        'Independent price comparison for self-pay blood tests ordered through services that draw at Quest Diagnostics and LabCorp patient service centers.',
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${BASE_URL}/#website`,
+      url: BASE_URL,
+      name: 'LabTestCompare',
+      publisher: { '@id': `${BASE_URL}/#organization` },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/search?q={search_term_string}` },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+};
+
 export const metadata: Metadata = {
   // Absolute base for OG/canonical URLs; also lets the generated opengraph-image resolve.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com'),
+  metadataBase: new URL(BASE_URL),
+  // Root canonical. Every public route overrides this with its own path (see each generateMetadata);
+  // without one, query-string variants (utm_*, ref) are all indexable as separate URLs.
+  alternates: { canonical: '/' },
   title: {
     default: 'LabTestCompare — Compare Blood Test Prices',
     template: '%s | LabTestCompare',
@@ -58,6 +94,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         className={`${dmSans.className} ${poppins.variable} min-h-screen antialiased`}
         style={{ background: 'oklch(0.985 0.005 260)' }}
       >
+        {/* JSON.stringify doesn't escape "<" — escaping it keeps a stray "</script>" in any future
+            copy from breaking out of this tag. < is valid inside a JSON string and parses the same. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd).replace(/</g, '\\u003c') }}
+        />
         <GoogleAnalytics />
         {children}
       </body>
