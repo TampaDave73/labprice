@@ -83,7 +83,7 @@ function FastingClock() {
   ];
 
   return (
-    <svg {...svgProps('0 0 660 210')} aria-label="A fasting timeline: last meal at 8pm, water only overnight, blood draw at 8am twelve hours later. Plain water, prescription medication and black coffee without milk or sugar are generally acceptable; food, juice, milk, sweetened drinks and alcohol are not.">
+    <svg {...svgProps('0 0 660 210')} aria-label="A fasting timeline: last meal at 8pm, water only overnight, blood draw at 8am twelve hours later. Plain water and prescription medication taken as directed are generally acceptable; food, juice, milk, sweetened drinks and alcohol break the fast.">
       <rect x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx="13" fill={ACCENT_SOFT} />
       <text x={bar.x + bar.w / 2} y={bar.y + 18} textAnchor="middle" fontSize="12.5" fontWeight="600" fill={ACCENT}>
         12 hours, nothing but water
@@ -111,7 +111,7 @@ function FastingClock() {
           Generally fine
         </text>
         <text x="76" y="180" fontSize="12" fill={MUTED}>
-          Water · prescription medication · black coffee
+          Plain water · prescription medicines, as directed
         </text>
       </g>
       <g>
@@ -127,44 +127,45 @@ function FastingClock() {
   );
 }
 
-/** The four numbers on a lipid panel, and how they relate. */
+/** The four numbers a lipid panel reports. */
 function LipidBreakdown() {
+  // Deliberately NOT drawn as a breakdown of total cholesterol: triglycerides are a separate lipid,
+  // not a component of it, and the tidier-looking "total splits into three" diagram states something
+  // false. These are four results from one draw.
   const rows = [
-    { name: 'LDL cholesterol', note: 'Carries cholesterol into artery walls', w: 0.52, color: RED, soft: RED_SOFT },
-    { name: 'HDL cholesterol', note: 'Carries it back out to the liver', w: 0.24, color: GREEN, soft: GREEN_SOFT },
-    { name: 'Triglycerides', note: 'Circulating fat, strongly diet-linked', w: 0.24, color: AMBER, soft: AMBER_SOFT },
+    { name: 'Total cholesterol', note: 'All cholesterol carried in the blood', w: 0.94, color: ACCENT, soft: ACCENT_SOFT },
+    { name: 'LDL cholesterol', note: 'Carries cholesterol into artery walls', w: 0.74, color: RED, soft: RED_SOFT },
+    { name: 'HDL cholesterol', note: 'Carries it back out to the liver', w: 0.5, color: GREEN, soft: GREEN_SOFT },
+    { name: 'Triglycerides', note: 'A separate blood fat, strongly diet-linked', w: 0.62, color: AMBER, soft: AMBER_SOFT },
   ];
-  const barX = 250;
-  const barW = 350;
+  const barX = 268;
+  const barW = 340;
 
   return (
-    <svg {...svgProps('0 0 660 235')} aria-label="A lipid panel reports total cholesterol, which is made up of LDL cholesterol, HDL cholesterol and triglycerides. LDL carries cholesterol into artery walls, HDL carries it back to the liver, and triglycerides are circulating fat.">
-      <rect x={barX} y="20" width={barW} height="34" rx="9" fill={ACCENT_SOFT} stroke={ACCENT} strokeWidth="1.5" />
-      <text x={barX + barW / 2} y="42" textAnchor="middle" fontSize="13.5" fontWeight="700" fill={ACCENT}>
-        Total cholesterol
-      </text>
-      <text x={barX - 14} y="42" textAnchor="end" fontSize="12.5" fill={MUTED}>
-        One draw reports:
+    <svg {...svgProps('0 0 660 268')} aria-label="One lipid panel reports four numbers: total cholesterol, the cholesterol carried in the blood; LDL cholesterol, which carries cholesterol into artery walls; HDL cholesterol, which carries it back to the liver; and triglycerides, a separate blood fat strongly linked to diet.">
+      <rect x={barX} y="18" width={barW} height="32" rx="9" fill="oklch(0.97 0.012 260)" stroke={LINE} strokeWidth="1.5" />
+      <text x={barX + barW / 2} y="39" textAnchor="middle" fontSize="13" fontWeight="700" fill={INK}>
+        One draw · four numbers
       </text>
 
       {rows.map((r, i) => {
-        const y = 86 + i * 48;
+        const y = 74 + i * 46;
         return (
           <g key={r.name}>
-            <line x1={barX + 18} y1="60" x2={barX + 18} y2={y + 17} stroke={LINE} strokeWidth="1.5" />
-            <line x1={barX + 18} y1={y + 17} x2={barX + 30} y2={y + 17} stroke={LINE} strokeWidth="1.5" />
-            <rect x={barX + 30} y={y} width={barW * r.w} height="34" rx="8" fill={r.soft} stroke={r.color} strokeWidth="1.2" />
-            <text x={barX + 44} y={y + 22} fontSize="12.5" fontWeight="650" fill={r.color}>
+            <line x1={barX + 16} y1="56" x2={barX + 16} y2={y + 16} stroke={LINE} strokeWidth="1.5" />
+            <line x1={barX + 16} y1={y + 16} x2={barX + 28} y2={y + 16} stroke={LINE} strokeWidth="1.5" />
+            <rect x={barX + 28} y={y} width={(barW - 28) * r.w} height="32" rx="8" fill={r.soft} stroke={r.color} strokeWidth="1.2" />
+            <text x={barX + 42} y={y + 21} fontSize="12.5" fontWeight="650" fill={r.color}>
               {r.name}
             </text>
-            <text x={barX - 14} y={y + 22} textAnchor="end" fontSize="11.5" fill={FAINT}>
+            <text x={barX - 14} y={y + 21} textAnchor="end" fontSize="11.5" fill={FAINT}>
               {r.note}
             </text>
           </g>
         );
       })}
-      <text x={barX + 30} y="228" fontSize="11.5" fill={FAINT}>
-        Widths are illustrative, not a reference range — your lab reports the actual numbers.
+      <text x={barX + 28} y="262" fontSize="11.5" fill={FAINT}>
+        Bar widths are illustrative only — your lab reports the actual values.
       </text>
     </svg>
   );
@@ -173,7 +174,7 @@ function LipidBreakdown() {
 /** The CMP's 14 analytes, grouped by what they are actually telling you about. */
 function CmpGroups() {
   const groups = [
-    { title: 'Kidneys', items: ['BUN', 'Creatinine', 'eGFR'], color: ACCENT, soft: ACCENT_SOFT },
+    { title: 'Kidneys', items: ['BUN', 'Creatinine'], color: ACCENT, soft: ACCENT_SOFT },
     { title: 'Liver', items: ['ALT', 'AST', 'ALP', 'Bilirubin'], color: AMBER, soft: AMBER_SOFT },
     { title: 'Electrolytes & fluid', items: ['Sodium', 'Potassium', 'Chloride', 'CO₂', 'Calcium'], color: GREEN, soft: GREEN_SOFT },
     { title: 'Sugar & protein', items: ['Glucose', 'Albumin', 'Total protein'], color: 'oklch(0.5 0.16 300)', soft: 'oklch(0.95 0.04 300)' },
@@ -182,7 +183,7 @@ function CmpGroups() {
   const x0 = 22;
 
   return (
-    <svg {...svgProps('0 0 660 250')} aria-label="A comprehensive metabolic panel groups fourteen measurements: kidney markers (BUN, creatinine, eGFR); liver markers (ALT, AST, ALP, bilirubin); electrolytes and fluid balance (sodium, potassium, chloride, carbon dioxide, calcium); and sugar and protein (glucose, albumin, total protein).">
+    <svg {...svgProps('0 0 660 250')} aria-label="A comprehensive metabolic panel groups fourteen measurements: kidney markers (BUN, creatinine); liver markers (ALT, AST, ALP, bilirubin); electrolytes and fluid balance (sodium, potassium, chloride, carbon dioxide, calcium); and sugar and protein (glucose, albumin, total protein).">
       {groups.map((g, i) => {
         const x = x0 + i * (colW + 8);
         return (
