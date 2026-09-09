@@ -18,7 +18,7 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
-import { renderPriceToken, type PriceFacts } from '@/lib/blog';
+import { renderPriceToken, PRICE_TOKEN, type PriceFacts } from '@/lib/blog';
 
 const INK = 'oklch(0.2 0.04 260)';
 const BODY = 'oklch(0.35 0.03 260)';
@@ -27,13 +27,20 @@ const BODY = 'oklch(0.35 0.03 260)';
 // The link alternative requires a following "(", so a bare [PRICE:slug] falls through to the third.
 const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((\/[^)\s]*)\)|\[PRICE(?:-RANGE|-COUNT|-DATE)?:[a-z0-9-]+\])/g;
 
+// Tokens inside **bold** never reach the split below — the bold alternative matches the whole
+// `**[PRICE:slug]**` run first — so bold text gets its own resolution pass.
+const PRICE_TOKEN_G = new RegExp(PRICE_TOKEN.source, 'g');
+function resolveTokens(text: string, prices: Prices): string {
+  return text.replace(PRICE_TOKEN_G, (tok) => renderPriceToken(tok, prices[/:([a-z0-9-]+)\]$/.exec(tok)?.[1] ?? '']));
+}
+
 function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNode[] {
   return text.split(INLINE).filter((p) => p != null && p !== '' && !p.startsWith('/')).map((part, i) => {
     const key = `${keyPrefix}-${i}`;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={key} style={{ fontWeight: 650, color: INK }}>
-          {part.slice(2, -2)}
+          {resolveTokens(part.slice(2, -2), prices)}
         </strong>
       );
     }
