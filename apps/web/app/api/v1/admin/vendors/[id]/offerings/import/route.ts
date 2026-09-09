@@ -136,17 +136,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (plan.action === 'create') {
         // Same upsert-on-(testId,vendorId) the one-by-one "Add" button uses — reactivates a
         // soft-deleted offering rather than erroring if one already exists under the hood.
+        // A URL in the imported CSV is a deliberate admin pin, same as the single-offering PATCH route
+        // — urlPinned makes the next scrape trust it over a confident-but-wrong automatic match instead
+        // of silently overwriting it (see schema.prisma's comment on Offering.urlPinned).
         await tx.offering.upsert({
           where: { testId_vendorId: { testId: plan.testId, vendorId } },
           update: {
             deletedAt: null,
             isActive: plan.fields.isActive,
             externalUrl: plan.fields.externalUrl,
+            urlPinned: Boolean(plan.fields.externalUrl),
             ...(plan.fields.currentPrice != null ? { currentPrice: plan.fields.currentPrice } : {}),
           },
           create: {
             testId: plan.testId, vendorId,
-            externalUrl: plan.fields.externalUrl, currentPrice: plan.fields.currentPrice, isActive: plan.fields.isActive,
+            externalUrl: plan.fields.externalUrl, urlPinned: Boolean(plan.fields.externalUrl),
+            currentPrice: plan.fields.currentPrice, isActive: plan.fields.isActive,
           },
         });
       } else {
@@ -157,6 +162,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           // exported row (current_price left blank) would silently null out a live price.
           data: {
             externalUrl: plan.fields.externalUrl,
+            urlPinned: Boolean(plan.fields.externalUrl),
             ...(plan.fields.currentPrice != null ? { currentPrice: plan.fields.currentPrice } : {}),
             isActive: plan.fields.isActive,
           },

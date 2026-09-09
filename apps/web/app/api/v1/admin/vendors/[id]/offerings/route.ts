@@ -86,10 +86,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ data: { linked: created.length, skipped: bulkIds.length - liveIds.length }, needsPricing: unpriced > 0 }, { status: 201 });
   }
 
+  // A URL given at add-time is a deliberate pin too (see PATCH below / schema.prisma's comment).
+  const urlPinned = Boolean(externalUrl);
   const offering = await prisma.offering.upsert({
     where: { testId_vendorId: { testId, vendorId } },
-    update: { deletedAt: null, isActive: true, externalUrl, ...(currentPrice != null ? { currentPrice } : {}) },
-    create: { testId, vendorId, externalUrl, currentPrice, isActive: true },
+    update: { deletedAt: null, isActive: true, externalUrl, urlPinned, ...(currentPrice != null ? { currentPrice } : {}) },
+    create: { testId, vendorId, externalUrl, urlPinned, currentPrice, isActive: true },
   });
 
   // Linking a test no longer prices it inline. It used to run discovery here, scoped to the one new
@@ -116,7 +118,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const data: Record<string, unknown> = {};
-  if ('externalUrl' in body) data.externalUrl = body.externalUrl ? String(body.externalUrl) : null;
+  // Setting a URL here is an admin pin, not the scraper's own auto-cache of "last matched product" in
+  // the same field — urlPinned is what makes runVendorDiscovery trust it over a confident-but-wrong
+  // automatic match instead of silently overwriting it next scrape (see schema.prisma's comment).
+  // Clearing the URL un-pins it, so the next scrape is free to auto-match again.
+  if ('externalUrl' in body) {
+    data.externalUrl = body.externalUrl ? String(body.externalUrl) : null;
+    data.urlPinned = Boolean(data.externalUrl);
+  }
   if ('currentPrice' in body) data.currentPrice = body.currentPrice != null && body.currentPrice !== '' ? Number(body.currentPrice) : null;
   if ('isActive' in body) data.isActive = Boolean(body.isActive);
 

@@ -429,6 +429,15 @@ model Offering {
   // price change, so the site's "checked N ago" freshness reads this — not priceUpdatedAt.
   lastCheckedAt  DateTime? @map("last_checked_at")
   externalUrl    String?   @map("external_url")
+  // True once an admin sets externalUrl by hand (the vendors/[id]/offerings PATCH route) — distinguishes
+  // a deliberate pin from the scraper's own auto-populated "last matched product" cache in the same
+  // field. Without this, a catalog scrape trusted the pin only when its OWN automatic match failed
+  // (unmatched/ambiguous) — a confident-but-WRONG automatic match (routine on a name-only vendor like
+  // MitoHealth: alias token-subset matching is loose) silently overwrote the admin's pin on every run,
+  // even though the pinning code's own comment said a pin should "trust it over the automatic match"
+  // unconditionally. Found live 2026-09-09: MitoHealth's Testosterone, Free (Calculation) kept reverting
+  // to testosterone-total no matter how many times the admin re-pinned testosterone-free.
+  urlPinned      Boolean   @default(false) @map("url_pinned")
   isActive       Boolean   @default(true) @map("is_active")
   deletedAt      DateTime? @map("deleted_at")
   createdAt      DateTime  @default(now()) @map("created_at")

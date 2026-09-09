@@ -321,16 +321,23 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
   for (const { test, result: rawResult } of matches) {
     const offering = testToOffering.get(test.id)!;
 
-    // Manual-URL override: if the admin pinned a product URL, price that exact product and trust it
-    // over the automatic match — by looking its slug up in the fetched catalog (works for API vendors
-    // like MitoHealth/DCL) or by fetching the page (page vendors GoodLabs/OYL). Covers BOTH
-    // 'unmatched' (narrowing found nothing) and 'ambiguous' (narrowing found several candidates and
-    // refused to guess) — a pinned URL is the admin resolving that ambiguity by hand, so it should
-    // always win, not just when there were zero automatic candidates. (Bug: an ambiguous test like
-    // Cortisol — two name-matched HealthLabs products at different prices — never got its pinned URL
-    // consulted at all, staying stuck in the Change Queue even after the admin confirmed the right page.)
+    // Manual-URL override: if the admin pinned a product URL (Offering.urlPinned — set by the admin
+    // PATCH/import routes, NOT by the scraper's own auto-cache of "last matched product" in the same
+    // externalUrl field), price that exact product and trust it over the automatic match — ALWAYS, not
+    // just when the automatic match failed. Regression found live 2026-09-09: MitoHealth's Testosterone,
+    // Free (Calculation) kept reverting to a pinned testosterone-total no matter how many times the
+    // admin re-pinned testosterone-free, because urlPinned didn't exist yet and this only consulted the
+    // pin when rawResult was unmatched/ambiguous — a *confident* automatic match (routine on a name-only
+    // vendor: an alias like "Testosterone, Free+Total LC/MS" token-subset-matches a plain "Total"
+    // product) silently overwrote the pin every run at line ~370 below, despite this block's own
+    // original comment already promising to "trust it over the automatic match" unconditionally.
+    // Un-pinned offerings keep the old behavior: pin consulted only as a fallback for 'unmatched' (no
+    // automatic candidates) or 'ambiguous' (several candidates, refused to guess) — for those, the
+    // stored externalUrl is just the scraper's own cache, not a deliberate override, so a confident
+    // automatic match should win.
     let result = rawResult;
-    if ((rawResult.status === 'unmatched' || rawResult.status === 'ambiguous') && offering.externalUrl) {
+    const tryPin = offering.urlPinned || rawResult.status === 'unmatched' || rawResult.status === 'ambiguous';
+    if (tryPin && offering.externalUrl) {
       const pinned = await priceFromPinnedUrl(offering.externalUrl, test, cfg, fetchHtml, productsBySlug).catch(() => null);
       if (pinned) {
         log(`  pinned URL priced ${test.name} → $${pinned.price}`);
@@ -347,9 +354,11 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     if (result.status === 'ambiguous') {
       summary.ambiguous++;
       // Point the offering at the cheapest candidate's product page so the "verify" link resolves
-      // somewhere useful (instead of the vendor homepage) while it awaits review.
+      // somewhere useful (instead of the vendor homepage) while it awaits review — unless the admin
+      // pinned a URL, which this must never overwrite (only reachable here when pin-pricing above
+      // failed, e.g. a broken pinned URL; the pin itself, right or wrong, stays put either way).
       const cheapest = [...result.candidates].filter((c) => c.price != null).sort((a, b) => a.price! - b.price!)[0];
-      if (cheapest?.url && cheapest.url !== offering.externalUrl) {
+      if (!offering.urlPinned && cheapest?.url && cheapest.url !== offering.externalUrl) {
         await prisma.offering.update({ where: { id: offering.id }, data: { externalUrl: cheapest.url } });
       }
       const prices = result.candidates.map((c) => c.price).filter((p): p is number => p != null).sort((a, b) => a - b);
@@ -376,7 +385,10 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
     // Queue). lastCheckedAt is stamped on EVERY match — an unchanged price is still a verified price,
     // and the site's "checked N ago" freshness reads it (priceUpdatedAt only moves on a change).
     const offeringUpdate: Record<string, unknown> = { lastCheckedAt: new Date() };
-    if (result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
+    // Never auto-overwrite a pin — reachable here for a pinned offering only when pin-pricing above
+    // failed and the automatic tiers found something anyway; the pin (right or wrong) stays put so a
+    // broken pinned URL surfaces as a stale/unpriced offering rather than silently being replaced.
+    if (!offering.urlPinned && result.sourceUrl && result.sourceUrl !== offering.externalUrl) offeringUpdate.externalUrl = result.sourceUrl;
     if (result.memberPrice != null) offeringUpdate.memberPrice = new Decimal(result.memberPrice);
 
     if (isMergeCodeTiers) {

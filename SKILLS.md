@@ -676,11 +676,16 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   our test (`sharesStrongToken`) — guards against wrong/stale codes (e.g. a bad Quest code resolving
   to a different test) and generic-word name collisions ("Vitamin B12" ≠ "Vitamin A").
 - **Manual pinned-URL override** (`persist.ts`): pasting the correct product URL on an offering makes
-  the next scrape fetch that exact page and price it directly, for **both** `unmatched` (narrowing found
-  nothing) and `ambiguous` (narrowing found several candidates and refused to guess) results — a pinned
-  URL is the admin resolving the ambiguity by hand, so it always wins. This is vendor-agnostic shared
-  code (`priceFromPinnedUrl`), so a bug here affects every vendor at once — don't assume a "no price on
-  a pinned URL" report is specific to whichever vendor it was noticed on; check `persist.ts` first.
+  the next scrape fetch that exact page and price it directly, and now (2026-09-09) **always** wins over
+  automatic matching, not just for `unmatched`/`ambiguous` results — a confident-but-wrong automatic
+  match used to silently overwrite the pin every run (found live on MitoHealth: an imported alias
+  token-subset-matched the wrong plain product). `Offering.urlPinned` is the signal — set by the admin
+  PATCH/import routes, never by the scraper, so it's distinguishable from `externalUrl` merely holding
+  the scraper's own cache of the last thing it auto-matched. A pinned offering's URL is never
+  auto-overwritten, even when pin-pricing itself fails (a broken pinned URL surfaces as stale/unpriced
+  rather than silently getting reassigned). This is vendor-agnostic shared code (`priceFromPinnedUrl`),
+  so a bug here affects every vendor at once — don't assume a "no price on a pinned URL" report is
+  specific to whichever vendor it was noticed on; check `persist.ts` first.
 - **To onboard another catalog vendor**: add a `<vendor>-parser.ts` in `packages/scrapers/src/catalog/`
   exposing `parseCatalog(html)` + `parseProduct(html, baseUrl, slug?)`, register it in `adapters.ts`,
   add a config in `configs/`, and set the vendor's `selectors` to `{ mode:'catalog', adapter,

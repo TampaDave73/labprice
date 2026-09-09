@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, a pinned offering URL now actually stays pinned)
+- **A manually pinned product URL could silently revert on the next scrape.** `Offering.externalUrl`
+  did double duty as both "the admin's deliberate override" and "the scraper's own cache of the last
+  product it auto-matched" — the code only consulted the pin when its own automatic match came back
+  `unmatched`/`ambiguous`, so a *confident-but-wrong* automatic match (routine on a name-only vendor:
+  MitoHealth's "Testosterone, Free (Calculation)" alias "Testosterone, Free+Total LC/MS" token-subset-
+  matches a plain "Testosterone, Total" product) silently overwrote the pin on every run, no matter how
+  many times an admin re-set it. Added `Offering.urlPinned` (set by the admin PATCH/import routes, never
+  by the scraper) so a pin now always wins over automatic matching, and the scraper never auto-overwrites
+  a pinned URL even when its own match disagrees. Migration: additive `url_pinned BOOLEAN NOT NULL
+  DEFAULT false` column, applied directly (no down-migration needed for an additive default-false column).
+
 ### Changed (2026-09-09, True Health Labs catalog discovery)
 - **True Health Labs' catalog discovery was missing the vast majority of the real catalog.**
   `product-sitemap.xml` listed well under 200 products; the site's own public WooCommerce Store API
