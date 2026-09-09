@@ -110,8 +110,8 @@ function FastingClock() {
         <text x="76" y="161" fontSize="12" fontWeight="700" fill={GREEN}>
           Generally fine
         </text>
-        <text x="76" y="180" fontSize="12" fill={MUTED}>
-          Plain water · prescription medicines, as directed
+        <text x="76" y="180" fontSize="10.5" fill={MUTED}>
+          Plain water · prescribed medicines
         </text>
       </g>
       <g>
@@ -119,8 +119,8 @@ function FastingClock() {
         <text x="361" y="161" fontSize="12" fontWeight="700" fill={RED}>
           Breaks the fast
         </text>
-        <text x="361" y="180" fontSize="12" fill={MUTED}>
-          Food · juice · milk · sweetened drinks · alcohol
+        <text x="361" y="180" fontSize="10.5" fill={MUTED}>
+          Food · juice · milk · sweet drinks · alcohol
         </text>
       </g>
     </svg>
@@ -164,7 +164,7 @@ function LipidBreakdown() {
           </g>
         );
       })}
-      <text x={barX + 28} y="262" fontSize="11.5" fill={FAINT}>
+      <text x="22" y="262" fontSize="11.5" fill={FAINT}>
         Bar widths are illustrative only — your lab reports the actual values.
       </text>
     </svg>
