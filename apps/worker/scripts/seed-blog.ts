@@ -35,8 +35,8 @@ const POSTS: Seed[] = [
     title: 'How a blood draw actually works, start to finish',
     excerpt:
       'A routine blood draw takes about five minutes and collects one to a few small tubes — usually 10 to 30 mL in total, a fraction of what a blood donation takes. A phlebotomist finds a vein in the crook of your elbow, fills the tubes the requisition calls for, and sends them to the laboratory. The draw is identical no matter which service you ordered the test through.',
-    heroUrl: '/blog/how-a-blood-draw-works.jpg',
-    heroAlt: 'A phlebotomist in gloves drawing blood from a patient’s arm, with a tourniquet in place and collection tubes on a tray behind.',
+    heroUrl: '/blog/how-a-blood-draw-works-1600.webp',
+    heroAlt: 'A phlebotomist in gloves drawing blood from a patient’s arm, with a tourniquet in place.',
     heroCredit: 'Photo: Nguyễn Hiệp / Unsplash',
     relatedTests: ['complete-blood-count-w-differential-platelets', 'comprehensive-metabolic-panel-14', 'lipid-panel'],
     body: `Most of what happens between paying for a blood test and reading the result takes place somewhere you never see. The service you order from doesn't draw your blood — it sells you a **requisition**, which is the laboratory's authorisation to run specific tests on a sample. The draw happens at a Quest Diagnostics or LabCorp patient service center, and the analysis happens in that company's laboratory.
@@ -99,7 +99,13 @@ A small number of people feel light-headed or faint during or shortly after a dr
 
 A laboratory needs an order from a licensed provider before it will run a test, but that order doesn't have to come from *your* doctor. Self-pay ordering services work with a physician network that issues the requisition, which is what you're buying when you order online. A small number of US states restrict direct-access testing — New York is the one most often cited — so availability varies by where you live.
 
-If you already have an order from your own clinician, you can usually take that to a patient service center directly instead.`,
+If you already have an order from your own clinician, you can usually take that to a patient service center directly instead.
+
+## Sources
+
+- [Blood Tests — National Heart, Lung, and Blood Institute (NIH)](https://www.nhlbi.nih.gov/health/blood-tests)
+- [Laboratory Tests — MedlinePlus (National Library of Medicine)](https://medlineplus.gov/laboratorytests.html)
+- [How to Understand Your Lab Results — MedlinePlus](https://medlineplus.gov/lab-tests/how-to-understand-your-lab-results/)`,
     faq: `Q: How long does a blood draw take?
 A: About five minutes from sitting down to standing up. The needle itself is usually in your arm for less than a minute; the rest is identity checks and labelling tubes.
 
@@ -121,7 +127,7 @@ A: Routine results are commonly available in one to three business days. Special
     title: 'Do you need to fast before a blood test?',
     excerpt:
       'Most blood tests do not require fasting. The ones that usually do are glucose and insulin tests, and any panel containing them — such as a comprehensive metabolic panel. When fasting is required it normally means 8 to 12 hours with nothing but plain water. Always follow the instruction printed on your own requisition, because it is specific to the test that was ordered.',
-    heroUrl: '/blog/fasting-before-a-blood-test.jpg',
+    heroUrl: '/blog/fasting-before-a-blood-test-1600.webp',
     heroAlt: 'A finished meal on a table — an empty plate with a fork and knife, beside a coffee mug.',
     heroCredit: 'Photo: James Sestric / Unsplash',
     relatedTests: ['comprehensive-metabolic-panel-14', 'insulin-fasting', 'lipid-panel', 'hemoglobin-a1c'],
@@ -184,7 +190,13 @@ Other measurements don't work that way. Haemoglobin A1c reflects average glucose
 
 This one has genuinely changed. A lipid panel was traditionally drawn fasting, and much US guidance has moved towards accepting non-fasting samples for routine cholesterol screening, since the difference for most people is small. Triglycerides are the component most affected by a recent meal.
 
-Some ordering providers still request a fast, some don't. Follow what your requisition says rather than what you remember from last time.`,
+Some ordering providers still request a fast, some don't. Follow what your requisition says rather than what you remember from last time.
+
+## Sources
+
+- [Fasting for a Blood Test — MedlinePlus (National Library of Medicine)](https://medlineplus.gov/lab-tests/fasting-for-a-blood-test/)
+- [Cholesterol Levels — MedlinePlus](https://medlineplus.gov/lab-tests/cholesterol-levels/)
+- [Blood Tests — National Heart, Lung, and Blood Institute (NIH)](https://www.nhlbi.nih.gov/health/blood-tests)`,
     faq: `Q: How long should you fast before a blood test?
 A: Usually 8 to 12 hours where fasting is required. Finishing dinner and taking a morning appointment is the practical way to do it.
 
@@ -209,7 +221,7 @@ A: Tell the phlebotomist before the draw. They will either rebook you or have th
     title: 'What does a lipid panel measure?',
     excerpt:
       'A lipid panel measures four things from a single blood sample: total cholesterol, LDL cholesterol, HDL cholesterol and triglycerides. It is the standard test for assessing cardiovascular risk, and it is one of the cheapest and most widely stocked tests in self-pay lab testing. Interpreting the numbers is a job for a clinician who knows your history.',
-    heroUrl: '/blog/what-a-lipid-panel-measures.jpg',
+    heroUrl: '/blog/what-a-lipid-panel-measures-1600.webp',
     heroAlt: 'Rows of blood collection tubes with coloured caps arranged in a laboratory rack.',
     heroCredit: 'Photo: Testalize.me / Unsplash',
     relatedTests: ['lipid-panel', 'apolipoprotein-b', 'lipoprotein-a', 'c-reactive-protein-high-sensitivity'],
@@ -260,7 +272,13 @@ Neither replaces a lipid panel. Both are ordered as separate tests, and both are
 
 Far less than most people expect, and the spread between services is large. The self-pay prices we track for a [lipid panel](/test/lipid-panel) currently run from **[PRICE-RANGE:lipid-panel]** across [PRICE-COUNT:lipid-panel] ordering services — the same test, at the same laboratories, at several times the price.
 
-Those figures are read live from our own price checks each time this page loads, most recently on [PRICE-DATE:lipid-panel]. The point of the comparison is that the cheapest and most expensive listings are not buying you a different test.`,
+Those figures are read live from our own price checks each time this page loads, most recently on [PRICE-DATE:lipid-panel]. The point of the comparison is that the cheapest and most expensive listings are not buying you a different test.
+
+## Sources
+
+- [Cholesterol Levels — MedlinePlus (National Library of Medicine)](https://medlineplus.gov/lab-tests/cholesterol-levels/)
+- [Triglycerides Test — MedlinePlus](https://medlineplus.gov/lab-tests/triglycerides-test/)
+- [About Cholesterol — Centers for Disease Control and Prevention](https://www.cdc.gov/cholesterol/about/index.html)`,
     faq: `Q: What does a lipid panel test for?
 A: Total cholesterol, LDL cholesterol, HDL cholesterol and triglycerides, from a single blood sample. Most reports also derive non-HDL cholesterol from those values.
 
@@ -285,7 +303,7 @@ A: Self-pay prices vary widely between ordering services for the identical test 
     title: 'What is a comprehensive metabolic panel testing for?',
     excerpt:
       'A comprehensive metabolic panel (CMP) measures 14 substances in one blood sample to give a broad picture of kidney function, liver function, blood sugar, protein levels and electrolyte balance. It is one of the most commonly ordered blood tests in routine care, and it usually requires fasting because it includes glucose.',
-    heroUrl: '/blog/what-a-metabolic-panel-measures.jpg',
+    heroUrl: '/blog/what-a-metabolic-panel-measures-1600.webp',
     heroAlt: 'Blood collection tubes with red, purple and green caps standing in a yellow laboratory rack.',
     heroCredit: 'Photo: National Cancer Institute / Unsplash',
     relatedTests: ['comprehensive-metabolic-panel-14', 'complete-blood-count-w-differential-platelets', 'hemoglobin-a1c', 'uric-acid'],
@@ -350,7 +368,13 @@ A CMP being normal is reassuring about the specific systems it covers, and says 
 
 The self-pay prices we track for a [comprehensive metabolic panel](/test/comprehensive-metabolic-panel-14) currently run from **[PRICE-RANGE:comprehensive-metabolic-panel-14]** across [PRICE-COUNT:comprehensive-metabolic-panel-14] ordering services. It is among the cheapest panels available precisely because it is so routine — the laboratories run enormous volumes of it.
 
-Those figures come from our own price checks, most recently on [PRICE-DATE:comprehensive-metabolic-panel-14].`,
+Those figures come from our own price checks, most recently on [PRICE-DATE:comprehensive-metabolic-panel-14].
+
+## Sources
+
+- [Comprehensive Metabolic Panel (CMP) — MedlinePlus (National Library of Medicine)](https://medlineplus.gov/lab-tests/comprehensive-metabolic-panel-cmp/)
+- [Basic Metabolic Panel (BMP) — MedlinePlus](https://medlineplus.gov/lab-tests/basic-metabolic-panel-bmp/)
+- [How to Understand Your Lab Results — MedlinePlus](https://medlineplus.gov/lab-tests/how-to-understand-your-lab-results/)`,
     faq: `Q: What does a comprehensive metabolic panel test for?
 A: Fourteen measurements covering kidney function (BUN, creatinine), liver function (ALT, AST, ALP, bilirubin), electrolytes and fluid balance (sodium, potassium, chloride, carbon dioxide, calcium) and sugar and protein (glucose, albumin, total protein).
 
@@ -375,7 +399,7 @@ A: Not necessarily. Reference ranges are set so that some healthy people fall ou
     title: 'How to get blood tests without insurance',
     excerpt:
       'You can order most routine blood tests yourself, without a doctor’s visit and without insurance, through an online ordering service. You pay a fixed published price up front, receive a requisition, and have blood drawn at a Quest Diagnostics or LabCorp patient service center. The sample, the laboratory and the result are the same ones a doctor’s order would produce — only the price and the paperwork differ.',
-    heroUrl: '/blog/lab-tests-without-insurance.jpg',
+    heroUrl: '/blog/lab-tests-without-insurance-1600.webp',
     heroAlt: 'A stethoscope resting on top of a calculator.',
     heroCredit: 'Photo: Marek Studzinski / Unsplash',
     relatedTests: ['lipid-panel', 'comprehensive-metabolic-panel-14', 'vitamin-d-25-hydroxy', 'hemoglobin-a1c'],
@@ -440,7 +464,13 @@ Worth being clear about the limits:
 
 No. If you have already met your deductible for the year, running the test through insurance may cost you nothing at the point of care. Self-pay tends to win when you are early in a deductible year, on a high-deductible plan, uninsured, or simply want a known price rather than a bill that arrives weeks later.
 
-The honest framing is that they are different trade-offs, not that one is universally better.`,
+The honest framing is that they are different trade-offs, not that one is universally better.
+
+## Sources
+
+- [How to Understand Your Lab Results — MedlinePlus (National Library of Medicine)](https://medlineplus.gov/lab-tests/how-to-understand-your-lab-results/)
+- [Laboratory Tests — MedlinePlus](https://medlineplus.gov/laboratorytests.html)
+- [Blood Tests — National Heart, Lung, and Blood Institute (NIH)](https://www.nhlbi.nih.gov/health/blood-tests)`,
     faq: `Q: Can you order blood tests without a doctor?
 A: In most US states, yes. Online ordering services work with a physician network that issues the laboratory requisition as part of your purchase. A small number of states restrict direct-access testing, New York being the most commonly cited.
 

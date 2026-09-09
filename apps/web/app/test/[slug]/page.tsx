@@ -51,6 +51,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `/test/${test.slug}`,
       type: 'website',
+      images: ['/opengraph-image'],
     },
   };
 }
@@ -95,9 +96,10 @@ export default async function TestDetailPage({ params }: Props) {
   //  - Product carries the prices, with one Offer per vendor so the vendor↔price pairing is
   //    machine-readable instead of only being visible in the rendered table.
   //  - BreadcrumbList mirrors the breadcrumb the page already renders.
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
+  // Each node is emitted as its own script tag rather than inside one `@graph`: a @graph wrapper
+  // has no top-level `@type` and validators report it as a schema missing its type. `@id`
+  // cross-references resolve across separate tags, so the links between the nodes still hold.
+  const nodes = [
       {
         '@type': 'MedicalTest',
         '@id': `${pageUrl}#test`,
@@ -135,28 +137,30 @@ export default async function TestDetailPage({ params }: Props) {
             },
           ]
         : []),
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: base },
-          { '@type': 'ListItem', position: 2, name: test.category.name, item: `${base}/category/${test.category.slug}` },
-          { '@type': 'ListItem', position: 3, name: test.name },
-        ],
-      },
-    ],
-  };
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+        { '@type': 'ListItem', position: 2, name: test.category.name, item: `${base}/category/${test.category.slug}` },
+        { '@type': 'ListItem', position: 3, name: test.name },
+      ],
+    },
+  ];
 
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
-      <script
-        type="application/ld+json"
-        // JSON.stringify doesn't escape "<" — a test name/description containing "</script>" could
-        // otherwise break out of this tag. < is valid inside a JSON string and parses identically.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
-      />
+      {/* JSON.stringify doesn't escape "<" — a test name/description containing "</script>" could
+          otherwise break out of this tag. < is valid inside a JSON string and parses identically. */}
+      {nodes.map((node) => (
+        <script
+          key={node['@type'] as string}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', ...node }).replace(/</g, '\\u003c') }}
+        />
+      ))}
       <PageViewTracker testId={test.id} />
       <Navbar />
-      <main>
+      <main id="main">
         <TestDetailClient
           test={{
             id: test.id,

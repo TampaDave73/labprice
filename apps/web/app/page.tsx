@@ -128,7 +128,7 @@ export default async function Home() {
       <PageViewTracker />
       <Navbar />
 
-      <main>
+      <main id="main">
       {/* Hero */}
       <div
         style={{

@@ -17,6 +17,7 @@ export const metadata: Metadata = {
     description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
     url: '/order-services',
     type: 'website',
+    images: ['/opengraph-image'],
   },
 };
 
@@ -79,7 +80,7 @@ export default async function OrderServicesPage() {
   return (
     <div className="min-h-screen" style={{ background: 'oklch(0.985 0.005 260)' }}>
       <Navbar />
-      <main style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px 80px' }}>
+      <main id="main" style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 24px 80px' }}>
         <h1 style={{ fontSize: 34, fontWeight: 700, letterSpacing: '-0.6px', color: 'oklch(0.2 0.04 260)', marginBottom: 10 }}>
           Order Services
         </h1>

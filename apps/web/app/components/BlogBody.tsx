@@ -11,10 +11,10 @@
 //   [FIG:name]            → a diagram from BlogFigures
 //   anything else         → <p>
 //
-// Inline: **bold**, [text](/path) links, and [PRICE…:slug] tokens resolved from live offerings.
-// Links are restricted to same-site paths — an article body is admin-authored, but keeping it to
-// relative paths means a post can never quietly become an outbound link farm, and it keeps every
-// link crawlable as part of this site.
+// Inline: **bold**, [text](/path) and [text](https://…) links, and [PRICE…:slug] tokens resolved
+// from live offerings. Internal links render as <Link>; external ones open in a new tab and carry
+// rel="nofollow noopener" — citing authoritative sources is the point (it's what the E-E-A-T signal
+// rewards), while nofollow keeps admin-authored bodies from being usable as a link farm.
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
@@ -25,7 +25,7 @@ const BODY = 'oklch(0.35 0.03 260)';
 
 // **bold** and [label](/path). Split on both at once so they can appear in the same line.
 // The link alternative requires a following "(", so a bare [PRICE:slug] falls through to the third.
-const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((\/[^)\s]*)\)|\[PRICE(?:-RANGE|-COUNT|-DATE)?:[a-z0-9-]+\])/g;
+const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((?:\/|https:\/\/)[^)\s]*\)|\[PRICE(?:-RANGE|-COUNT|-DATE)?:[a-z0-9-]+\])/g;
 
 // Tokens inside **bold** never reach the split below — the bold alternative matches the whole
 // `**[PRICE:slug]**` run first — so bold text gets its own resolution pass.
@@ -35,7 +35,7 @@ function resolveTokens(text: string, prices: Prices): string {
 }
 
 function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNode[] {
-  return text.split(INLINE).filter((p) => p != null && p !== '' && !p.startsWith('/')).map((part, i) => {
+  return text.split(INLINE).filter((p) => p != null && p !== '').map((part, i) => {
     const key = `${keyPrefix}-${i}`;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
@@ -48,12 +48,21 @@ function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNod
       // Resolved server-side from the same offerings the price cards use, so prose and cards agree.
       return <Fragment key={key}>{renderPriceToken(part, prices[/:([a-z0-9-]+)\]$/.exec(part)?.[1] ?? ''])}</Fragment>;
     }
-    const link = /^\[([^\]]+)\]\((\/[^)\s]*)\)$/.exec(part);
+    const link = /^\[([^\]]+)\]\((\/[^)\s]*|https:\/\/[^)\s]*)\)$/.exec(part);
     if (link) {
+      const href = link[2]!;
+      const style = { color: 'oklch(0.48 0.14 260)', textDecoration: 'underline', textUnderlineOffset: 2 } as const;
+      if (href.startsWith('/')) {
+        return (
+          <Link key={key} href={href} style={style}>
+            {link[1]}
+          </Link>
+        );
+      }
       return (
-        <Link key={key} href={link[2]!} style={{ color: 'oklch(0.48 0.14 260)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+        <a key={key} href={href} target="_blank" rel="nofollow noopener" style={style}>
           {link[1]}
-        </Link>
+        </a>
       );
     }
     return <Fragment key={key}>{part}</Fragment>;

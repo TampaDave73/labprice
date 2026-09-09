@@ -12,7 +12,7 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import BlogBody, { type Prices } from '../../components/BlogBody';
 import GuideLinks from '../../components/GuideLinks';
-import { parseFaq, readingTimeMinutes, formatPostDate, priceTokenSlugs } from '@/lib/blog';
+import { parseFaq, readingTimeMinutes, formatPostDate, priceTokenSlugs, heroSrcSet } from '@/lib/blog';
 import { relatedGuides } from '@/lib/guides';
 
 interface Props {
@@ -110,7 +110,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       authors: [post.author],
-      ...(post.heroUrl && { images: [{ url: post.heroUrl, alt: post.heroAlt ?? post.title }] }),
+      images: post.heroUrl ? [{ url: post.heroUrl, alt: post.heroAlt ?? post.title }] : ['/opengraph-image'],
     },
   };
 }
@@ -134,11 +134,11 @@ export default async function BlogPostPage({ params }: Props) {
     ? post.updatedAt
     : null;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Article',
+  // One script tag per node — see the note on the test page: a `@graph` wrapper has no top-level
+  // `@type`, which validators flag, and `@id` links resolve fine across separate tags.
+  const nodes = [
+    {
+      '@type': 'Article',
         '@id': `${url}#article`,
         headline: post.title,
         description: post.excerpt,
@@ -165,26 +165,28 @@ export default async function BlogPostPage({ params }: Props) {
             },
           ]
         : []),
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Home', item: BASE },
-          { '@type': 'ListItem', position: 2, name: 'Guides', item: `${BASE}/blog` },
-          { '@type': 'ListItem', position: 3, name: post.title },
-        ],
-      },
-    ],
-  };
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE },
+        { '@type': 'ListItem', position: 2, name: 'Guides', item: `${BASE}/blog` },
+        { '@type': 'ListItem', position: 3, name: post.title },
+      ],
+    },
+  ];
 
   return (
     <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 260)' }}>
-      <script
-        type="application/ld+json"
-        // See the note on the test page: JSON.stringify doesn't escape "<".
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }}
-      />
+      {/* See the note on the test page: JSON.stringify doesn't escape "<". */}
+      {nodes.map((node) => (
+        <script
+          key={node['@type'] as string}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', ...node }).replace(/</g, '\\u003c') }}
+        />
+      ))}
       <Navbar />
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 80px' }}>
+      <main id="main" style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 80px' }}>
         <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 22, fontSize: 13, color: 'oklch(0.58 0.04 260)' }}>
           <Link href="/" style={{ color: 'oklch(0.52 0.093 260)', fontWeight: 500, textDecoration: 'none' }}>
             Home
@@ -201,8 +203,19 @@ export default async function BlogPostPage({ params }: Props) {
           </h1>
           <div style={{ fontSize: 13.5, color: 'oklch(0.52 0.03 260)', marginBottom: 26 }}>
             By <span style={{ fontWeight: 600, color: 'oklch(0.32 0.04 260)' }}>{post.author}</span>
-            {post.publishedAt ? ` · ${formatPostDate(post.publishedAt)}` : ''} · {readingTimeMinutes(post.body)} min read
-            {updated && <> · Updated {formatPostDate(updated)}</>}
+            {post.publishedAt && (
+              <>
+                {' · '}
+                <time dateTime={post.publishedAt.toISOString()}>{formatPostDate(post.publishedAt)}</time>
+              </>
+            )}{' · '}
+            {readingTimeMinutes(post.body)} min read
+            {updated && (
+              <>
+                {' · Updated '}
+                <time dateTime={updated.toISOString()}>{formatPostDate(updated)}</time>
+              </>
+            )}
           </div>
 
           {post.heroUrl && (
@@ -210,6 +223,8 @@ export default async function BlogPostPage({ params }: Props) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={post.heroUrl}
+                srcSet={heroSrcSet(post.heroUrl)}
+                sizes="(max-width: 800px) 100vw, 712px"
                 alt={post.heroAlt ?? ''}
                 width={1200}
                 height={630}

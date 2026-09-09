@@ -36,6 +36,16 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Content-Security-Policy', contentSecurityPolicy());
+  // Locks the site to HTTPS for two years once a browser has seen this header. Production only —
+  // sending it in dev would pin localhost to HTTPS in your browser and break `pnpm dev`.
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  }
+  // Nothing here uses these APIs; denying them explicitly stops an embedded third party asking.
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=()',
+  );
 
   // Anonymous session id for internal analytics ("unique visitors", not auth) — set here (not
   // client-side) so it's a plain cookie the browser sends on every request automatically, including

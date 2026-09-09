@@ -28,35 +28,37 @@ export const viewport: Viewport = {
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
 
-// Site-wide entity graph. Answer engines resolve "what is LabTestCompare" from Organization; the
+// Site-wide entity. Answer engines resolve "what is LabTestCompare" from Organization; the
 // WebSite/SearchAction node is what lets them address /search directly instead of guessing a URL
-// shape. Emitted once in the root layout so every route carries it — per-page JSON-LD (test pages)
-// is additive, not a replacement.
-const siteJsonLd = {
+// shape. Emitted once in the root layout so every route carries it — per-page JSON-LD (test pages,
+// articles) is additive, not a replacement.
+//
+// Two separate blocks rather than one `@graph`: a @graph wrapper has no top-level `@type`, and
+// validators flag that as a schema missing its type. `@id` cross-references still resolve across
+// separate script tags, so nothing is lost by splitting them.
+const organizationLd = {
   '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': `${BASE_URL}/#organization`,
-      name: 'LabTestCompare',
-      url: BASE_URL,
-      logo: `${BASE_URL}/icon-512.png`,
-      description:
-        'Independent price comparison for self-pay blood tests ordered through services that draw at Quest Diagnostics and LabCorp patient service centers.',
-    },
-    {
-      '@type': 'WebSite',
-      '@id': `${BASE_URL}/#website`,
-      url: BASE_URL,
-      name: 'LabTestCompare',
-      publisher: { '@id': `${BASE_URL}/#organization` },
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/search?q={search_term_string}` },
-        'query-input': 'required name=search_term_string',
-      },
-    },
-  ],
+  '@type': 'Organization',
+  '@id': `${BASE_URL}/#organization`,
+  name: 'LabTestCompare',
+  url: BASE_URL,
+  logo: `${BASE_URL}/icon-512.png`,
+  description:
+    'Independent price comparison for self-pay blood tests ordered through services that draw at Quest Diagnostics and LabCorp patient service centers.',
+};
+
+const webSiteLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${BASE_URL}/#website`,
+  url: BASE_URL,
+  name: 'LabTestCompare',
+  publisher: { '@id': `${BASE_URL}/#organization` },
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${BASE_URL}/search?q={search_term_string}` },
+    'query-input': 'required name=search_term_string',
+  },
 };
 
 export const metadata: Metadata = {
@@ -90,15 +92,33 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* GA4's script is third-party and render-blocking; warming the connection early shaves the
+            handshake off its cost. Harmless when the measurement id is unset and nothing loads. */}
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        {/* Points AI crawlers at the plain-prose description of the site (app/llms.txt/route.ts).
+            There's no registered rel for this yet; the alternate/markdown pairing is the convention
+            in use, and it makes the file discoverable rather than only guessable. */}
+        <link rel="alternate" type="text/markdown" href="/llms.txt" title="llms.txt" />
+      </head>
       <body
         className={`${dmSans.className} ${poppins.variable} min-h-screen antialiased`}
         style={{ background: 'oklch(0.985 0.005 260)' }}
       >
+        {/* Keyboard users otherwise land on the nav on every page. */}
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         {/* JSON.stringify doesn't escape "<" — escaping it keeps a stray "</script>" in any future
             copy from breaking out of this tag. < is valid inside a JSON string and parses the same. */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd).replace(/</g, '\\u003c') }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd).replace(/</g, '\\u003c') }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteLd).replace(/</g, '\\u003c') }}
         />
         <GoogleAnalytics />
         {children}

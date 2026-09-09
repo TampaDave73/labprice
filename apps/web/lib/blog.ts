@@ -110,3 +110,15 @@ export function renderPriceToken(token: string, facts: PriceFacts | undefined): 
       return `$${facts.min.toFixed(2)}`;
   }
 }
+
+/**
+ * Hero images are stored as `<name>-1600.webp` with an 800px sibling beside them. Deriving the
+ * srcset from the stored URL keeps the database to one column while still serving a phone the
+ * smaller file — a hero is the largest thing on an article page, and 1600px of it is wasted on a
+ * 390px screen. Returns undefined for any URL not following the convention, so a hand-entered
+ * image in the admin editor simply renders without a srcset instead of 404ing a made-up variant.
+ */
+export function heroSrcSet(url: string | null | undefined): string | undefined {
+  if (!url || !url.endsWith('-1600.webp')) return undefined;
+  return `${url.replace('-1600.webp', '-800.webp')} 800w, ${url} 1600w`;
+}
