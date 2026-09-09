@@ -17,6 +17,8 @@ export function logSearch(params: {
   resultsCount: number;
   userId?: string;
   sessionId?: string;
+  /** Pass false for autocomplete keystrokes; omit for a search the user actually submitted. */
+  committed?: boolean;
 }) {
   prisma.searchLog
     .create({ data: params })

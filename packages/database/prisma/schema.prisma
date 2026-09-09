@@ -744,6 +744,13 @@ model SearchLog {
   id           BigInt   @id @default(autoincrement())
   query        String
   resultsCount Int      @map("results_count")
+  /// False for the per-keystroke autocomplete lookups the SearchBar fires, true for a search the
+  /// user actually committed (Enter / Compare / a /search page load). Without this every prefix of
+  /// every word is indistinguishable from a real query — "Tezt" and "insi" are half-typed words, and
+  /// they were polluting both the zero-result analytics view and the question-research queue.
+  /// Rows written before this column existed default to true and cannot be attributed after the
+  /// fact; the research harvester applies text heuristics as well for that reason.
+  committed    Boolean  @default(true)
   userId       String?  @map("user_id")
   sessionId    String?  @map("session_id")
   createdAt    DateTime @default(now()) @map("created_at")

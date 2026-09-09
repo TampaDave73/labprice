@@ -23,11 +23,17 @@ export async function GET(req: NextRequest) {
 
     const results = await autocomplete(parsed.data.q, parsed.data.limit);
 
-    // This is the search endpoint the site's actual SearchBar calls (the OTHER /api/v1/search route
-    // logs, but nothing in the UI calls it) — log here so "what are people searching for" reflects real
-    // usage. Debounced 300ms per keystroke client-side, so this can include partial-word prefixes; the
-    // admin analytics view leans on the zero-result slice, which stays meaningful either way.
-    logSearch({ query: parsed.data.q, resultsCount: results.length, sessionId: parsed.data.sessionId });
+    // This is the endpoint the site's actual SearchBar calls, so it's where "what are people
+    // searching for" comes from. It fires once per keystroke (debounced 300ms), which means most rows
+    // are partial words: one person typing "insulin" leaves "insi", "insu", "insul" behind.
+    // `committed: false` marks them as such — the zero-result analytics view and the question-research
+    // queue both need real queries, not the letters someone passed through on the way to one.
+    logSearch({
+      query: parsed.data.q,
+      resultsCount: results.length,
+      sessionId: parsed.data.sessionId,
+      committed: false,
+    });
 
     return NextResponse.json({ data: results });
   } catch (err) {

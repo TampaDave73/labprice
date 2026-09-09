@@ -40,6 +40,8 @@ export default function AdminQuestionsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [draftLink, setDraftLink] = useState<{ slug: string; title: string } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = (status: Status | 'ALL') => {
     setLoading(true);
@@ -69,11 +71,36 @@ export default function AdminQuestionsPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error?.message ?? 'Update failed');
       }
+      if (status === 'APPROVED' && tab === 'NEW') {
+        setMsg({ text: `Approved. Open the Approved tab to draft an article from it.`, ok: true });
+      }
       load(tab);
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : 'Update failed', ok: false });
     } finally {
       setBusyId(null);
+    }
+  }
+
+  // Site-search candidates are noisy by nature, so clearing a screenful has to be one action.
+  async function rejectAllVisible() {
+    if (!confirm(`Reject all ${candidates.length} questions shown? They stay in the Rejected tab.`)) return;
+    setBulkBusy(true);
+    setMsg(null);
+    try {
+      for (const c of candidates) {
+        await fetch('/api/v1/admin/questions', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: c.id, status: 'REJECTED' }),
+        });
+      }
+      setMsg({ text: `Rejected ${candidates.length} question(s).`, ok: true });
+      load(tab);
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : 'Bulk reject failed', ok: false });
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -84,8 +111,10 @@ export default function AdminQuestionsPage() {
       const res = await fetch(`/api/v1/admin/questions/${c.id}/draft`, { method: 'POST' });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error?.message ?? 'Draft generation failed');
-      setMsg({ text: `Draft created: "${j.data.title}". Read and publish it at /admin/blog.`, ok: true });
-      load(tab);
+      setDraftLink({ slug: j.data.slug, title: j.data.title });
+      // The candidate is now DRAFTED, so it left whichever tab you were on. Follow it, rather than
+      // leaving you looking at an empty list wondering where the draft went.
+      setTab('DRAFTED');
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : 'Draft generation failed', ok: false });
     } finally {
@@ -103,7 +132,7 @@ export default function AdminQuestionsPage() {
         at <code>/admin/blog</code> — drafts are never published automatically.
       </p>
 
-      <div className="mb-5 flex flex-wrap gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -114,7 +143,31 @@ export default function AdminQuestionsPage() {
             {counts[t.key] != null ? ` (${counts[t.key]})` : ''}
           </button>
         ))}
+        {tab === 'NEW' && candidates.length > 0 && (
+          <button
+            className="admin-btn admin-btn-sm admin-btn-ghost ml-auto"
+            disabled={bulkBusy}
+            onClick={rejectAllVisible}
+          >
+            {bulkBusy ? 'Rejecting…' : `Reject all ${candidates.length} shown`}
+          </button>
+        )}
       </div>
+
+      {draftLink && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Draft created: <strong>{draftLink.title}</strong>. It is <strong>not published</strong> —
+          read it at{' '}
+          <a className="underline" href="/admin/blog">
+            /admin/blog
+          </a>{' '}
+          or preview it at{' '}
+          <a className="underline" href={`/blog/${draftLink.slug}`} target="_blank" rel="noopener noreferrer">
+            /blog/{draftLink.slug}
+          </a>
+          .
+        </div>
+      )}
 
       {msg && (
         <div className={`mb-4 rounded-lg border px-3 py-2 text-sm ${msg.ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
@@ -133,9 +186,22 @@ export default function AdminQuestionsPage() {
         </div>
       ) : candidates.length === 0 ? (
         <p className="text-brand-400">
-          Nothing here yet. Run{' '}
-          <code>pnpm --filter @labprice/worker exec tsx scripts/harvest-questions.ts</code> to populate
-          the queue.
+          {tab === 'NEW' && (counts.APPROVED || counts.DRAFTED || counts.REJECTED)
+            ? 'No new questions to review — everything harvested so far has been triaged.'
+            : tab === 'APPROVED'
+              ? 'Nothing approved and waiting. Approve a question on the New tab to draft an article from it.'
+              : tab === 'DRAFTED'
+                ? 'No drafts yet. Approve a question, then use “Draft article”.'
+                : tab === 'REJECTED'
+                  ? 'Nothing rejected.'
+                  : null}
+          {(tab === 'ALL' || (tab === 'NEW' && !counts.APPROVED && !counts.DRAFTED && !counts.REJECTED)) && (
+            <>
+              Nothing here yet. Run{' '}
+              <code>pnpm --filter @labprice/worker exec tsx scripts/harvest-questions.ts</code> to
+              populate the queue.
+            </>
+          )}
         </p>
       ) : (
         <div className="admin-card divide-y">

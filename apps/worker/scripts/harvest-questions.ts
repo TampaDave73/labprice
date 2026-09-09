@@ -132,7 +132,10 @@ async function harvestReddit(): Promise<Candidate[]> {
 async function harvestSearchLogs(): Promise<Candidate[]> {
   const rows = await prisma.searchLog.groupBy({
     by: ['query'],
-    where: { resultsCount: 0, createdAt: { gte: new Date(Date.now() - 180 * 86_400_000) } },
+    // `committed: true` excludes the SearchBar's per-keystroke autocomplete lookups. Rows written
+    // before that column existed all default to true, which is why the text filters below still
+    // matter — they are what keeps legacy fragments ("Tezt", "insi") out of the queue.
+    where: { resultsCount: 0, committed: true, createdAt: { gte: new Date(Date.now() - 180 * 86_400_000) } },
     _count: { query: true },
     orderBy: { _count: { query: 'desc' } },
     take: 400,
@@ -140,7 +143,9 @@ async function harvestSearchLogs(): Promise<Candidate[]> {
 
   const cleaned = rows
     .map((r) => ({ q: r.query.trim(), n: r._count.query }))
-    .filter(({ q }) => q.length >= 4)
+    // A phrase, or a whole word. "Tezt" and "insi" are four characters and pass any length-only
+    // test, so the rule is: multi-word, or long enough to be a word rather than the start of one.
+    .filter(({ q }) => q.includes(' ') || q.length >= 6)
     .filter(({ q }) => !/^[\d\s.-]+$/.test(q)) // an order code, not a subject
     .filter(({ q }) => !REJECT.test(q)); // same scope rule as the forums: markers, not compounds
 
