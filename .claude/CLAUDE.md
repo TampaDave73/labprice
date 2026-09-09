@@ -228,6 +228,19 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     test no longer prices it inline** — discovery fetches the whole catalog listing regardless of how
     many offerings it prices, so pricing is batched behind "Scrape now" instead of run per-add.
 
+18. **Conditional rendering deletes content from the HTML — that's an SEO/AEO bug, not just a UI
+    choice.** `{isOpen && <div>…</div>}` in a collapsed disclosure means the text never reaches the
+    document; Next SSRs client components, so whatever is mounted at initial state IS in the source and
+    whatever isn't, isn't. This is exactly how the test page's prep instructions and reference ranges
+    stayed invisible to every crawler for months (fixed 2026-09-09: always mount, toggle with
+    `[hidden]`). Same page, same sweep: section titles are `<h2>`s phrased as questions built from the
+    test name, and the price comparison is a real `<table>` (caption + `scope="col"`/`scope="row"`) —
+    don't regress either back to `<span>`s or a `<div>` grid. Public JSON-LD lives in
+    **two places**: `app/layout.tsx` (`Organization` + `WebSite`) and `app/test/[slug]/page.tsx`
+    (`MedicalTest` + `Product` + `BreadcrumbList` as a `@graph`). Prices belong on the **Product** node
+    — schema.org defines `offers` on Product/Service, not on MedicalTest — and every public route sets
+    its own `alternates.canonical`. `SKILLS.md` → "SEO / AEO surface" has the full list.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

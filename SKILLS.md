@@ -22,7 +22,7 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   a "**Prices last checked N ago**" freshness line (from the freshest offering `lastCheckedAt`,
   falling back to `priceUpdatedAt` — `lastCheckedAt` is stamped on every scrape verification even
   when the price is unchanged; `priceUpdatedAt` only moves on a change);
-  JSON-LD `MedicalTest`. Fully public + ISR-cacheable (no `auth()` — Save/Price-Alert were removed).
+  JSON-LD (see **SEO / AEO surface** below). Fully public + ISR-cacheable (no `auth()` — Save/Price-Alert were removed).
   **Master-import data states** (2026-07-27, `TestDetailClient.tsx`): a `thirdPartyOnly` test with zero
   offerings shows "Not offered by Quest or LabCorp — this is a specialty/third-party test" instead of an
   empty price table; `cardioIq` shows a "Cardio IQ® branded variant" badge (plus `labVariant` text when
@@ -59,6 +59,29 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   `POST /api/v1/reports/result-error` → `ResultErrorReport` row (test/offering ids validated; the
   offering must belong to the test), admin email alert, triaged in the "Result error reports" panel
   at `/admin/suggestions` (`kind: 'report'` on the PATCH).
+- **SEO / AEO surface** (2026-09-09 audit sweep) — what the site exposes to search engines and answer
+  engines, and the rules that keep it working:
+  - **Metadata**: root defaults + OG/Twitter in `app/layout.tsx`; every public route sets its own
+    `alternates.canonical` in `generateMetadata` (relative — resolved against `metadataBase`).
+    `/search` is `robots:{index:false}` and is also `Disallow`ed in `robots.ts`.
+  - **JSON-LD**: `Organization` + `WebSite`/`SearchAction` site-wide (root layout);
+    `MedicalTest` + `Product`(`AggregateOffer` with one `Offer` per vendor) + `BreadcrumbList` on
+    test pages. The clinical facts and the prices are **separate nodes linked by `@id`** — schema.org
+    defines `offers` on Product/Service, not on MedicalTest. Don't hang prices back on MedicalTest.
+  - **`/llms.txt`** (`app/llms.txt/route.ts`) — a route handler, not a file in `public/`, so the test
+    and vendor counts in it stay true. Falls back to count-free wording if the DB is unreachable.
+  - **`sitemap.ts`** — homepage, the static pages, live categories, and every live test.
+    A test's `lastModified` is the freshest offering `lastCheckedAt`, **not** `test.updatedAt`
+    (which only moves when an admin edits copy).
+  - **Extractability rules for the test template** — these are load-bearing, not cosmetic:
+    accordion bodies are **always mounted** and hidden with `[hidden]` (`{isOpen && …}` deletes them
+    from the HTML, which hid the prep instructions and reference ranges from every crawler);
+    section titles are `<h2>`s **phrased as questions** built from the test name; the price
+    comparison is a real `<table>` with a caption, `scope="col"` headers and a `scope="row"` vendor
+    cell; and an **answer-first summary** above the table states the cheapest/highest price in prose,
+    derived from the same `offerings` array the table renders.
+  - **Not done yet**: no FAQ content or `FAQPage` schema (needs a Test-linked FAQ model and
+    human-sourced answers — YMYL, don't generate them), and no named author/reviewer anywhere.
 - **Public read API (v1)** — `/api/v1/tests` (paginated, `category`/`sort`/`cursor`/`limit`),
   `/api/v1/tests/popular`, `/api/v1/tests/[slug]`, `/api/v1/categories`, `/api/v1/trends/[testId]`,
   `/api/v1/search`. Read-only, zod-validated, no UI callers by design — kept as a deliberate API

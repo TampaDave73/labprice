@@ -9,6 +9,51 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-09, SEO/AEO audit sweep — the test template was largely unreadable to crawlers)
+- **Collapsed accordion sections never reached the HTML.** `TestDetailClient` rendered section bodies
+  as `{isOpen && …}` with `openSection` defaulting to `about`, so "How It's Performed", "How To
+  Prepare" and "Normal Ranges" — the prep instructions and reference ranges, the most citation-worthy
+  content on the site — existed only after a click. Always mounted now, toggled with `[hidden]`.
+- **The test page had exactly one heading.** The `<h1>` and then nothing: section titles were `<span>`s
+  inside buttons. They're `<h2>`s now, phrased as the question being answered and templated on the test
+  name ("How do you prepare for a Ferritin test?"), which is the unit search and answer engines segment
+  a page by.
+- **The price comparison is a real `<table>`** (caption, `scope="col"` headers, `scope="row"` vendor
+  cell) instead of a CSS grid of `<div>`s where the vendor↔price pairing was a visual coincidence of
+  column order. Layout unchanged — `colgroup` + `table-layout:fixed` reproduces the old `1fr 90px 80px`.
+- **Added an answer-first summary above the table** ("The cheapest self-pay X is $A at V, out of N
+  services; the highest is $B…"), derived from the same offerings the table renders. Previously that
+  answer existed only as a star badge and colored numbers.
+- **Homepage and `/order-services` now say what the site is.** The hero subheading was a slogan and
+  nothing on either page defined the entity, named Quest/LabCorp, or noted that the vendor list is
+  alphabetical rather than ranked. All counts are derived, never hardcoded.
+- Semantic landmarks: `<main>` on home/test/category/order-services, `<nav aria-label="Breadcrumb">`
+  on the test page (category and search already had one).
+
+### Added (2026-09-09, machine-readable surface)
+- **`Organization` + `WebSite`/`SearchAction` JSON-LD site-wide** (`app/layout.tsx`) — there was no
+  entity markup at all, so nothing resolved "what is LabTestCompare".
+- **Per-vendor `Offer` entries and a `BreadcrumbList`** on test pages. The old markup was a single
+  `MedicalTest` node with an `AggregateOffer` hung off it (schema.org defines `offers` on
+  Product/Service, not MedicalTest) and `bodyLocation` set to the category name, which expects an
+  anatomical site. Now a `@graph`: `MedicalTest` (clinical facts) + `Product` (prices, one `Offer` per
+  vendor with `seller`) linked by `@id`, + `BreadcrumbList`.
+- **`alternates.canonical` on every public route.** There were zero canonical tags in the app, so
+  every `?utm_*`/`?ref` variant was independently indexable.
+- **`/llms.txt`** as a route handler (`app/llms.txt/route.ts`) so its test/vendor counts stay true;
+  falls back to count-free wording if the DB is unreachable.
+- **Sitemap**: added `/order-services`, `/about`, `/disclaimer`, `/privacy`, `/terms`, and switched a
+  test's `lastModified` from `test.updatedAt` (only moves on an admin copy edit) to the freshest
+  offering `lastCheckedAt`, which is what actually changes daily.
+- **`robots.txt`**: `Disallow: /search` (already `noindex`, but an unbounded `?q=` space is crawl
+  budget spent to be discarded) plus explicit AI-agent stanzas. Those change nothing today —
+  everything was already allowed by `*` — they exist so a future tightening has to opt them out
+  deliberately.
+- Vendor logos on `/order-services` get `width`/`height`/`loading="lazy"`; one unsized remote `<img>`
+  per vendor was reflowing the list as they loaded.
+- **Still open**: no FAQ content or `FAQPage` schema (needs a Test-linked FAQ model and human-sourced
+  answers — YMYL content, not something to generate), and no named author/reviewer for E-E-A-T.
+
 ### Fixed (2026-09-09, Request A Test was reporting the more expensive lab)
 - **Request A Test always showed the Quest price, even when LabCorp was cheaper.** Every product page
   has both a LabCorp and a Quest price, genuinely different — checked live across 7 real tests, LabCorp
