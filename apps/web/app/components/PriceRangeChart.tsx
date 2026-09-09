@@ -49,10 +49,18 @@ function niceMax(max: number): number {
   return steps.find((s) => s >= max) ?? Math.ceil(max / 100) * 100;
 }
 
-export default function PriceRangeChart({ rows }: { rows: ChartRow[] }) {
+// Past about eight bars the figure is taller than the screen and the rows stop being comparable at a
+// glance, so the plot caps and the table carries the rest. Cheapest first — the ranking is the point.
+const MAX_BARS = 8;
+
+export default function PriceRangeChart({ rows: allRows }: { rows: ChartRow[] }) {
   // A single bar is a stat tile, not a chart — the prose already states one price better than a
   // one-bar chart would. Render nothing and let the [PRICE:slug] tokens do that job.
-  if (rows.length < 2) return null;
+  if (allRows.length < 2) return null;
+
+  const ranked = [...allRows].sort((a, b) => a.min - b.min);
+  const rows = ranked.slice(0, MAX_BARS);
+  const overflow = ranked.length - rows.length;
 
   const top = niceMax(Math.max(...rows.map((r) => r.max)));
   const plotW = PLOT_R - PLOT_X;
@@ -69,7 +77,7 @@ export default function PriceRangeChart({ rows }: { rows: ChartRow[] }) {
       <svg
         viewBox={`0 0 660 ${height}`}
         role="img"
-        aria-label={`Self-pay price ranges. ${summary}.`}
+        aria-label={`Self-pay price ranges. ${summary}.${overflow > 0 ? ` ${overflow} further test${overflow === 1 ? '' : 's'} listed in the table below.` : ''}`}
         style={{ width: '100%', height: 'auto', display: 'block', fontFamily: 'inherit' }}
       >
         {/* Solid hairline gridlines, one shade off the surface — never dashed. */}
@@ -153,6 +161,7 @@ export default function PriceRangeChart({ rows }: { rows: ChartRow[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 14 }}>
         <caption style={{ captionSide: 'top', textAlign: 'left', fontSize: 12.5, color: MUTED, paddingBottom: 8 }}>
           Self-pay price range per test, from our own price checks.
+          {overflow > 0 && ` The chart above shows the ${MAX_BARS} cheapest; all ${ranked.length} are listed here.`}
         </caption>
         <thead>
           <tr>
@@ -168,7 +177,7 @@ export default function PriceRangeChart({ rows }: { rows: ChartRow[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {ranked.map((r) => (
             <tr key={r.slug}>
               <th scope="row" style={{ textAlign: 'left', padding: '7px 8px', borderBottom: `1px solid ${GRID}`, fontWeight: 600, color: INK }}>
                 <a href={`/test/${r.slug}`} style={{ color: 'oklch(0.48 0.14 260)' }}>
