@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-09, no post could be saved from the admin editor)
+- **Publishing or editing any post failed with "Invalid post".** `postSchema.heroUrl` used
+  `z.string().url()`, which demands an absolute URL — but every hero on this site is a self-hosted
+  relative path (`/blog/name-1600.webp`), so the validator rejected all six posts, drafted and
+  hand-written alike. It now accepts a same-site path or an `https://` URL, and rejects `http://` so
+  a hero can't downgrade the page.
+- **The error said nothing useful.** The routes have always returned per-field zod detail; the admin
+  UI threw it away and showed a bare "Invalid post", which cannot be acted on across eleven fields.
+  It now renders `field: message` for each failure.
+- `relatedTests` capped at 12, and the autoimmune draft named exactly 12 — sitting on the limit.
+  Raised to 20.
+
 ### Fixed (2026-09-09, US English)
 - **Published copy had British spellings.** "Dearest" (British for "most expensive") in the price
   chart's legend, table header and aria-label; "haemoglobin" four times across two articles, on a site

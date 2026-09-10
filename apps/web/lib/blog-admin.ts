@@ -12,11 +12,24 @@ export const postSchema = z.object({
   excerpt: z.string().trim().min(1).max(600),
   body: z.string().trim().min(1).max(80000),
   author: z.string().trim().min(1).max(100).default('Dave S.'),
-  heroUrl: z.string().trim().url().max(600).nullish().or(z.literal('')),
+  // A same-site path (/blog/x.webp) or an absolute https URL. `.url()` alone rejected every hero on
+  // the site — they are all self-hosted relative paths — so saving ANY post from the admin editor
+  // failed with a bare "Invalid post". http:// is excluded so a hero can't downgrade the page.
+  heroUrl: z
+    .string()
+    .trim()
+    .max(600)
+    .refine((v) => v === '' || v.startsWith('/') || /^https:\/\//.test(v), {
+      message: 'Hero image must be a site path like /blog/name.webp, or an https:// URL',
+    })
+    .nullish(),
   heroAlt: z.string().trim().max(400).nullish().or(z.literal('')),
   heroCredit: z.string().trim().max(300).nullish().or(z.literal('')),
   faq: z.string().trim().max(20000).nullish().or(z.literal('')),
-  relatedTests: z.array(z.string().trim()).max(12).default([]),
+  // 20, not 12: a drafted article on a broad topic can legitimately name a dozen tests (the
+  // autoimmune draft named exactly 12, i.e. sat on the old limit), and the cards render in a
+  // responsive grid that copes fine with more.
+  relatedTests: z.array(z.string().trim()).max(20).default([]),
   isPublished: z.boolean().default(false),
 });
 

@@ -28,6 +28,20 @@ interface PostFull extends PostRow {
   relatedTests: string[];
 }
 
+/**
+ * Turns a zod flatten() into something a human can act on. The routes have always returned per-field
+ * detail; the UI showed only "Invalid post", which is unactionable — you cannot tell which of eleven
+ * fields the server rejected.
+ */
+function fieldErrors(j: { error?: { details?: { fieldErrors?: Record<string, string[]> } } }): string | null {
+  const fe = j.error?.details?.fieldErrors;
+  if (!fe) return null;
+  const parts = Object.entries(fe)
+    .filter(([, msgs]) => msgs?.length)
+    .map(([field, msgs]) => `${field}: ${msgs!.join(', ')}`);
+  return parts.length ? parts.join(' · ') : null;
+}
+
 const EMPTY: PostFull = {
   id: '', slug: '', title: '', excerpt: '', body: '', author: 'Dave S.',
   heroUrl: null, heroAlt: null, heroCredit: null, faq: null, relatedTests: [],
@@ -99,7 +113,7 @@ export default function AdminBlogPage() {
         body: JSON.stringify(payload),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error?.message ?? 'Save failed');
+      if (!res.ok) throw new Error(fieldErrors(j) ?? j.error?.message ?? 'Save failed');
       setMsg({ text: `Saved. ${editing.isPublished ? 'Live at' : 'Draft — not published. Preview at'} /blog/${editing.slug}`, ok: true });
       setEditing(null);
       load();
