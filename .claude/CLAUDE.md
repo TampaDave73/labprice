@@ -270,6 +270,21 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     in Railway. `middleware.ts` already 301s `www.*` to the apex, so the moment DNS exists it
     canonicalises instead of serving a duplicate site.
 
+22. **Two metadata settings in `next.config.ts` are load-bearing SEO, not preferences.**
+    `htmlLimitedBots: /.*/` disables Next's streaming metadata for every user agent, so
+    `generateMetadata` output lands in `<head>` before the first byte instead of streaming into
+    `<body>` to be hoisted client-side. Turning it back on immediately reproduces two audit findings:
+    "11 `<meta>` tags inside `<body>`" and "viewport meta tag is missing" (scored HIGH against
+    mobile-first indexing). Separately, the OG card is a **route handler** at
+    `app/opengraph-image.png/route.tsx`, not Next's `opengraph-image` file convention — the
+    convention serves it at the extensionless `/opengraph-image`, which validators reject as not an
+    image. Because of that, nothing is auto-injected: every route that declares `openGraph` must
+    pass `images: [OG_IMAGE]` from `lib/og.ts` or it ships with no social card at all.
+    Related trap: **`unstable_cache` in shared chrome must not cache a failure.** Production builds
+    run with no `DATABASE_URL`, so a count read at build time returns its fallback and then sticks
+    for the whole revalidate window — `lib/site-stats.ts` re-reads live when the cached value is an
+    impossible zero.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

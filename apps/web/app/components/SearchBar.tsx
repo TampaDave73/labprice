@@ -13,7 +13,15 @@ interface Suggestion {
   minPrice: number | null;
 }
 
-export default function SearchBar() {
+/**
+ * `hero` is the big homepage field; `compact` is the one that lives in the site header on every
+ * page. Same behaviour, same endpoint, same keyboard handling — only the chrome differs, so the two
+ * can never drift apart the way a duplicated component would.
+ */
+type Variant = 'hero' | 'compact';
+
+export default function SearchBar({ variant = 'hero' }: { variant?: Variant } = {}) {
+  const compact = variant === 'compact';
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -103,17 +111,30 @@ export default function SearchBar() {
   }, []);
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', maxWidth: 570, margin: '0 auto' }}>
+    <div
+      ref={wrapperRef}
+      style={compact ? { position: 'relative', flex: 1, maxWidth: 380 } : { position: 'relative', maxWidth: 570, margin: '0 auto' }}
+    >
       <div
         className="flex items-center"
-        style={{
-          background: '#fff',
-          borderRadius: 14,
-          padding: '5px 5px 5px 18px',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.32)',
-        }}
+        style={
+          compact
+            ? {
+                background: '#fff',
+                border: '1px solid oklch(0.87 0.02 260)',
+                borderRadius: 9,
+                padding: '0 4px 0 11px',
+              }
+            : {
+                background: '#fff',
+                borderRadius: 14,
+                padding: '5px 5px 5px 18px',
+                boxShadow: '0 18px 44px rgba(15,38,71,0.18)',
+                border: '1px solid oklch(0.9 0.02 260)',
+              }
+        }
       >
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+        <svg width={compact ? 15 : 18} height={compact ? 15 : 18} viewBox="0 0 18 18" fill="none" className="shrink-0" aria-hidden="true">
           <circle cx="7.5" cy="7.5" r="4.5" stroke="oklch(0.62 0.075 260)" strokeWidth="1.8" />
           <path d="M10.7 10.7l3.3 3.3" stroke="oklch(0.62 0.075 260)" strokeWidth="1.8" strokeLinecap="round" />
         </svg>
@@ -122,14 +143,18 @@ export default function SearchBar() {
           onChange={(e) => onInput(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder="Test name — Vitamin D, Testosterone, TSH..."
+          type="search"
+          // The header field has no visible label, so it needs an accessible one of its own.
+          aria-label="Search lab tests"
+          placeholder={compact ? 'Search tests…' : 'Test name — Vitamin D, Testosterone, TSH...'}
           style={{
             flex: 1,
             border: 'none',
             outline: 'none',
             background: 'transparent',
-            fontSize: 16,
-            padding: '11px 14px',
+            // 16px on the hero field on purpose: anything smaller makes iOS Safari zoom on focus.
+            fontSize: compact ? 14 : 16,
+            padding: compact ? '8px 10px' : '11px 14px',
             color: 'oklch(0.18 0.04 260)',
           }}
         />
@@ -140,14 +165,14 @@ export default function SearchBar() {
             background: 'linear-gradient(135deg, oklch(0.58 0.136 260), oklch(0.49 0.14 262))',
             color: '#fff',
             border: 'none',
-            borderRadius: 10,
-            padding: '13px 24px',
-            fontSize: 15,
+            borderRadius: compact ? 7 : 10,
+            padding: compact ? '7px 13px' : '13px 24px',
+            fontSize: compact ? 13 : 15,
             fontWeight: 600,
             cursor: 'pointer',
           }}
         >
-          Compare
+          {compact ? 'Search' : 'Compare'}
         </button>
       </div>
 
@@ -182,7 +207,9 @@ export default function SearchBar() {
             >
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'oklch(0.18 0.04 260)' }}>{sug.name}</div>
-                <div style={{ fontSize: 11, color: 'oklch(0.58 0.05 260)', marginTop: 2 }}>
+                {/* 12px floor: anything smaller is a mobile-readability failure, and this line
+                    repeats once per suggestion. */}
+                <div style={{ fontSize: 12, color: 'oklch(0.5 0.05 260)', marginTop: 2 }}>
                   {sug.questCode ? `Quest ${sug.questCode}` : ''}
                   {sug.questCode && sug.labcorpCode ? ' · ' : ''}
                   {sug.labcorpCode ? `LabCorp ${sug.labcorpCode}` : ''}

@@ -6,7 +6,9 @@ import Footer from '../../components/Footer';
 import PageViewTracker from '../../components/PageViewTracker';
 import TestDetailClient from './TestDetailClient';
 import GuideLinks from '../../components/GuideLinks';
+import PageProvenance from '../../components/PageProvenance';
 import { guidesForTest } from '@/lib/guides';
+import { OG_IMAGE } from '@/lib/og';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -38,8 +40,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const test = await getTest(slug);
   if (!test) return { title: 'Test Not Found' };
-  const minPrice = test.offerings.length > 0 ? Math.min(...test.offerings.map((o) => Number(o.currentPrice))) : null;
-  const description = `Compare ${test.name} prices from ${test.offerings.length} ordering services.${minPrice ? ` From $${minPrice.toFixed(2)}.` : ''}`;
+  // 120–160 characters. The old one-liner came out at 65 — half the space a result gives you, and
+  // audited as "meta description is short". The range and the lab names are the parts a searcher is
+  // actually deciding on, so they go in rather than filler.
+  const prices = test.offerings.map((o) => Number(o.currentPrice));
+  const description =
+    prices.length > 0
+      ? `Compare ${test.name} prices across ${prices.length} self-pay ordering services — $${Math.min(...prices).toFixed(2)} to $${Math.max(...prices).toFixed(2)}. Same Quest or LabCorp test, no insurance needed.`.slice(0, 160)
+      : `What a ${test.name} test measures, how the blood draw works, how to prepare, and where to order it self-pay without insurance — drawn at Quest or LabCorp.`.slice(0, 160);
   return {
     title: `${test.name} — Compare Prices`,
     description,
@@ -51,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `/test/${test.slug}`,
       type: 'website',
-      images: ['/opengraph-image'],
+      images: [OG_IMAGE],
     },
   };
 }
@@ -89,7 +97,16 @@ export default async function TestDetailPage({ params }: Props) {
   const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
   const pageUrl = `${base}/test/${test.slug}`;
 
-  // Three nodes, deliberately split:
+  // Freshest price verification across all vendors — the page's real "last updated", and the only
+  // date on it that means anything. `test.updatedAt` moves when a typo is fixed; this moves when the
+  // facts a reader came for changed.
+  const lastChecked = offerings
+    .map((o) => o.checkedAt)
+    .filter((d): d is string => d != null)
+    .sort()
+    .at(-1) ?? null;
+
+  // Four nodes, deliberately split:
   //  - MedicalTest carries the clinical facts. It does NOT carry `offers` — schema.org defines that
   //    on Product/Service, not on MedicalTest (the old single-node markup hung an AggregateOffer off
   //    MedicalTest, and set `bodyLocation` to the category name, which expects an anatomical site).
@@ -100,6 +117,21 @@ export default async function TestDetailPage({ params }: Props) {
   // has no top-level `@type` and validators report it as a schema missing its type. `@id`
   // cross-references resolve across separate tags, so the links between the nodes still hold.
   const nodes = [
+      // WebPage carries the things audits look for on a YMYL page and that a Product/MedicalTest node
+      // has nowhere to put: who stands behind the page, and when its facts were last verified.
+      {
+        '@type': 'WebPage',
+        '@id': `${pageUrl}#webpage`,
+        url: pageUrl,
+        name: `${test.name} — Compare Prices`,
+        isPartOf: { '@id': `${base}/#website` },
+        about: { '@id': `${pageUrl}#test` },
+        publisher: { '@id': `${base}/#organization` },
+        author: { '@id': `${base}/#organization` },
+        ...(lastChecked && { dateModified: lastChecked }),
+        // Every page here is health-adjacent; saying so is what the disclaimer link is for.
+        isAccessibleForFree: true,
+      },
       {
         '@type': 'MedicalTest',
         '@id': `${pageUrl}#test`,
@@ -116,6 +148,9 @@ export default async function TestDetailPage({ params }: Props) {
               name: `${test.name} blood test`,
               description: test.description,
               url: pageUrl,
+              // Product without an image is a rich-result warning even when the product is a lab
+              // test with nothing to photograph. The generated OG card is a truthful stand-in.
+              image: `${base}/opengraph-image.png`,
               ...(test.category && { category: test.category.name }),
               isRelatedTo: { '@id': `${pageUrl}#test` },
               offers: {
@@ -189,6 +224,7 @@ export default async function TestDetailPage({ params }: Props) {
           intro="Plain-English explanations of what this test measures and how it's done."
           maxWidth={1240}
         />
+        <PageProvenance updated={lastChecked} />
       </main>
       <Footer />
     </div>

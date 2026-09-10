@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { DM_Sans, Poppins } from 'next/font/google';
 import GoogleAnalytics from './components/GoogleAnalytics';
+import { OG_IMAGE } from '@/lib/og';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -87,21 +88,29 @@ export const metadata: Metadata = {
     default: 'LabTestCompare — Compare Blood Test Prices',
     template: '%s | LabTestCompare',
   },
-  description: 'Compare self-pay blood test prices across ordering services. Find the cheapest Vitamin D, Testosterone, CBC, and more.',
+  // 120–160 characters. The previous one stopped at 108 and spent a third of that listing test
+  // names; this one says what the site is and what the reader gets, which is what the slot is for.
+  description:
+    'Compare self-pay blood test prices across every ordering service we track. Same Quest or LabCorp lab test, no insurance, drawn at a center near you.',
   keywords: ['blood test prices', 'lab test comparison', 'self-pay lab tests', 'cheap blood tests'],
-  // No `images` here on purpose — the generated app/opengraph-image.tsx card is picked up
-  // automatically for og:image and twitter:image (and per-page routes can still override it).
+  // `images` is set explicitly because the OG card is a route handler (app/opengraph-image.png/),
+  // not Next's file convention — the convention serves it at the extensionless `/opengraph-image`,
+  // which validators flag as "not a valid image URL". Nothing is auto-injected now, so width/height
+  // and alt are declared here too. Any route that declares `openGraph` replaces this block
+  // WHOLESALE, so each one has to pass the same image — that's how og:image went missing once before.
   openGraph: {
     title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services. Find the cheapest lab tests.',
     url: 'https://labtestcompare.com',
     siteName: 'LabTestCompare',
     type: 'website',
+    images: [OG_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'LabTestCompare — Compare Blood Test Prices',
     description: 'Compare self-pay blood test prices across ordering services.',
+    images: [OG_IMAGE],
   },
 };
 

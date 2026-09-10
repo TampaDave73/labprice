@@ -9,6 +9,7 @@ import { prisma } from '@labprice/database';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { formatPostDate, readingTimeMinutes, heroSrcSet } from '@/lib/blog';
+import { OG_IMAGE } from '@/lib/og';
 
 // Request-time, like the other DB-backed public pages: publishing from /admin/blog should show up
 // without waiting out an ISR window (the admin PATCH also revalidates, this is the belt).
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
     type: 'website',
     // Declaring `openGraph` at all replaces the root default wholesale, which silently dropped
     // og:image from this page — the generated card has to be named explicitly.
-    images: ['/opengraph-image'],
+    images: [OG_IMAGE],
   },
 };
 

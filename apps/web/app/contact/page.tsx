@@ -10,7 +10,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('contact');
   return {
     title: c.title,
-    description: 'How to reach LabTestCompare — email, postal address, and how to report a wrong price.',
+    description:
+      'How to reach LabTestCompare: email, postal address in Tampa, Florida, and the fastest way to report a wrong price, a dead link, or a missing lab test.',
     alternates: { canonical: '/contact' },
   };
 }

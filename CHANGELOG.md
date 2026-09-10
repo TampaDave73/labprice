@@ -9,6 +9,50 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-10, homepage / header / footer, from the SEOmator SEO + GEO audits)
+- **The homepage hero was most of a screen of nothing.** 90px/110px of padding around a 54px
+  headline, a badge, a stats bar and a chip row pushed the first real test link below the fold on a
+  laptop. The hero is now ~260px: one headline, one answer-first paragraph with derived counts, and
+  the search field. The "Up to 70% savings vs retail" stat went with it — it was never sourced.
+- **The header now carries the search field and the live-prices badge.** Both used to exist only in
+  the homepage hero, so a visitor arriving on a test page from search saw neither. `SearchBar` grew a
+  `compact` variant rather than being duplicated, so the two can't drift.
+- **"Popular Tests" now means popular** (`lib/popular-tests.ts`). Ranked from page views, click-outs
+  and committed searches over 60 days, weighted by intent; the hand-set `Test.isPopular` flag is the
+  fallback. When the fallback is in play the section caption says so instead of claiming visitor data.
+- **The footer lost its second logo** and about a third of its height; address, email, disclaimer and
+  links remain.
+
+### Fixed (2026-09-10, technical SEO findings)
+- **Every `<meta>` tag now ships inside `<head>`.** Next 15's streaming metadata put 11 of 15 into
+  `<body>` for anything it didn't recognise as a bot; the GEO crawler read that as "viewport meta tag
+  is missing" and scored it HIGH against mobile-first indexing. `htmlLimitedBots: /.*/` turns
+  streaming off for everyone. Verified: 0 meta tags in `<body>` on every route checked.
+- **`og:image` now ends in `.png`.** The card moved from Next's `opengraph-image` file convention
+  (extensionless URL, flagged as not-a-valid-image) to a route handler at `app/opengraph-image.png/`.
+  Every route's `openGraph` imports the shared `OG_IMAGE` — nothing is auto-injected any more.
+- **Meta descriptions that were half-length.** Test pages ran 65 characters against a 120–160 slot;
+  `/privacy` 32, `/terms` 36, `/about` 46. All rewritten, with real numbers where they exist.
+- **Product schema was missing `image`**, and test pages had no `WebPage` node — so no byline, no
+  `dateModified`. Both added; `dateModified` is the freshest price verification, not a row touch.
+- **Test and category pages had no byline, no dates and no external citations** — three E-E-A-T
+  findings, one missing block. `<PageProvenance>` supplies all three.
+- **`/disclaimer` was scored uncitable (0/100)**: four bare paragraphs, no H2s. Rewritten as
+  question-shaped headings with direct answers, and given a real meta description.
+- **Category pages read as being about whatever article happened to be newest.** `guidesForTests`
+  now ranks by how many of the category's tests an article actually covers. The pages also gained an
+  answer-first paragraph with real price numbers, a `CollectionPage`+`ItemList`+`BreadcrumbList`
+  node set, and `aria-label="Breadcrumb"`.
+- **IndexNow** — publishing an article now pings Bing directly instead of waiting for a recrawl.
+- Autocomplete suggestion codes were 11px; the floor is 12. The test page's inline `<style>` is now
+  minified on the wire, with the explanation kept as a JSX comment.
+- **Not fixed, deliberately** — text-to-HTML ratio (RSC payload), the `noModule` polyfill script
+  (no supported way to remove it, and module-capable browsers never fetch it), "no text compression"
+  (false negative from a HEAD request; production serves gzip at 26KB vs 112KB), keyword density on
+  test pages (the repetition is the test name inside entity-consistent question headings), and
+  "future publication dates" (the auditor comparing against its own training cutoff). All recorded in
+  the `seo-aeo` skill's *What NOT to chase*.
+
 ### Fixed (2026-09-09, no post could be saved from the admin editor)
 - **Publishing or editing any post failed with "Invalid post".** `postSchema.heroUrl` used
   `z.string().url()`, which demands an absolute URL — but every hero on this site is a self-hosted

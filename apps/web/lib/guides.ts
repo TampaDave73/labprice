@@ -33,16 +33,29 @@ export async function guidesForTest(testSlug: string, limit = 3): Promise<GuideL
   }
 }
 
-/** Guides covering any of these tests. Used on `/category/[slug]` with the category's test slugs. */
+/**
+ * Guides covering any of these tests. Used on `/category/[slug]` with the category's test slugs.
+ *
+ * Ranked by how many of the category's tests each article actually covers, not by recency. Recency
+ * ordering put a general article that happened to name one hormone at the top of /category/hormones,
+ * which read (to a crawler quoting the first prose on the page) as the category being about that
+ * article's subject. Overlap count is the closest thing to "how on-topic is this here".
+ */
 export async function guidesForTests(testSlugs: string[], limit = 3): Promise<GuideLink[]> {
   if (testSlugs.length === 0) return [];
   try {
-    return await prisma.post.findMany({
+    const candidates = await prisma.post.findMany({
       where: { ...LIVE, relatedTests: { hasSome: testSlugs } },
       orderBy: { publishedAt: 'desc' },
-      select: SELECT,
-      take: limit,
+      select: { ...SELECT, relatedTests: true },
     });
+
+    return candidates
+      .map((p) => ({ post: p, shared: p.relatedTests.filter((t) => testSlugs.includes(t)).length }))
+      // Stable within a tie: the findMany above already ordered newest-first.
+      .sort((a, b) => b.shared - a.shared)
+      .slice(0, limit)
+      .map(({ post }) => ({ slug: post.slug, title: post.title, excerpt: post.excerpt }));
   } catch {
     return [];
   }

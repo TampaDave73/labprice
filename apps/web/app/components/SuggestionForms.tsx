@@ -11,8 +11,8 @@ const buttonStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: 8,
-  padding: '10px 18px',
-  borderRadius: 9,
+  padding: '8px 15px',
+  borderRadius: 8,
   border: '1.5px solid oklch(0.55 0.08 260)',
   background: 'oklch(0.3 0.07 260)',
   color: '#fff',
@@ -33,11 +33,21 @@ export default function SuggestionForms() {
   const [open, setOpen] = useState<'vendor' | 'test' | null>(null);
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '0 24px 32px' }}>
-      <p style={{ fontSize: 13, color: 'oklch(0.82 0.03 260)', margin: '0 0 12px' }}>
+    <div
+      style={{
+        maxWidth: 1240,
+        margin: '0 auto',
+        padding: '0 24px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px 16px',
+      }}
+    >
+      <p style={{ fontSize: 13, color: 'oklch(0.82 0.03 260)', margin: 0 }}>
         Missing a lab test or an ordering service you use? Tell us and we&apos;ll look into adding it.
       </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         <button type="button" onClick={() => setOpen('vendor')} style={buttonStyle}>
           <PlusIcon />
           Suggest a Vendor

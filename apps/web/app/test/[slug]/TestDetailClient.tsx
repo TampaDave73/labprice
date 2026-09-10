@@ -175,21 +175,18 @@ export default function TestDetailClient({ test, offerings }: Props) {
 
   return (
     <div style={{ maxWidth: 1240, margin: '0 auto', padding: '28px 24px 80px' }}>
-      <style>{`
-        .td-grid { display: grid; grid-template-columns: 360px 1fr; gap: 28px; align-items: start; margin-top: 28px; }
-        .td-left { position: sticky; top: 80px; }
-        .td-acc-header:hover { background: oklch(0.99 0.008 260); }
-        /* Belt-and-braces: [hidden] is a UA default, but any later display rule on this element
-           would silently override it and re-expose every collapsed section. */
-        .td-acc-body[hidden] { display: none; }
-        .td-home-link:hover { text-decoration: underline; }
-        .td-row:hover { background: oklch(0.97 0.02 260); }
-        .td-row-best:hover { background: oklch(0.95 0.06 155); }
-        @media (max-width: 900px) {
-          .td-grid { grid-template-columns: 1fr; }
-          .td-left { position: static; }
-        }
-      `}</style>
+      {/* Rules that inline styles can't express: hover states, a media query, and the [hidden]
+          hardening below. Written on one line and comment-free on purpose — this string ships in the
+          HTML of every test page, and an audit flags an unminified inline <style>. Read it here:
+
+            .td-grid / .td-left  two-column layout, left rail sticky, single column under 900px
+            .td-acc-body[hidden] belt-and-braces. [hidden] is a UA default, but ANY later display
+                                 rule on this element would silently override it and re-expose every
+                                 collapsed accordion section — which is how the prep instructions and
+                                 reference ranges once ended up visible to nobody and indexed by
+                                 nothing.
+            .td-row / .td-row-best  price table row hovers, best-price row tinted differently */}
+      <style>{`.td-grid{display:grid;grid-template-columns:360px 1fr;gap:28px;align-items:start;margin-top:28px}.td-left{position:sticky;top:80px}.td-acc-header:hover{background:oklch(0.99 0.008 260)}.td-acc-body[hidden]{display:none}.td-home-link:hover{text-decoration:underline}.td-row:hover{background:oklch(0.97 0.02 260)}.td-row-best:hover{background:oklch(0.95 0.06 155)}@media (max-width:900px){.td-grid{grid-template-columns:1fr}.td-left{position:static}}`}</style>
 
       {/* Breadcrumb — <nav>, matching category/[slug] and search, which already used one here. */}
       <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 20, fontSize: 13, color: 'oklch(0.58 0.04 260)' }}>

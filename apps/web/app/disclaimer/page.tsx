@@ -8,7 +8,12 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('disclaimer');
-  return { title: c.title, description: 'Medical disclaimer for LabTestCompare.', alternates: { canonical: '/disclaimer' } };
+  return {
+    title: c.title,
+    description:
+      'LabTestCompare publishes lab test prices and general information, not medical advice. What that means for reference ranges, results, prices, and emergencies.',
+    alternates: { canonical: '/disclaimer' },
+  };
 }
 
 export default async function DisclaimerPage() {

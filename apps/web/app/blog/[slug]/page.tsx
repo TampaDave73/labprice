@@ -16,6 +16,7 @@ import BlogBody, { type Prices } from '../../components/BlogBody';
 import GuideLinks from '../../components/GuideLinks';
 import { parseFaq, readingTimeMinutes, formatPostDate, priceTokenSlugs, heroSrcSet } from '@/lib/blog';
 import { relatedGuides } from '@/lib/guides';
+import { OG_IMAGE } from '@/lib/og';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -131,7 +132,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       authors: [post.author],
-      images: post.heroUrl ? [{ url: post.heroUrl, alt: post.heroAlt ?? post.title }] : ['/opengraph-image'],
+      images: post.heroUrl ? [{ url: post.heroUrl, alt: post.heroAlt ?? post.title }] : [OG_IMAGE],
     },
   };
 }

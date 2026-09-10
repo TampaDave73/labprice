@@ -7,17 +7,18 @@ import type { Metadata } from 'next';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import VendorAccordionList from './VendorAccordionList';
+import { OG_IMAGE } from '@/lib/og';
 
 export const metadata: Metadata = {
   title: 'Order Services — Compare Lab Test Vendors',
-  description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
+  description: 'Every self-pay lab ordering service we track, the tests each one carries, current prices, and which reference lab runs the sample — Quest or LabCorp.',
   alternates: { canonical: '/order-services' },
   openGraph: {
     title: 'Order Services — Compare Lab Test Vendors | LabTestCompare',
-    description: 'Every ordering service we track, with the tests each one carries and current self-pay prices.',
+    description: 'Every self-pay lab ordering service we track, the tests each one carries, current prices, and which reference lab runs the sample — Quest or LabCorp.',
     url: '/order-services',
     type: 'website',
-    images: ['/opengraph-image'],
+    images: [OG_IMAGE],
   },
 };
 

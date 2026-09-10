@@ -8,6 +8,10 @@ import SearchBar from './components/SearchBar';
 import TestCard from './components/TestCard';
 import HomeTestList from './components/HomeTestList';
 import PageViewTracker from './components/PageViewTracker';
+import { popularTestOrder } from '@/lib/popular-tests';
+
+/** Tests shown in the "Most looked-at tests" row — one clean row of three at every breakpoint. */
+const POPULAR_COUNT = 6;
 
 // Always render against the live DB at request time. This page has a DEMO_TESTS fallback (so the
 // build succeeds with no database), and as an ISR/prerendered page it would BAKE that demo snapshot
@@ -43,7 +47,7 @@ const DEMO_TESTS = [
 
 async function getHomeData() {
   try {
-    const [categories, popularTests, allTests, vendorCount] = await Promise.all([
+    const [categories, allTests, vendorCount, popularOrder] = await Promise.all([
       prisma.category.findMany({
         // Only categories with at least one live test. The 2026-09-07 catalog reset cut the
         // catalog to 30 tests spanning 16 of 21 categories — without this, the remaining 5
@@ -51,21 +55,6 @@ async function getHomeData() {
         // (real membership lives in TestCategory) so widening the catalog later needs no reseed.
         where: { testCategories: { some: { test: { deletedAt: null } } } },
         orderBy: { displayOrder: 'asc' },
-      }),
-      prisma.test.findMany({
-        where: { isPopular: true, deletedAt: null },
-        include: {
-          category: true,
-          categories: { select: { category: { select: { slug: true } } } }, // full m2m set
-          offerings: {
-            // vendor filter: excludes offerings left behind by a removed vendor (offering
-            // status doesn't auto-follow vendor status).
-            where: { isActive: true, deletedAt: null, currentPrice: { not: null }, vendor: { isActive: true, deletedAt: null } },
-            select: { currentPrice: true },
-          },
-        },
-        orderBy: { displayOrder: 'asc' },
-        take: 6,
       }),
       prisma.test.findMany({
         where: { deletedAt: null },
@@ -82,6 +71,8 @@ async function getHomeData() {
         orderBy: { name: 'asc' },
       }),
       prisma.vendor.count({ where: { isActive: true, deletedAt: null } }),
+      // What people actually viewed, searched for and clicked through to — see lib/popular-tests.ts.
+      popularTestOrder(),
     ]);
 
     const withMinPrice = (tests: typeof allTests) =>
@@ -99,20 +90,36 @@ async function getHomeData() {
           labcorpCode: t.labcorpCode,
           minPrice: prices.length > 0 ? Math.min(...prices) : null,
           vendorCount: t.offerings.length,
+          isPopular: t.isPopular,
+          displayOrder: t.displayOrder,
         };
       });
 
+    const mapped = withMinPrice(allTests);
+    const byId = new Map(mapped.map((t) => [t.id, t]));
+
+    // Behaviour first, curated list second. `popularOrder.ids` is every test with any measured
+    // interest, ranked; the curated `isPopular` flags backfill the remaining slots so the row is
+    // always full — including on the day a new test is added and nobody has seen it yet.
+    const ranked = popularOrder.ids.map((id) => byId.get(id)).filter((t) => t != null);
+    const curated = mapped
+      .filter((t) => t.isPopular)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+    const popularTests = Array.from(new Set([...ranked, ...curated, ...mapped])).slice(0, POPULAR_COUNT);
+
     return {
       categories: categories.map((c) => ({ name: c.name, slug: c.slug, isPrimary: c.isPrimary })),
-      popularTests: withMinPrice(popularTests),
-      allTests: withMinPrice(allTests),
+      popularTests,
+      popularFromBehavior: popularOrder.dataDriven,
+      allTests: mapped,
       testCount: allTests.length,
       vendorCount,
     };
   } catch {
     return {
       categories: DEMO_CATEGORIES,
-      popularTests: DEMO_TESTS.slice(0, 6),
+      popularTests: DEMO_TESTS.slice(0, POPULAR_COUNT),
+      popularFromBehavior: false,
       allTests: DEMO_TESTS,
       testCount: DEMO_TESTS.length,
       vendorCount: 10,
@@ -121,7 +128,7 @@ async function getHomeData() {
 }
 
 export default async function Home() {
-  const { categories, popularTests, allTests, testCount, vendorCount } = await getHomeData();
+  const { categories, popularTests, popularFromBehavior, allTests, testCount, vendorCount } = await getHomeData();
 
   return (
     <div style={{ minHeight: '100vh', background: 'oklch(0.985 0.005 260)' }}>
@@ -129,38 +136,24 @@ export default async function Home() {
       <Navbar />
 
       <main id="main">
-      {/* Hero */}
+      {/* Hero. Deliberately short: it used to run 90px/110px of padding around a 54px headline and a
+          badge, which pushed the first actual test link most of a screen below the fold on a laptop.
+          The live-prices badge now lives in the header (visible on every page, not just this one),
+          so what is left here is the sentence that says what the site is, the search field, and the
+          six tests people are actually looking at. */}
       <div
         style={{
           background: 'linear-gradient(155deg, oklch(0.96 0.02 260) 0%, oklch(0.93 0.03 225) 55%, oklch(0.95 0.025 200) 100%)',
-          padding: '90px 24px 110px',
+          padding: '36px 24px 34px',
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 55% at 50% -5%, oklch(0.56 0.087 260 / 0.1), transparent)', pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', maxWidth: 700, margin: '0 auto', animation: 'fadeUp 0.6s ease' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              background: '#fff',
-              border: '1px solid oklch(0.85 0.04 260)',
-              borderRadius: 20,
-              padding: '5px 14px',
-              marginBottom: 26,
-            }}
-          >
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'oklch(0.6 0.15 155)', flexShrink: 0, display: 'inline-block' }} />
-            <span style={{ fontSize: 13, color: 'oklch(0.4 0.06 260)', fontWeight: 500 }}>
-              Live prices from {vendorCount} ordering services
-            </span>
-          </div>
-          <h1 style={{ fontSize: 54, fontWeight: 700, color: 'oklch(0.2 0.04 260)', lineHeight: 1.1, letterSpacing: '-1.8px', marginBottom: 18 }}>
-            Compare blood test prices
-            <br />
+        <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 5vw, 40px)', fontWeight: 700, color: 'oklch(0.2 0.04 260)', lineHeight: 1.12, letterSpacing: '-1.2px', margin: '0 0 12px', textWrap: 'balance' }}>
+            Compare blood test prices across{' '}
             <span
               style={{
                 background: 'linear-gradient(90deg, oklch(0.52 0.14 260), oklch(0.52 0.14 155))',
@@ -169,79 +162,41 @@ export default async function Home() {
                 backgroundClip: 'text',
               }}
             >
-              instantly
+              {vendorCount} ordering services
             </span>
           </h1>
-          {/* The subheading was a slogan ("Stop overpaying"). This is the page most visitors and
-              crawlers land on first and nothing on it said what LabTestCompare actually is, who it
-              compares, or that the draw happens at Quest/LabCorp. Counts are derived, not written. */}
-          <p style={{ fontSize: 18, color: 'oklch(0.45 0.04 260)', marginBottom: 44, lineHeight: 1.55 }}>
-            LabTestCompare is a free, independent price comparison for self-pay blood tests. See what
-            each of {vendorCount} ordering services charges for the same Quest Diagnostics or LabCorp
-            test — no insurance required. Search by test name or by Quest/LabCorp test number.
+          {/* Answer-first: this is the paragraph an AI answer engine quotes when asked what
+              LabTestCompare is, so it states what the site does, who draws the blood, and what it
+              costs the reader — in one sentence, with counts derived rather than written. */}
+          <p style={{ fontSize: 16, color: 'oklch(0.42 0.04 260)', margin: '0 0 20px', lineHeight: 1.5, textWrap: 'pretty' }}>
+            LabTestCompare is a free, independent price comparison for self-pay blood tests: search
+            any of {testCount} common tests by name or by Quest/LabCorp test number and see what each
+            service charges for the identical lab test. No insurance, no appointment with us — the
+            draw happens at a Quest Diagnostics or LabCorp patient service center.
           </p>
 
           <SearchBar />
-
-          {/* Popular chips */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 8, marginTop: 22 }}>
-            <span style={{ fontSize: 13, color: 'oklch(0.55 0.04 260)' }}>Popular:</span>
-            {popularTests.map((t) => (
-              <a
-                key={t.slug}
-                href={`/test/${t.slug}`}
-                style={{
-                  padding: '6px 15px',
-                  background: '#fff',
-                  border: '1px solid oklch(0.85 0.04 260)',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  color: 'oklch(0.4 0.07 260)',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                }}
-              >
-                {t.shortName}
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Stats bar */}
-      <div style={{ background: 'oklch(0.95 0.02 260)', borderTop: '1px solid oklch(0.9 0.02 260)', borderBottom: '1px solid oklch(0.9 0.02 260)', padding: '14px 24px' }}>
-        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 48, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>{vendorCount}</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Ordering Services</span>
-          </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>{testCount}</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Common Tests</span>
-          </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.45 0.16 155)' }}>Up to 70%</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Savings vs retail</span>
-          </div>
-          <div style={{ width: 1, height: 28, background: 'oklch(0.85 0.02 260)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: 'oklch(0.22 0.04 260)' }}>No</span>
-            <span style={{ fontSize: 13, color: 'oklch(0.5 0.04 260)' }}>Insurance required</span>
-          </div>
         </div>
       </div>
 
       {/* Browse section */}
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '56px 24px 80px' }}>
-        {/* Popular Tests */}
-        <div style={{ marginBottom: 52 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', color: 'oklch(0.18 0.04 260)', marginBottom: 18 }}>
-            Popular Tests
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '28px 24px 56px' }}>
+        {/* Most looked-at tests */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 14 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px', color: 'oklch(0.18 0.04 260)', margin: 0 }}>
+              {popularFromBehavior ? 'Most looked-at tests right now' : 'Commonly ordered tests'}
+            </h2>
+            {/* Two captions, not one, because the two lists are not the same claim. Saying "what
+                visitors are viewing" while rendering a hand-curated list would be a lie the code
+                can't see. */}
+            <p style={{ fontSize: 12.5, color: 'oklch(0.5 0.04 260)', margin: 0 }}>
+              {popularFromBehavior
+                ? 'Ranked by what visitors searched, viewed and clicked through to over the last 60 days.'
+                : 'A starting set while we gather enough visitor data to rank these by demand.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: 14 }}>
             {popularTests.map((t) => (
               <TestCard
                 key={t.slug}

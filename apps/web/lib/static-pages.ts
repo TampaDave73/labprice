@@ -121,13 +121,34 @@ Questions about this Policy? Reach us at privacy@labtestcompare.com.`,
     default: {
       title: 'Medical Disclaimer',
       updated: 'July 2026',
-      body: `LabTestCompare is a price-comparison tool, not a medical provider. Nothing on this site — including test descriptions, normal reference ranges, or preparation instructions — is medical advice, diagnosis, or treatment, and it is not a substitute for the advice of a qualified healthcare professional.
+      // Structured as question-shaped H2s rather than four bare paragraphs. A policy page that a
+      // machine can't segment is a policy page that doesn't count as a trust signal — this one was
+      // scored as literally uncitable (0/100) in the 2026-09-10 GEO audit for exactly that reason.
+      body: `LabTestCompare is a price-comparison tool, not a medical provider. Nothing on this site — including test descriptions, reference ranges, or preparation instructions — is medical advice, diagnosis, or treatment, and none of it is a substitute for the advice of a qualified healthcare professional.
 
-Always talk to a doctor or other qualified healthcare provider before ordering a lab test, interpreting your results, or making any decision about your health based on information found on this site. Reference ranges shown for a test are general and can vary by lab, method, age, sex, and other factors — only your ordering lab's official report and your provider should be used to interpret your actual results.
+## Is anything on LabTestCompare medical advice?
 
-If you think you may have a medical emergency, call your doctor or emergency services immediately. Do not delay seeking medical advice because of something you read here.
+No. Everything published here is general information about what lab tests measure, how a blood draw works, and what different ordering services charge. We do not diagnose, treat, recommend tests for your situation, or interpret results. Always talk to a doctor or other qualified healthcare provider before ordering a lab test, interpreting your results, or making any decision about your health based on something you read here.
 
-Lab tests themselves are ordered from and performed by third-party ordering services and laboratories (e.g. Quest Diagnostics, LabCorp) — LabTestCompare does not draw blood, run tests, or issue results.`,
+## Can I use the reference ranges shown here to interpret my results?
+
+No. Reference ranges on this site are general illustrations. Real ranges vary by laboratory, testing method, age, sex, pregnancy, and other factors, and they change as methods change. Only the official report from the laboratory that ran your sample, read alongside your own provider, can tell you what your result means.
+
+## Who actually performs the tests?
+
+Third parties. Lab tests are ordered from independent ordering services and performed by laboratories such as Quest Diagnostics and LabCorp. LabTestCompare does not draw blood, run tests, issue results, or employ clinicians. We are not a laboratory, a medical provider, a pharmacy, or an insurer.
+
+## Are the prices guaranteed?
+
+No. Prices shown are the ones we last observed on each ordering service's own public pages, with the date we observed them. A vendor can change a price, add a fee, or stop selling a test at any time. Confirm the final price on the vendor's own site before you order — every "Order" link goes there directly.
+
+## What should I do in an emergency?
+
+Call your doctor or your local emergency number immediately. Do not delay seeking medical care because of anything you read on this site, and do not use this site to decide whether a symptom is urgent.
+
+## Questions about this disclaimer
+
+Email hello@labtestcompare.com. See also our [editorial policy](/editorial-policy) for how we source and correct information, and our [terms of service](/terms).`,
     },
   },
   {

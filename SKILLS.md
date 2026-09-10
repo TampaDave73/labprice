@@ -107,9 +107,34 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     cell; and an **answer-first summary** above the table states the cheapest/highest price in prose,
     derived from the same `offerings` array the table renders.
   - **Blog posts** carry Article + FAQPage + BreadcrumbList; see the Blog entry above.
+  - **Streaming metadata is OFF** (`htmlLimitedBots: /.*/` in `next.config.ts`). Next 15 otherwise
+    streams `generateMetadata` output into `<body>` for anything it doesn't recognise as a bot, and
+    React hoists it client-side — which reads to a static HTML consumer as "11 `<meta>` tags in
+    `<body>`" and "viewport meta tag missing". Now every tag is in `<head>` as served.
+  - **The OG card is a route handler**, `app/opengraph-image.png/route.tsx`, not Next's
+    `opengraph-image` file convention — the convention serves it at the extensionless
+    `/opengraph-image`, which validators reject as not-an-image. Nothing is auto-injected as a
+    result: every route's `openGraph.images` imports `OG_IMAGE` from `lib/og.ts`.
+  - **`<PageProvenance>`** (`components/PageProvenance.tsx`) closes out test and category pages with
+    the byline, a `<time>` for the freshest price verification, and links to the house sources
+    (MedlinePlus, CDC) — the three E-E-A-T findings that were one missing block.
+  - **IndexNow** (`lib/indexnow.ts`) — `revalidatePost()` pings
+    `api.indexnow.org` on publish so Bing (and therefore Bing Copilot) recrawls without waiting.
+    Key file: `public/24015cc3f19502cba305f0c2f7f7d8ff.txt`, public by design. Production only,
+    fire-and-forget; Google ignores IndexNow and uses the sitemap.
   - **Not done yet**: no FAQ content or `FAQPage` schema on *test* pages (needs a Test-linked FAQ
     model and human-sourced answers — YMYL, don't generate them), and no medically-reviewed-by
     attribution anywhere.
+- **Homepage ranking is behavioural** (`lib/popular-tests.ts`) — the "most looked-at tests" row is
+  ranked from `page_views`, `affiliate_clicks` and *committed* `search_logs` over a 60-day window,
+  weighted click-out (8) > search (3) > view (1) and cached 15 minutes. Below a total score of 25 it
+  falls back to the curated `Test.isPopular` flags **and captions the section differently**, because
+  "what visitors are viewing" over a hand-picked list is a claim the code can't back.
+- **Header and footer carry their weight** — the search field (`SearchBar variant="compact"`) and the
+  "live prices from N services" badge live in `Navbar.tsx` on every page, not just the homepage hero;
+  the footer dropped its duplicate logo down to address + email + policy links. `lib/site-stats.ts`
+  caches the counts for 15 minutes but re-reads live on a zero, because production builds run with no
+  `DATABASE_URL` and a cached failure would otherwise stick for the whole window.
 - **Public read API (v1)** — `/api/v1/tests` (paginated, `category`/`sort`/`cursor`/`limit`),
   `/api/v1/tests/popular`, `/api/v1/tests/[slug]`, `/api/v1/categories`, `/api/v1/trends/[testId]`,
   `/api/v1/search`. Read-only, zod-validated, no UI callers by design — kept as a deliberate API

@@ -1,16 +1,20 @@
-// Dynamically-generated social share card (og:image / twitter:image). Next serves this for every
-// page that doesn't provide its own, so links to the site render a branded preview instead of the
-// blank/missing static PNG the metadata used to point at. Generated at the edge — no binary asset.
+// Dynamically-generated social share card (og:image / twitter:image), served at a URL that ends in
+// `.png`. It is a plain route handler rather than Next's `app/opengraph-image.tsx` file convention
+// on purpose: that convention serves the card at the extensionless `/opengraph-image`, and
+// validators (and some scrapers) flag an og:image URL that doesn't look like an image file. The
+// metadata in app/layout.tsx points every page here by name — nothing is auto-injected, which also
+// means an `openGraph` block on a route must pass this path explicitly.
+// Generated on demand — no binary asset.
 // Icon geometry/colors match the 2026-07-22 branding handoff (same shape as app/icon.svg and
 // components/Logo.tsx's <LogoIcon/>) — Satori (ImageResponse's renderer) supports plain SVG shapes
 // inline, so this is the same paths, not a re-approximation.
 import { ImageResponse } from 'next/og';
 
-export const alt = 'LabTestCompare — Compare Blood Test Prices';
-export const size = { width: 1200, height: 630 };
-export const contentType = 'image/png';
+// Route files are type-checked against a fixed export shape, so the card's dimensions live inline
+// rather than as the `size` export the file convention used.
+const SIZE = { width: 1200, height: 630 };
 
-export default function OpengraphImage() {
+export function GET() {
   return new ImageResponse(
     (
       <div
@@ -69,6 +73,6 @@ export default function OpengraphImage() {
         </div>
       </div>
     ),
-    { ...size },
+    { ...SIZE },
   );
 }

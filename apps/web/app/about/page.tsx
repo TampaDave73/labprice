@@ -9,7 +9,8 @@ export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getPageContent('about');
-  return { title: c.title, description: 'What LabTestCompare does and why we built it.', alternates: { canonical: '/about' } };
+  return { title: c.title, description:
+      'Why we built an independent price comparison for self-pay blood tests, where the prices come from, how often they are re-checked, and how the site makes money.', alternates: { canonical: '/about' } };
 }
 
 export default async function AboutPage() {

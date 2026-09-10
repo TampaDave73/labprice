@@ -4,6 +4,7 @@
 // type-checked against a fixed export shape — anything other than the HTTP handlers fails the build.
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { pingIndexNow } from './indexnow';
 
 // Slug rules match the rest of the site: lowercase, hyphen-separated, URL-safe with no escaping.
 export const postSchema = z.object({
@@ -46,4 +47,7 @@ export function revalidatePost(slug: string) {
   revalidatePath('/blog');
   revalidatePath(`/blog/${slug}`);
   revalidatePath('/sitemap.xml');
+  // Same idea, one layer out: tell the search engines that accept a push signal, rather than waiting
+  // for a recrawl. Deliberately not awaited — a publish must not hang on someone else's API.
+  void pingIndexNow([`/blog/${slug}`, '/blog']);
 }
