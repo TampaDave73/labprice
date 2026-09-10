@@ -19,7 +19,7 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
-import { renderPriceToken, PRICE_TOKEN, priceChartSlugs, type PriceFacts } from '@/lib/blog';
+import { renderPriceToken, priceChartSlugs, type PriceFacts } from '@/lib/blog';
 import PriceRangeChart from './PriceRangeChart';
 
 const INK = 'oklch(0.2 0.04 260)';
@@ -29,20 +29,26 @@ const BODY = 'oklch(0.35 0.03 260)';
 // The link alternative requires a following "(", so a bare [PRICE:slug] falls through to the third.
 const INLINE = /(\*\*[^*]+\*\*|\[[^\]]+\]\((?:\/|https:\/\/)[^)\s]*\)|\[PRICE(?:-RANGE|-COUNT|-DATE)?:[a-z0-9-]+\])/g;
 
-// Tokens inside **bold** never reach the split below — the bold alternative matches the whole
-// `**[PRICE:slug]**` run first — so bold text gets its own resolution pass.
-const PRICE_TOKEN_G = new RegExp(PRICE_TOKEN.source, 'g');
-function resolveTokens(text: string, prices: Prices): string {
-  return text.replace(PRICE_TOKEN_G, (tok) => renderPriceToken(tok, prices[/:([a-z0-9-]+)\]$/.exec(tok)?.[1] ?? '']));
-}
-
+/**
+ * Inline markup, one level of nesting deep.
+ *
+ * Bold and link/token syntax can contain each other, and the outer alternative always wins the
+ * split — `**[LH](/test/luteinizing-hormone)**` matches the bold alternative whole, so whatever is
+ * inside never reaches this function's own `split()`. The fix is to recurse on the contents rather
+ * than special-case one kind of thing: an earlier version resolved price tokens inside bold and
+ * nothing else, which is why a linked test name inside a bold run shipped to the live blog rendered
+ * as literal `[LH](/test/luteinizing-hormone)` text — fourteen of them in one article.
+ *
+ * The recursion terminates because each level strips its own delimiters: bold contents can't contain
+ * `**` (the alternative is `[^*]+`) and a link label can't contain `]`.
+ */
 function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNode[] {
   return text.split(INLINE).filter((p) => p != null && p !== '').map((part, i) => {
     const key = `${keyPrefix}-${i}`;
     if (part.startsWith('**') && part.endsWith('**')) {
       return (
         <strong key={key} style={{ fontWeight: 650, color: INK }}>
-          {resolveTokens(part.slice(2, -2), prices)}
+          {inline(part.slice(2, -2), key, prices)}
         </strong>
       );
     }
@@ -54,16 +60,18 @@ function inline(text: string, keyPrefix: string, prices: Prices): React.ReactNod
     if (link) {
       const href = link[2]!;
       const style = { color: 'oklch(0.48 0.14 260)', textDecoration: 'underline', textUnderlineOffset: 2 } as const;
+      // The label recurses too, so `[**Free T4**](/test/t4-free)` bolds instead of printing stars.
+      const label = inline(link[1]!, `${key}-l`, prices);
       if (href.startsWith('/')) {
         return (
           <Link key={key} href={href} style={style}>
-            {link[1]}
+            {label}
           </Link>
         );
       }
       return (
         <a key={key} href={href} target="_blank" rel="nofollow noopener" style={style}>
-          {link[1]}
+          {label}
         </a>
       );
     }
@@ -87,9 +95,11 @@ function TableBlock({ lines, k, prices }: { lines: string[]; k: string; prices: 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr style={{ background: 'oklch(0.97 0.015 260)' }}>
+            {/* Header cells go through `inline` like every other cell — a bold or linked column
+                label would otherwise print its own markup. */}
             {head!.map((c, i) => (
               <th key={i} scope="col" style={{ ...cell, fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'oklch(0.5 0.05 260)', borderBottom: '1.5px solid oklch(0.92 0.02 260)' }}>
-                {c}
+                {inline(c, `${k}-h-${i}`, prices)}
               </th>
             ))}
           </tr>

@@ -243,7 +243,13 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
 
 19. **The blog's content pipeline has two rules worth not breaking.** `Post.body` is stored as
     markup and rendered by `BlogBody.tsx` — never HTML, so an admin-authored post can't inject tags,
-    and inline links are restricted to same-site paths. And `Post.faq` is the single source for both
+    and inline links are restricted to same-site paths. **`inline()` recurses**, and must keep doing
+    so: the `INLINE` split is alternation, so the outer construct always wins and anything inside it
+    never reaches the split. `**[LH](/test/luteinizing-hormone)**` matched the bold alternative whole
+    and printed its own markup as text — fourteen literal `[label](/path)` strings in one published
+    article. An earlier version patched only price-tokens-inside-bold; the general answer is to
+    re-enter `inline()` on bold contents and on link labels, which terminates because each level
+    strips its own delimiters. And `Post.faq` is the single source for both
     the visible FAQ section and the `FAQPage` JSON-LD: emitting FAQ structured data for questions
     that aren't rendered is what gets rich results pulled, so don't split them. Articles are seeded
     and edited in bulk by `apps/worker/scripts/seed-blog.ts` (upsert by slug — re-running it is the

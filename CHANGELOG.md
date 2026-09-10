@@ -9,6 +9,18 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-10, links inside bold printed as raw markdown)
+- **`**[LH](/test/luteinizing-hormone)**` rendered as literal text** — fourteen of them in the
+  published "Infertility on TRT" article, in the list under "What tests do people use to understand
+  fertility on TRT?". `BlogBody`'s `INLINE` regex is an alternation, so the bold alternative matched
+  the whole run first and nothing inside it ever reached the split. An earlier fix had special-cased
+  price tokens inside bold and nothing else; `inline()` now recurses on bold contents *and* on link
+  labels, which is the general answer and terminates because each level strips its own delimiters.
+- Table header cells now go through `inline()` like every other cell, so a bold or linked column
+  label stops printing its own markup.
+- The article bodies themselves were fine — the markup was correct and the renderer was wrong, so
+  nothing needed re-drafting.
+
 ### Fixed (2026-09-10, /admin/questions shipped half-wired)
 - **The "Add a question" button did not exist.** The state, the handler and the POST route were all
   in place and the form's JSX was never written to the file, so there was no way to reach any of it —
