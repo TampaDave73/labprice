@@ -12,11 +12,11 @@
 //  - Form: bars from a single zero baseline, not a floating min–max range. A floating bar has no
 //    baseline, so absolute price stops being readable off position — and the point here is that $7 is
 //    cheap in absolute terms, not merely cheaper than $59.
-//  - Colour last, and computed rather than eyeballed: accent oklch(0.55 0.14 260) and
+//  - Color last, and computed rather than eyeballed: accent oklch(0.55 0.14 260) and
 //    oklch(0.52 0.15 155) convert to #3e6fc2 / #008140, which pass the lightness band, chroma floor,
 //    adjacent CVD separation (ΔE 20.2 deutan, 22.7 normal) and 3:1 contrast against the surface.
 //    Green already means "best price" everywhere else on the site, so it carries meaning, not decoration.
-//  - Every value is also in the table underneath. Nothing is reachable only by colour or only by
+//  - Every value is also in the table underneath. Nothing is reachable only by color or only by
 //    hovering — which also makes the figure's content extractable rather than locked in a picture.
 //
 // No hover tooltip layer: this renders inside the article body, which is a server component, and

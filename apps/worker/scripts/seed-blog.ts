@@ -59,7 +59,7 @@ A single tube holds roughly 2 to 6 mL. A typical requisition fills one to four t
 
 For scale, a standard blood donation takes around 470 mL, and an adult's total blood volume is roughly 4.5 to 5.5 liters. A routine diagnostic draw is a very small fraction of that, which is why you can eat, drive and go back to work immediately afterwards.
 
-## Why are there different coloured tube caps?
+## Why are there different colored tube caps?
 
 Each color is a different additive, and the additive determines what the lab can measure from that tube. It isn't decoration — putting blood in the wrong tube ruins the sample.
 
@@ -222,7 +222,7 @@ A: Tell the phlebotomist before the draw. They will either rebook you or have th
     excerpt:
       'A lipid panel measures four things from a single blood sample: total cholesterol, LDL cholesterol, HDL cholesterol and triglycerides. It is the standard test for assessing cardiovascular risk, and it is one of the cheapest and most widely stocked tests in self-pay lab testing. Interpreting the numbers is a job for a clinician who knows your history.',
     heroUrl: '/blog/what-a-lipid-panel-measures-1600.webp',
-    heroAlt: 'Rows of blood collection tubes with coloured caps arranged in a laboratory rack.',
+    heroAlt: 'Rows of blood collection tubes with colored caps arranged in a laboratory rack.',
     heroCredit: 'Photo: Testalize.me / Unsplash',
     relatedTests: ['lipid-panel', 'apolipoprotein-b', 'lipoprotein-a', 'c-reactive-protein-high-sensitivity'],
     body: `A lipid panel — you may see it called a lipid profile or a cholesterol test — is one blood draw that reports several separate measurements of the fats circulating in your blood.
