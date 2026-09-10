@@ -9,6 +9,17 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-10, /admin/questions shipped half-wired)
+- **The "Add a question" button did not exist.** The state, the handler and the POST route were all
+  in place and the form's JSX was never written to the file, so there was no way to reach any of it —
+  the feature was dead code behind a button nobody could click. Form restored.
+- **Row actions were still keyed off `status` instead of `bucket`**, so the same patch's other half
+  was missing too: no "Preview draft"/"View article" link, no Redraft, no per-row Direction field,
+  and a published question kept showing a DRAFTED badge even though the tab counts had already moved
+  it to Published. All now read `bucket`, which is derived from the linked post being live.
+- **"set a*direction*" rendered as "adirection"** — JSX drops the newline between text and an
+  adjacent tag. Explicit `{' '}`.
+
 ### Added (2026-09-10, FAQ + FAQPage on all 30 test pages)
 - **Five to six questions per test, with `FAQPage` structured data.** The test pages had no FAQ
   schema at all, and "add concise answer-box sections to comparison pages" was the GEO audit's one

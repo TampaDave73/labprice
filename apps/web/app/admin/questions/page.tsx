@@ -195,9 +195,79 @@ export default function AdminQuestionsPage() {
         one, then &ldquo;Draft article&rdquo; writes an <strong>unpublished</strong> post you
         review and publish at <code>/admin/blog</code>; drafts are never published automatically.
         An article doesn&rsquo;t have to be about a blood test &mdash; anything a reader of a
-        lab-testing site would want explained is fair game. If a draft comes out wrong, set a
+        lab-testing site would want explained is fair game. If a draft comes out wrong, set a{' '}
+        {/* The explicit {' '} is load-bearing: JSX drops the newline between "a" and this tag, which
+            rendered as "set adirection". */}
         <em>direction</em> and redraft it.
       </p>
+
+      {/* Your own idea, rather than a harvested one. Adds pre-approved — there is no point making
+          you approve your own suggestion — so it lands on the Approved tab ready to draft. */}
+      <div className="mb-4">
+        {showAdd ? (
+          <div className="admin-card p-4">
+            <h2 className="admin-h2 mb-3">Add a question</h2>
+            <div className="grid gap-3">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-brand-700">
+                  The question, as a reader would ask it
+                </span>
+                <input
+                  className="admin-input w-full"
+                  value={newQ.title}
+                  onChange={(e) => setNewQ({ ...newQ, title: e.target.value })}
+                  placeholder="What blood tests do bodybuilders track?"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-brand-700">
+                  Direction for the writer (optional) &mdash; the angle to take, what to leave out, who it is for
+                </span>
+                <textarea
+                  className="admin-input w-full"
+                  rows={3}
+                  value={newQ.guidance}
+                  onChange={(e) => setNewQ({ ...newQ, guidance: e.target.value })}
+                  placeholder="Focus on which markers people monitor and why, not on training or supplements."
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-brand-700">
+                  Related test slugs (optional, comma-separated)
+                </span>
+                <input
+                  className="admin-input w-full"
+                  value={newQ.matchedTests}
+                  onChange={(e) => setNewQ({ ...newQ, matchedTests: e.target.value })}
+                  placeholder="testosterone-total, lipid-panel"
+                />
+              </label>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button className="admin-btn" onClick={addQuestion} disabled={adding}>
+                {adding ? 'Adding…' : 'Add question'}
+              </button>
+              <button
+                className="admin-btn admin-btn-ghost"
+                onClick={() => setShowAdd(false)}
+                disabled={adding}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="admin-btn"
+            onClick={() => {
+              setShowAdd(true);
+              setMsg(null);
+            }}
+          >
+            Add a question
+          </button>
+        )}
+      </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         {TABS.map((t) => (
@@ -291,37 +361,87 @@ export default function AdminQuestionsPage() {
                   )}
                 </div>
               </div>
+              {/* Keyed off `bucket`, not `status`. DRAFTED is a stored status; PUBLISHED is derived
+                  from the linked post being live, so a row moves itself once you publish in
+                  /admin/blog rather than sitting in Drafted forever. */}
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  c.status === 'DRAFTED'
-                    ? 'bg-blue-100 text-blue-800'
-                    : c.status === 'APPROVED'
-                      ? 'bg-green-100 text-green-800'
-                      : c.status === 'REJECTED'
-                        ? 'bg-neutral-200 text-neutral-700'
-                        : 'bg-amber-100 text-amber-800'
+                  c.bucket === 'PUBLISHED'
+                    ? 'bg-green-100 text-green-800'
+                    : c.bucket === 'DRAFTED'
+                      ? 'bg-blue-100 text-blue-800'
+                      : c.bucket === 'APPROVED'
+                        ? 'bg-teal-100 text-teal-800'
+                        : c.bucket === 'REJECTED'
+                          ? 'bg-neutral-200 text-neutral-700'
+                          : 'bg-amber-100 text-amber-800'
                 }`}
               >
-                {c.status}
+                {c.bucket}
               </span>
-              {c.status !== 'DRAFTED' && (
-                <>
-                  {c.status !== 'APPROVED' && (
-                    <button className="admin-btn admin-btn-sm" disabled={busyId === c.id} onClick={() => setStatus(c, 'APPROVED')}>
-                      Approve
-                    </button>
-                  )}
-                  {c.status === 'APPROVED' && (
-                    <button className="admin-btn admin-btn-sm admin-btn-success" disabled={busyId === c.id} onClick={() => draft(c)}>
-                      {busyId === c.id ? 'Drafting…' : 'Draft article'}
-                    </button>
-                  )}
-                  {c.status !== 'REJECTED' && (
-                    <button className="admin-btn admin-btn-sm admin-btn-ghost" disabled={busyId === c.id} onClick={() => setStatus(c, 'REJECTED')}>
-                      Reject
-                    </button>
-                  )}
-                </>
+
+              {/* The label tells the truth about what the link opens: an unpublished draft is only
+                  visible to you, behind an admin preview banner. */}
+              {c.postSlug && (
+                <a
+                  className="admin-btn admin-btn-ghost admin-btn-sm"
+                  href={`/blog/${c.postSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {c.postPublished ? 'View article' : 'Preview draft'}
+                </a>
+              )}
+
+              {c.bucket === 'NEW' && (
+                <button className="admin-btn admin-btn-sm" disabled={busyId === c.id} onClick={() => setStatus(c, 'APPROVED')}>
+                  Approve
+                </button>
+              )}
+              {c.bucket === 'APPROVED' && (
+                <button className="admin-btn admin-btn-sm admin-btn-success" disabled={busyId === c.id} onClick={() => draft(c)}>
+                  {busyId === c.id ? 'Drafting…' : 'Draft article'}
+                </button>
+              )}
+              {/* Redraft only while the draft is unpublished — the route refuses to replace a live
+                  article, and the button shouldn't imply otherwise. */}
+              {c.bucket === 'DRAFTED' && (
+                <button className="admin-btn admin-btn-sm" disabled={busyId === c.id} onClick={() => draft(c)}>
+                  {busyId === c.id ? 'Redrafting…' : 'Redraft'}
+                </button>
+              )}
+              {c.bucket !== 'REJECTED' && c.bucket !== 'PUBLISHED' && (
+                <button className="admin-btn admin-btn-sm admin-btn-ghost" disabled={busyId === c.id} onClick={() => setStatus(c, 'REJECTED')}>
+                  Reject
+                </button>
+              )}
+
+              {/* Direction: the lever for a draft that came out wrong. Saved separately from
+                  drafting, so you can write it, read it back, then redraft. */}
+              {c.bucket !== 'REJECTED' && c.bucket !== 'PUBLISHED' && (
+                <div className="mt-2 w-full">
+                  <details open={Boolean(c.guidance)}>
+                    <summary className="cursor-pointer text-xs text-brand-500">
+                      Direction for the writer {c.guidance ? '(set)' : '(none)'}
+                    </summary>
+                    <div className="mt-2 flex flex-wrap items-start gap-2">
+                      <textarea
+                        className="admin-input min-w-[280px] flex-1"
+                        rows={2}
+                        placeholder="e.g. Focus on which markers are tracked and why. Skip supplements."
+                        value={guidanceDraft[c.id] ?? c.guidance ?? ''}
+                        onChange={(e) => setGuidanceDraft({ ...guidanceDraft, [c.id]: e.target.value })}
+                      />
+                      <button
+                        className="admin-btn admin-btn-sm admin-btn-ghost"
+                        disabled={busyId === c.id}
+                        onClick={() => saveGuidance(c)}
+                      >
+                        Save direction
+                      </button>
+                    </div>
+                  </details>
+                </div>
               )}
             </div>
           ))}
