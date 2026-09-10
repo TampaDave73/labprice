@@ -28,6 +28,19 @@ function contentSecurityPolicy(): string {
 const SID_COOKIE = 'sid';
 
 export function middleware(request: NextRequest) {
+  // www -> apex, 301, preserving path and query. Every canonical, the sitemap and robots.txt all use
+  // the bare apex, so a www request that served content would split the site across two hostnames.
+  // Note this is inert until a www DNS record exists (there is none today — see the note in
+  // docs/08-deployment.md); it is here so that adding one can't accidentally create a duplicate site.
+  const host = request.headers.get('host') ?? '';
+  if (host.startsWith('www.')) {
+    const url = request.nextUrl.clone();
+    url.host = host.slice(4);
+    url.protocol = 'https';
+    url.port = '';
+    return NextResponse.redirect(url, 301);
+  }
+
   const response = NextResponse.next();
 
   // Security headers

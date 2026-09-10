@@ -262,6 +262,14 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     `{{isOpen && …}}` deleting content from the served HTML). It also lists the two audit findings
     NOT worth chasing here.
 
+21. **`www.labtestcompare.com` has no DNS record** — the apex is the only hostname that resolves, and
+    Railway holds a single custom domain (`CNAME @`). Anyone typing `www.` gets a connection error,
+    not a redirect, and a Search Console property on the www hostname can fetch nothing at all
+    (that is the likeliest reason a sitemap submission reports "couldn't fetch" — the sitemap itself
+    validates clean). Fixing it needs two steps: a `www` CNAME at the registrar plus the domain added
+    in Railway. `middleware.ts` already 301s `www.*` to the apex, so the moment DNS exists it
+    canonicalises instead of serving a duplicate site.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package
