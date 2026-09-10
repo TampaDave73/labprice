@@ -6,8 +6,10 @@
 // reader into the actual comparison tables.
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import type { Post } from '@labprice/database';
 import Link from 'next/link';
 import { prisma } from '@labprice/database';
+import { auth } from '@/lib/auth';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import BlogBody, { type Prices } from '../../components/BlogBody';
@@ -23,10 +25,24 @@ export const dynamic = 'force-dynamic';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://labtestcompare.com';
 
-async function getPost(slug: string) {
+/**
+ * Admins can read an unpublished draft at its real URL; everyone else gets a 404.
+ *
+ * The point is that "preview" means the actual page — hero, figures, live price chart, schema — not
+ * an approximation of it. /admin/questions used to link here after drafting and the link 404'd,
+ * which made a working feature look broken.
+ *
+ * The page is already `force-dynamic`, so the session lookup costs nothing extra, and an unpublished
+ * page is marked noindex below so a preview URL can never be indexed.
+ */
+async function getPost(slug: string): Promise<{ post: Post; isPreview: boolean } | null> {
   const post = await prisma.post.findUnique({ where: { slug } });
-  if (!post || !post.isPublished || post.deletedAt) return null;
-  return post;
+  if (!post || post.deletedAt) return null;
+  if (post.isPublished) return { post, isPreview: false };
+
+  const session = await auth();
+  const isAdmin = Boolean(session?.user && ['ADMIN', 'SUPER_ADMIN'].includes(session.user.role));
+  return isAdmin ? { post, isPreview: true } : null;
 }
 
 /** Resolves `relatedTests` slugs to real, live tests with a current price. A slug that no longer
@@ -99,10 +115,13 @@ async function getPrices(body: string): Promise<Prices> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getPost(slug).catch(() => null);
-  if (!post) return { title: 'Article not found' };
+  const found = await getPost(slug).catch(() => null);
+  if (!found) return { title: 'Article not found' };
+  const { post, isPreview } = found;
   return {
     title: post.title,
+    // A draft is reachable by URL for admins, so it must never be indexable.
+    ...(isPreview && { robots: { index: false, follow: false } }),
     description: post.excerpt,
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
@@ -119,8 +138,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = await getPost(slug);
-  if (!post) notFound();
+  const found = await getPost(slug);
+  if (!found) notFound();
+  const { post, isPreview } = found;
 
   const faqs = parseFaq(post.faq);
   const [related, prices, guides] = await Promise.all([
@@ -188,6 +208,24 @@ export default async function BlogPostPage({ params }: Props) {
         />
       ))}
       <Navbar />
+      {isPreview && (
+        <div
+          style={{
+            background: 'oklch(0.96 0.09 80)',
+            borderBottom: '1.5px solid oklch(0.85 0.12 80)',
+            padding: '10px 24px',
+            textAlign: 'center',
+            fontSize: 13.5,
+            color: 'oklch(0.38 0.1 60)',
+          }}
+        >
+          <strong>Draft preview.</strong> This article is not published — only signed-in admins can
+          see this page, and it is marked noindex.{' '}
+          <a href="/admin/blog" style={{ color: 'oklch(0.35 0.12 60)', textDecoration: 'underline' }}>
+            Edit or publish it
+          </a>
+        </div>
+      )}
       <main id="main" style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 80px' }}>
         <nav aria-label="Breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 22, fontSize: 13, color: 'oklch(0.58 0.04 260)' }}>
           <Link href="/" style={{ color: 'oklch(0.52 0.093 260)', fontWeight: 500, textDecoration: 'none' }}>

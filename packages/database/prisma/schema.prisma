@@ -987,6 +987,10 @@ model QuestionCandidate {
   /// Set when a draft post is created from this candidate.
   postId    String?      @map("post_id")
   notes     String?
+  /// Free-text direction for the generator: the angle to take, what to leave out, who it's for.
+  /// Editable per candidate, so a draft that came out off the rails can be steered and redrafted
+  /// rather than rewritten by hand.
+  guidance  String?
 
   capturedAt DateTime @default(now()) @map("captured_at")
   updatedAt  DateTime @updatedAt @map("updated_at")

@@ -60,11 +60,29 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   if (!candidate) {
     return NextResponse.json({ error: { code: 'not_found', message: 'Candidate not found' } }, { status: 404 });
   }
+  // Redrafting is allowed while the existing draft is unpublished — that's how an off-the-rails
+  // draft gets steered with guidance and tried again. Once it's live, refuse: silently replacing
+  // published content is not something a "redraft" button should be able to do.
   if (candidate.postId) {
-    return NextResponse.json(
-      { error: { code: 'conflict', message: 'A draft has already been created from this question.' } },
-      { status: 409 },
-    );
+    const existing = await prisma.post.findUnique({
+      where: { id: candidate.postId },
+      select: { id: true, isPublished: true, deletedAt: true },
+    });
+    if (existing && existing.isPublished && !existing.deletedAt) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'conflict',
+            message: 'That draft has already been published. Unpublish it in /admin/blog first, or edit it there.',
+          },
+        },
+        { status: 409 },
+      );
+    }
+    // Soft-delete the superseded draft so the slug frees up and it stops showing in the editor.
+    if (existing && !existing.deletedAt) {
+      await prisma.post.update({ where: { id: existing.id }, data: { deletedAt: new Date(), isPublished: false } });
+    }
   }
 
   // Only tests with a live price are offered: an article that links to a page with nothing to
@@ -79,7 +97,12 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
   });
 
   try {
-    const draft = await generateArticleDraft(candidate.title, candidate.origin ?? 'an online health community', tests);
+    const draft = await generateArticleDraft(
+      candidate.title,
+      candidate.origin ?? 'an online health community',
+      tests,
+      candidate.guidance,
+    );
     const slug = await uniqueSlug(draft.slug);
 
     const post = await prisma.post.create({

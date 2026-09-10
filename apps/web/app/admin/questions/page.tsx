@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react';
 
 type Status = 'NEW' | 'APPROVED' | 'REJECTED' | 'DRAFTED';
+// PUBLISHED is derived server-side from the linked post, not stored — see the questions GET route.
+type Bucket = Status | 'PUBLISHED';
 
 interface Candidate {
   id: string;
@@ -21,19 +23,24 @@ interface Candidate {
   matchedTests: string[];
   status: Status;
   postId: string | null;
+  postSlug: string | null;
+  postPublished: boolean;
+  bucket: Bucket;
+  guidance: string | null;
   capturedAt: string;
 }
 
-const TABS: { key: Status | 'ALL'; label: string }[] = [
+const TABS: { key: Bucket | 'ALL'; label: string }[] = [
   { key: 'NEW', label: 'New' },
   { key: 'APPROVED', label: 'Approved' },
   { key: 'DRAFTED', label: 'Drafted' },
+  { key: 'PUBLISHED', label: 'Published' },
   { key: 'REJECTED', label: 'Rejected' },
   { key: 'ALL', label: 'All' },
 ];
 
 export default function AdminQuestionsPage() {
-  const [tab, setTab] = useState<Status | 'ALL'>('NEW');
+  const [tab, setTab] = useState<Bucket | 'ALL'>('NEW');
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -42,8 +49,12 @@ export default function AdminQuestionsPage() {
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [draftLink, setDraftLink] = useState<{ slug: string; title: string } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [newQ, setNewQ] = useState({ title: '', guidance: '', matchedTests: '' });
+  const [adding, setAdding] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [guidanceDraft, setGuidanceDraft] = useState<Record<string, string>>({});
 
-  const load = (status: Status | 'ALL') => {
+  const load = (status: Bucket | 'ALL') => {
     setLoading(true);
     setLoadError(null);
     fetch(`/api/v1/admin/questions?status=${status}`)
@@ -77,6 +88,59 @@ export default function AdminQuestionsPage() {
       load(tab);
     } catch (e) {
       setMsg({ text: e instanceof Error ? e.message : 'Update failed', ok: false });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function addQuestion() {
+    if (newQ.title.trim().length < 5) {
+      setMsg({ text: 'Give the question a few more words.', ok: false });
+      return;
+    }
+    setAdding(true);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/v1/admin/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newQ.title,
+          guidance: newQ.guidance,
+          matchedTests: newQ.matchedTests.split(',').map((t) => t.trim()).filter(Boolean),
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error?.message ?? 'Could not add that question.');
+      setMsg({ text: 'Added, and approved — it is on the Approved tab ready to draft.', ok: true });
+      setNewQ({ title: '', guidance: '', matchedTests: '' });
+      setShowAdd(false);
+      setTab('APPROVED');
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : 'Could not add that question.', ok: false });
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  /** Saves the direction for a candidate without changing its status. */
+  async function saveGuidance(c: Candidate) {
+    setBusyId(c.id);
+    setMsg(null);
+    try {
+      const res = await fetch('/api/v1/admin/questions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: c.id, guidance: guidanceDraft[c.id] ?? '' }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error?.message ?? 'Could not save that direction.');
+      }
+      setMsg({ text: 'Direction saved. Draft (or redraft) to apply it.', ok: true });
+      load(tab);
+    } catch (e) {
+      setMsg({ text: e instanceof Error ? e.message : 'Could not save that direction.', ok: false });
     } finally {
       setBusyId(null);
     }
@@ -126,10 +190,13 @@ export default function AdminQuestionsPage() {
     <div>
       <h1 className="admin-h1 mb-2">Question research</h1>
       <p className="mb-5 max-w-3xl text-sm text-brand-500">
-        Questions people are asking, harvested from our own zero-result site searches and from forums
-        where bloodwork comes up. Nothing here is public. Approve the ones worth writing, then
-        &ldquo;Draft article&rdquo; creates an <strong>unpublished</strong> post you review and publish
-        at <code>/admin/blog</code> — drafts are never published automatically.
+        Questions worth answering &mdash; harvested from our own zero-result site searches and
+        from forums where bloodwork comes up, or added by hand. Nothing here is public. Approve
+        one, then &ldquo;Draft article&rdquo; writes an <strong>unpublished</strong> post you
+        review and publish at <code>/admin/blog</code>; drafts are never published automatically.
+        An article doesn&rsquo;t have to be about a blood test &mdash; anything a reader of a
+        lab-testing site would want explained is fair game. If a draft comes out wrong, set a
+        <em>direction</em> and redraft it.
       </p>
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
@@ -156,14 +223,13 @@ export default function AdminQuestionsPage() {
 
       {draftLink && (
         <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          Draft created: <strong>{draftLink.title}</strong>. It is <strong>not published</strong> —
-          read it at{' '}
-          <a className="underline" href="/admin/blog">
-            /admin/blog
-          </a>{' '}
-          or preview it at{' '}
+          Draft created: <strong>{draftLink.title}</strong>. It is <strong>not published</strong>.{' '}
           <a className="underline" href={`/blog/${draftLink.slug}`} target="_blank" rel="noopener noreferrer">
-            /blog/{draftLink.slug}
+            Preview it
+          </a>{' '}
+          (visible to signed-in admins only, and noindex) or{' '}
+          <a className="underline" href="/admin/blog">
+            edit and publish it
           </a>
           .
         </div>
@@ -191,11 +257,14 @@ export default function AdminQuestionsPage() {
             : tab === 'APPROVED'
               ? 'Nothing approved and waiting. Approve a question on the New tab to draft an article from it.'
               : tab === 'DRAFTED'
-                ? 'No drafts yet. Approve a question, then use “Draft article”.'
-                : tab === 'REJECTED'
-                  ? 'Nothing rejected.'
-                  : null}
-          {(tab === 'ALL' || (tab === 'NEW' && !counts.APPROVED && !counts.DRAFTED && !counts.REJECTED)) && (
+                ? 'No drafts waiting. Approve a question, then use “Draft article”.'
+                : tab === 'PUBLISHED'
+                  ? 'Nothing from this queue is live yet. Publish a draft in /admin/blog and it moves here.'
+                  : tab === 'REJECTED'
+                    ? 'Nothing rejected.'
+                    : null}
+          {(tab === 'ALL' ||
+            (tab === 'NEW' && !counts.APPROVED && !counts.DRAFTED && !counts.PUBLISHED && !counts.REJECTED)) && (
             <>
               Nothing here yet. Run{' '}
               <code>pnpm --filter @labprice/worker exec tsx scripts/harvest-questions.ts</code> to
