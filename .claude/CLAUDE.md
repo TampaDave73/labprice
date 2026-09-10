@@ -285,6 +285,22 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     for the whole revalidate window — `lib/site-stats.ts` re-reads live when the cached value is an
     impossible zero.
 
+23. **A `loading.tsx` anywhere above a route makes that route unable to return 404.** The file wraps
+    its segment in a Suspense boundary, so Next flushes the response shell — status line included —
+    before the page renders; a later `notFound()` can only swap the UI, not the status. A root
+    `app/loading.tsx` did this to **every** dynamic route on the site: `/blog/<anything>`,
+    `/test/<anything>` and `/category/<anything>` all answered **HTTP 200** with a 404 body, which is
+    the textbook soft 404 (Google indexes or de-ranks the URL rather than dropping it, and the crawl
+    budget goes to pages that don't exist). Fixed 2026-09-10 by deleting the root and
+    `test/[slug]` loading files. **`app/search/loading.tsx` is the only one left, deliberately** — it
+    is `noindex`, `Disallow`ed, never calls `notFound()`, and runs the slowest query on the site. The
+    rule for a new one: *if the segment can 404, it cannot have a `loading.tsx`.*
+    Known and unfixable today: for a `notFound()` miss (as opposed to a URL matching no route at
+    all), Next renders `not-found.tsx` through a **client** boundary, so the markup ships in the RSC
+    payload and paints on hydration instead of being server-rendered. The status code is right, which
+    is what governs indexing, and a browser shows the page — but `curl` sees an empty body. Don't
+    "fix" it by reintroducing a loading boundary.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

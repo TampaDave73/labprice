@@ -9,6 +9,25 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-10, soft 404s on every dynamic route)
+- **`/blog/<anything>`, `/test/<anything>` and `/category/<anything>` answered HTTP 200 with a 404
+  body.** The cause was one file: a root `app/loading.tsx`. A `loading.tsx` wraps its segment in a
+  Suspense boundary, so Next flushes the response shell — status line included — before the page
+  renders, and the `notFound()` thrown afterwards can only swap the UI. Deleting the root and
+  `test/[slug]` loading files restores real 404s; verified across the route matrix, with live pages
+  still 200.
+- **`app/search/loading.tsx` is the one that stays.** `/search` is `noindex` and `Disallow`ed, never
+  calls `notFound()`, and runs the slowest query on the site, so it is the one page where the spinner
+  costs nothing. The rule is now written down: if a segment can 404, it cannot have a `loading.tsx`.
+- **The 404 page offers somewhere to go** — links to the catalog, the guides, the provider list and
+  contact, plus a `<main id="main">` landmark and its own title. A 404 that dead-ends wastes the
+  visitor and the crawl alike.
+- **Known limitation, recorded not worked around**: for a `notFound()` miss Next renders
+  `not-found.tsx` through a client boundary, so the markup arrives in the RSC payload and paints on
+  hydration rather than being server-rendered. The status code is correct — which is what governs
+  indexing — and a browser shows the page, but `curl` sees an empty body. Confirmed unrelated to the
+  root `error.tsx` by testing with it removed.
+
 ### Changed (2026-09-10, homepage / header / footer, from the SEOmator SEO + GEO audits)
 - **The homepage hero was most of a screen of nothing.** 90px/110px of padding around a 54px
   headline, a badge, a stats bar and a chip row pushed the first real test link below the fold on a

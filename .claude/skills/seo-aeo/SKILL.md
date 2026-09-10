@@ -40,6 +40,13 @@ and link to the pages it talks about. Everything below is a specific case of tha
       freshest offering `lastCheckedAt`, not `test.updatedAt`, because only one of those moves daily.
 - [ ] **Thin or duplicative? `robots: { index: false, follow: true }`** and add it to `DISALLOW` in
       `app/robots.ts`, the way `/search` is handled.
+- [ ] **No `loading.tsx` in the segment or any segment above it, if the route can 404.** A loading
+      boundary flushes the response shell before the page renders, so `notFound()` can no longer set
+      the status and the route answers **200 with a 404 body** — a soft 404. One root
+      `app/loading.tsx` did this to `/blog/*`, `/test/*` and `/category/*` simultaneously.
+      `app/search/loading.tsx` is the only surviving one: `noindex`, never 404s, slowest query.
+- [ ] **Confirm a missing row actually 404s**: `curl -s -o /dev/null -w '%{http_code}' <url>/nope`.
+      A page that returns 200 for content that doesn't exist is worse than one that doesn't exist.
 - [ ] **Render `<PageProvenance>`** (or an equivalent) at the foot of any page whose facts change:
       who compiled it, a `<time>` for when the facts were last verified, and a link out to a house
       source. Three separate E-E-A-T findings — "no author byline", "no publication or modification

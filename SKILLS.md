@@ -122,6 +122,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     `api.indexnow.org` on publish so Bing (and therefore Bing Copilot) recrawls without waiting.
     Key file: `public/24015cc3f19502cba305f0c2f7f7d8ff.txt`, public by design. Production only,
     fire-and-forget; Google ignores IndexNow and uses the sitemap.
+  - **404s are real 404s.** There is no `loading.tsx` above any route that can call `notFound()` —
+    a loading boundary flushes the response shell before the page renders, so the status is already
+    committed and the route answers 200 with a 404 body. `app/search/loading.tsx` is the only one
+    left (noindex, never 404s, slowest query). If a segment can 404, it cannot have a `loading.tsx`.
   - **Not done yet**: no FAQ content or `FAQPage` schema on *test* pages (needs a Test-linked FAQ
     model and human-sourced answers — YMYL, don't generate them), and no medically-reviewed-by
     attribution anywhere.
