@@ -147,7 +147,10 @@ export default async function Home() {
           padding: '36px 24px 34px',
           textAlign: 'center',
           position: 'relative',
-          overflow: 'hidden',
+          // NO `overflow: hidden` here. The search suggestions are absolutely positioned inside this
+          // block, and once the hero shrank they extend past its bottom edge — hiding overflow
+          // decapitated the dropdown at the first result. The decorative overlay below is
+          // `inset: 0`, so it fills the hero exactly and has nothing to spill in the first place.
         }}
       >
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse 70% 55% at 50% -5%, oklch(0.56 0.087 260 / 0.1), transparent)', pointerEvents: 'none' }} />
