@@ -15,13 +15,19 @@ import { formatPostDate, readingTimeMinutes, heroSrcSet } from '@/lib/blog';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Guides to lab testing',
+  // "Guides to lab testing" boxed this in as mechanics-of-testing content. The articles already
+  // range wider than that — which markers matter for a condition, what a community tracks — so the
+  // framing has to cover "health, through the lens of what you can measure", not just how a draw works.
+  // Deliberately not the same string as the <h1> ("Blood tests explained") — a title that duplicates
+  // the H1 wastes the pair, and audit tools flag it. The title carries the search phrasing; the H1
+  // is the human one. Rendered length is 34 chars with the "| LabTestCompare" template.
+  title: 'Blood test guides',
   description:
-    'Plain-English guides to blood tests and self-pay lab work: how a draw works, when fasting matters, what each panel measures, and what it should cost.',
+    'Plain-English guides to blood tests: what each panel measures, which conditions they are used for, how testing works, and what you should pay.',
   alternates: { canonical: '/blog' },
   openGraph: {
-    title: 'Guides to lab testing | LabTestCompare',
-    description: 'Plain-English guides to blood tests and self-pay lab work.',
+    title: 'Blood tests explained | LabTestCompare',
+    description: 'Plain-English guides to what blood tests measure, which conditions they are used for, and what you should pay.',
     url: '/blog',
     type: 'website',
     // Declaring `openGraph` at all replaces the root default wholesale, which silently dropped
@@ -54,9 +60,9 @@ export default async function BlogIndexPage() {
     '@context': 'https://schema.org',
     '@type': 'Blog',
     '@id': `${base}/blog#blog`,
-    name: 'Guides to lab testing',
+    name: 'Blood tests explained',
     description:
-      'Plain-English guides to blood tests and self-pay lab work: how a draw works, when fasting matters, what each panel measures, and what it should cost.',
+      'Plain-English guides to blood tests: what each panel measures, which conditions they are used for, how testing works, and what you should pay.',
     url: `${base}/blog`,
     publisher: { '@id': `${base}/#organization` },
     blogPost: posts.map((p) => ({
@@ -88,14 +94,38 @@ export default async function BlogIndexPage() {
           .guide-card:hover .guide-cta { background: oklch(0.55 0.14 260); border-color: oklch(0.55 0.14 260); color: #fff; }
           .guide-card:hover h2 { color: oklch(0.42 0.12 260); }
         `}</style>
-        <h1 style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.8px', color: 'oklch(0.15 0.04 260)', marginBottom: 12 }}>
-          Guides to lab testing
-        </h1>
-        <p style={{ fontSize: 17, color: 'oklch(0.45 0.04 260)', lineHeight: 1.65, maxWidth: 640, marginBottom: 40 }}>
-          Plain-English explanations of how blood testing actually works — what a panel measures, when
-          fasting matters, and why the same test can cost $20 or $200. Written to answer the question,
-          then get out of the way.
-        </p>
+        {/* Centred over the left-aligned cards: the old header sat hard left in a 900px column with
+            a 640px paragraph under it, which left a ragged block against a wall of empty space.
+            text-wrap balance/pretty lets the browser even out the line breaks rather than leaving a
+            one-word last line. */}
+        <header style={{ textAlign: 'center', marginBottom: 44 }}>
+          <h1
+            style={{
+              fontSize: 40,
+              fontWeight: 700,
+              letterSpacing: '-0.9px',
+              color: 'oklch(0.15 0.04 260)',
+              lineHeight: 1.12,
+              margin: '0 0 14px',
+              textWrap: 'balance',
+            }}
+          >
+            Blood tests explained
+          </h1>
+          <p
+            style={{
+              fontSize: 17.5,
+              color: 'oklch(0.45 0.04 260)',
+              lineHeight: 1.6,
+              maxWidth: 620,
+              margin: '0 auto',
+              textWrap: 'pretty',
+            }}
+          >
+            What each panel measures, which conditions it is used for, how a blood draw actually
+            works, and what you should expect to pay.
+          </p>
+        </header>
 
         {posts.length === 0 ? (
           <p style={{ fontSize: 15, color: 'oklch(0.5 0.04 260)' }}>No articles published yet.</p>
