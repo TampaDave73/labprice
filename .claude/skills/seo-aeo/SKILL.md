@@ -73,6 +73,10 @@ and link to the pages it talks about. Everything below is a specific case of tha
       multiply fast — 27 elements on one test page, from four styles.
 - [ ] **Dates are `<time dateTime="ISO">`.** Visible text alone is not a date signal. Format them
       `en-US` — "September 9, 2026", not "9 September 2026".
+- [ ] **A database string dropped into a sentence needs `lib/grammar.ts`.** `testPhrase()` for the
+      trailing noun, `indefiniteArticle()` for a/an. Hardcoding "a" put "What does a Iron & TIBC test
+      measure?" in an `<h2>` on five pages. The rule is sound-based, not spelling-based — a naive
+      vowel check breaks "a Uric Acid test" and "an IGF-1 test" in opposite directions.
 - [ ] **US English in everything a visitor reads.** color, liter, center, hemoglobin, gray, "most
       expensive" — never colour, litre, centre, haemoglobin, grey, "dearest". The audience is
       American and the catalog's own test names use US spellings, so a British spelling is both
@@ -90,9 +94,18 @@ and link to the pages it talks about. Everything below is a specific case of tha
 - [ ] **Put properties on the type that defines them.** `offers` belongs on `Product`/`Service`, not
       on `MedicalTest`; `bodyLocation` means an anatomical site, not a category name. Both were wrong
       here once.
-- [ ] **Never describe content the visitor cannot see.** `FAQPage` is emitted only from the same `faq`
-      field that renders visibly. Structured data describing invisible content is what gets rich
-      results revoked.
+- [ ] **Never describe content the visitor cannot see.** `FAQPage` is emitted only from the same
+      source that renders visibly — `Post.faq` for articles, `lib/test-faq.ts` for test pages. Build
+      the array once and pass it to both; the moment they are assembled separately they can drift,
+      and structured data describing invisible content is what gets rich results revoked.
+- [ ] **An FAQ answer must be worth quoting on its own.** Self-contained (name the subject, don't
+      rely on the question), two to four sentences, and built from data you actually hold. A question
+      with nothing behind it gets dropped, not hedged into "it depends" — and on a YMYL page it stays
+      off the interpretation side of the line entirely: how ordering works, what it costs, where the
+      draw happens, yes; what a result means, no.
+- [ ] **Don't duplicate an existing `<h2>` as an FAQ entry.** If the page already answers "how do
+      you prepare" in a question-shaped heading from the same field, repeating that copy lower down
+      is duplication on the page's own subject.
 - [ ] Reference the site entity as `publisher: { '@id': '<BASE_URL>/#organization' }` rather than
       redeclaring the organisation.
 

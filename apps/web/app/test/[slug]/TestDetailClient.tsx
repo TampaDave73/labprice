@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import SuggestionModal from '../../components/SuggestionModal';
 import { trackEvent } from '../../../lib/gtag';
+import { indefiniteArticle, testPhrase } from '../../../lib/grammar';
 
 interface Offering {
   id: string;
@@ -101,13 +102,9 @@ const ACCENT = 'oklch(0.58 0.136 260)';
 
 // Section headings are phrased as the questions people actually search ("how do you prepare for a
 // vitamin D test?") rather than as labels ("How To Prepare") — that's the unit search and answer
-// engines segment a page by, and this page previously had no <h2> at all. Most of our test names are
-// bare analytes ("Ferritin") that read wrong without a trailing noun, but some already carry one
-// ("Arsenic Blood Test", "Lipid Panel"), so only add "test" when it isn't already there.
-const HAS_NOUN = /\b(test|panel|profile|screen|screening|count)\b\.?$/i;
-function testPhrase(name: string): string {
-  return HAS_NOUN.test(name.trim()) ? name : `${name} test`;
-}
+// engines segment a page by, and this page previously had no <h2> at all. `testPhrase` and the
+// a/an rule live in lib/grammar.ts because the FAQ below the table has to word the same test the
+// same way this does.
 
 // 'quest' | 'labcorp' → 'Quest' | 'LabCorp' for the dual-lab secondary-price line.
 function labLabel(provider: string | null): string {
@@ -137,11 +134,17 @@ export default function TestDetailClient({ test, offerings }: Props) {
   const savings = cheapest && most ? most.price - cheapest.price : 0;
 
   // Matches the prototype's four fixed accordion sections (no biomarkers section).
+  //
+  // `a`/`an` is computed, not hardcoded: the name is a database string, and "What does a Iron & TIBC
+  // test measure?" shipped as an <h2> on five test pages. See lib/grammar.ts for why it is not a
+  // vowel check ("a Uric Acid test" is correct).
   const phrase = testPhrase(test.name);
+  const a = indefiniteArticle(phrase);
   const sections = [
-    { id: 'about', title: `What does a ${phrase} measure?`, content: [test.description, test.purpose].filter(Boolean).join(' ') },
-    { id: 'procedure', title: `How is a ${phrase} performed?`, content: test.procedure },
-    { id: 'prep', title: `How do you prepare for a ${phrase}?`, content: test.preparation },
+    { id: 'about', title: `What does ${a} ${phrase} measure?`, content: [test.description, test.purpose].filter(Boolean).join(' ') },
+    { id: 'procedure', title: `How is ${a} ${phrase} performed?`, content: test.procedure },
+    { id: 'prep', title: `How do you prepare for ${a} ${phrase}?`, content: test.preparation },
+    // "a normal …" — the article agrees with "normal" here, not with the test name.
     { id: 'ranges', title: `What is a normal ${test.name} result?`, content: test.normalRange },
   ].filter((s) => s.content);
 
@@ -358,7 +361,7 @@ export default function TestDetailClient({ test, offerings }: Props) {
                 id="price-summary-heading"
                 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'oklch(0.18 0.04 260)', marginBottom: 8 }}
               >
-                How much does a {phrase} cost?
+                How much does {a} {phrase} cost?
               </h2>
               <p style={{ fontSize: 14.5, color: 'oklch(0.4 0.03 260)', lineHeight: 1.7 }}>
                 The cheapest self-pay {phrase} is <strong>${cheapest.price.toFixed(2)}</strong> at{' '}

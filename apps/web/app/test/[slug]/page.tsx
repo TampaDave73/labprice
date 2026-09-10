@@ -7,6 +7,9 @@ import PageViewTracker from '../../components/PageViewTracker';
 import TestDetailClient from './TestDetailClient';
 import GuideLinks from '../../components/GuideLinks';
 import PageProvenance from '../../components/PageProvenance';
+import TestFaq from '../../components/TestFaq';
+import { testFaq } from '@/lib/test-faq';
+import { testPhrase } from '@/lib/grammar';
 import { guidesForTest } from '@/lib/guides';
 import { OG_IMAGE } from '@/lib/og';
 
@@ -106,7 +109,21 @@ export default async function TestDetailPage({ params }: Props) {
     .sort()
     .at(-1) ?? null;
 
-  // Four nodes, deliberately split:
+  // The FAQ, built once. This same array renders visibly (<TestFaq/>) and becomes the FAQPage node
+  // below — never assemble them separately, see lib/test-faq.ts.
+  const phrase = testPhrase(test.name);
+  const faq = testFaq({
+    name: test.name,
+    phrase,
+    questCode,
+    labcorpCode,
+    confidence: test.confidence,
+    thirdPartyOnly: test.thirdPartyOnly,
+    offerings: offerings.map((o) => ({ vendorName: o.vendorName, price: o.price })),
+    lastChecked,
+  });
+
+  // Five nodes, deliberately split:
   //  - MedicalTest carries the clinical facts. It does NOT carry `offers` — schema.org defines that
   //    on Product/Service, not on MedicalTest (the old single-node markup hung an AggregateOffer off
   //    MedicalTest, and set `bodyLocation` to the category name, which expects an anatomical site).
@@ -180,6 +197,21 @@ export default async function TestDetailPage({ params }: Props) {
         { '@type': 'ListItem', position: 3, name: test.name },
       ],
     },
+    // Emitted from the SAME array <TestFaq/> renders, and only when it rendered something.
+    // Structured data describing questions a visitor can't see is what gets rich results revoked.
+    ...(faq.length > 0
+      ? [
+          {
+            '@type': 'FAQPage',
+            '@id': `${pageUrl}#faq`,
+            mainEntity: faq.map((item) => ({
+              '@type': 'Question',
+              name: item.question,
+              acceptedAnswer: { '@type': 'Answer', text: item.answer },
+            })),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -224,6 +256,7 @@ export default async function TestDetailPage({ params }: Props) {
           intro="Plain-English explanations of what this test measures and how it's done."
           maxWidth={1240}
         />
+        <TestFaq items={faq} heading={`${test.name}: common questions`} />
         <PageProvenance updated={lastChecked} />
       </main>
       <Footer />

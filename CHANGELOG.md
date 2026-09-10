@@ -9,6 +9,33 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-10, FAQ + FAQPage on all 30 test pages)
+- **Five to six questions per test, with `FAQPage` structured data.** The test pages had no FAQ
+  schema at all, and "add concise answer-box sections to comparison pages" was the GEO audit's one
+  named content recommendation. `lib/test-faq.ts` builds the array; `components/TestFaq.tsx` renders
+  it as a plain `<dl>` and the same array becomes the schema — never assembled separately, the way
+  `Post.faq` already works. Verified: visible question count equals `mainEntity` count on every page.
+- **Nothing in it is generated and nothing is medical.** Answers come from data already curated
+  (prices, order codes, the confidence flag) or state how self-pay ordering works. No "should I take
+  this test", no result interpretation, no reference-range guidance. A question with no data behind
+  it is dropped rather than hedged: the "is this the same test a doctor would order" answer appears
+  only for `confidence: HIGH` codes, and the draw-location answer names only the labs that actually
+  carry a code for that test rather than saying "Quest or LabCorp" on a LabCorp-only test.
+- **No "how do you prepare" entry, deliberately** — the page already answers that in an `<h2>` from
+  the same `preparation` field, and repeating it verbatim would be duplication on the page's own
+  subject.
+
+### Fixed (2026-09-10, broken grammar in test-page headings)
+- **"What does a Iron & TIBC test measure?"** shipped as an `<h2>` on five test pages (Iron & TIBC,
+  Insulin, IGF-1, Estradiol, Apolipoprotein B) — the most-read text on the page and the exact string
+  an answer engine reads back. `lib/grammar.ts` now computes the article from how the phrase is
+  *said*: initialisms follow the first letter's name (an IGF-1, an MTHFR, a TSH), "yoo"-sound words
+  keep "a" (a Uric Acid test — which a naive vowel check would have broken), silent-h takes "an".
+  Checked against all 30 catalog names.
+- `testPhrase()` now ignores a trailing parenthetical, so "Comprehensive Metabolic Panel (14)" stops
+  becoming "a Comprehensive Metabolic Panel (14) test". Both helpers moved to `lib/grammar.ts` and
+  are shared by the headings and the FAQ, so one test is worded one way throughout.
+
 ### Fixed (2026-09-10, soft 404s on every dynamic route)
 - **`/blog/<anything>`, `/test/<anything>` and `/category/<anything>` answered HTTP 200 with a 404
   body.** The cause was one file: a root `app/loading.tsx`. A `loading.tsx` wraps its segment in a

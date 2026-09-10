@@ -126,9 +126,20 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     a loading boundary flushes the response shell before the page renders, so the status is already
     committed and the route answers 200 with a 404 body. `app/search/loading.tsx` is the only one
     left (noindex, never 404s, slowest query). If a segment can 404, it cannot have a `loading.tsx`.
-  - **Not done yet**: no FAQ content or `FAQPage` schema on *test* pages (needs a Test-linked FAQ
-    model and human-sourced answers — YMYL, don't generate them), and no medically-reviewed-by
-    attribution anywhere.
+  - **Test-page FAQ** (`lib/test-faq.ts` → `components/TestFaq.tsx` + the `FAQPage` node) — five to
+    six questions per test, assembled from data we already curate (prices, order codes, the
+    confidence flag) or from how self-pay ordering works. **Nothing is generated and nothing is
+    medical**: no "should I take this", no result interpretation, no reference-range guidance. A
+    question with no data behind it is omitted rather than hedged — the "is this the same test a
+    doctor would order" answer only appears for `confidence: HIGH` codes, and the draw-location
+    answer names only the labs that actually carry a code for that test. One array feeds both the
+    visible `<dl>` and the schema, the way `Post.faq` does for articles.
+  - **`lib/grammar.ts`** — `testPhrase()` and `indefiniteArticle()`. Test names are database strings
+    dropped into sentences, and "What does a Iron & TIBC test measure?" shipped as an `<h2>` on five
+    pages. The article rule is sound-based, not spelling-based (an IGF-1, a Uric Acid, an MTHFR), and
+    both helpers are shared by the headings and the FAQ so one test is worded one way.
+  - **Not done yet**: no medically-reviewed-by attribution anywhere — pages are bylined to the
+    organization, not to a named person with credentials. That is a decision, not a code task.
 - **Homepage ranking is behavioural** (`lib/popular-tests.ts`) — the "most looked-at tests" row is
   ranked from `page_views`, `affiliate_clicks` and *committed* `search_logs` over a 60-day window,
   weighted click-out (8) > search (3) > view (1) and cached 15 minutes. Below a total score of 25 it
