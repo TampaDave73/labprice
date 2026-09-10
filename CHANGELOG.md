@@ -9,6 +9,42 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-10, "Scrape all catalog vendors" run: 17/18 clean, and the three things that made the 18th hard to read)
+Ran the full bulk scrape against production (18 active catalog vendors, sequentially through the
+`scrape-discover` worker). **17 SUCCESS**, 1 FAILED — Request A Test, `0 products` after 32s. Diagnosed
+it from inside the scrape-worker container per gotcha 16 (raw fetch, then `parseCatalog` on those exact
+bytes) rather than trusting the message: the block is **real**. Plain HTTP returns 403; the stealth
+browser path returns 28,693 bytes still titled "Just a moment..." with `cf_chl` markers, and the parser
+is fine. Also confirmed from the same run: **True Health Labs now succeeds from Railway** (71s) despite
+still being flagged "Manual only" — its `needsBrowser` browser path clears Cloudflare from the
+datacenter IP now, so that schedule setting is stale.
+
+- **The bulk button queued vendors the cloud provably cannot scrape.** `frequencyDays: 0` ("Manual
+  only") on this project means exactly one thing — the vendor's WAF blocks Railway's IP, so it runs from
+  a residential connection via `scripts/scrape-vendor-local.ts`. The daily scheduler and the weekly
+  digest both already filter `frequencyDays > 0`; `POST /api/v1/admin/vendors/scrape-all` did not, so
+  every click bought a guaranteed FAILED `ScrapeRun` — which counts against the vendor's computed trust
+  and so pushed exactly these vendors toward LOW trust, where their real prices then need manual review.
+  The route now skips them and returns them as `data.skipped`; `/admin/vendors` names them in the
+  confirmation line and points at `scrape-blocked-vendors.ps1`.
+- **`browserFetchHtml` returned an unresolved WAF interstitial as if it were page content**, on its own
+  stated theory that "the parser yielding 0 products surfaces it". It doesn't — that is precisely the
+  guess gotcha 16 is about, and it is what cost three vendors a wrongful "blocked" write-off. It now
+  re-checks the title after the settle and throws a named error carrying the HTTP status and the title,
+  at the one boundary where both are actually known.
+- **The 0-products guard stopped guessing.** `discover()`/`buildCatalogIndexDetailed` now return
+  `detailsAttempted` + `detailErrors` (per-page failures were logged and swallowed, so "the listing was
+  empty" and "all 59 detail pages 403'd" reached the caller identically), and the error message names
+  the boundary that failed — empty listing vs. listing-fine-but-every-detail-page-failed, with the first
+  three underlying errors — instead of asserting "likely blocked (WAF/challenge page)".
+- **The admin adapter dropdown is generated, not hand-written.** It was 16 hardcoded `<option>`s and had
+  fallen three adapters behind the code (`marekdiagnostics`, `jasonhealth`, `drsays` were unselectable).
+  Since `getAdapter()` falls back to GoodLabs for an unknown name, drift in the other direction is worse
+  than invisible — it crawls goodlabs.com and attaches its products to the wrong vendor. New
+  `CATALOG_ADAPTERS` in `@labprice/shared` (name/label/site, no parser imports, so a client component can
+  import it), the registry split into `CANONICAL_ADAPTERS` + `ADAPTER_ALIASES`, and
+  `packages/scrapers/src/__tests__/adapters.test.ts` fails the build on any future drift.
+
 ### Fixed (2026-09-10, links inside bold printed as raw markdown)
 - **`**[LH](/test/luteinizing-hormone)**` rendered as literal text** — fourteen of them in the
   published "Infertility on TRT" article, in the list under "What tests do people use to understand

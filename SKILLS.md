@@ -293,7 +293,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
 - **Vendors** — list (sortable incl. by trust) + **Add Vendor** + **Scrape all catalog vendors**
   (one click queues a `scrape-discover` job for every active catalog-mode vendor via
   `POST /api/v1/admin/vendors/scrape-all` — all via the worker, nothing inline: 15 sequential
-  catalog crawls in one request would time out; per-URL vendors are excluded on purpose); editor has: details, **Trust
+  catalog crawls in one request would time out; per-URL vendors are excluded on purpose, and so are
+  **"Manual only" (`frequencyDays: 0`) vendors** — those are the WAF-blocked ones that only scrape from a
+  residential connection, and queueing them from the cloud only manufactured a FAILED run that ate their
+  trust score. They come back as `data.skipped` and are named in the confirmation line); editor has: details, **Trust
   Override + Scraper Health panel**, **Recent Runs** (last 15 `ScrapeRun`s with status/trigger/
   duration/found-updated counts + any `ScrapeError` messages inline — `GET
   /api/v1/admin/vendors/[id]/runs` — the live insight into scraping failures, so an admin doesn't need

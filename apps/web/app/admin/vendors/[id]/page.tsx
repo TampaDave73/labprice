@@ -5,6 +5,9 @@
 // and Scraper Configuration (+ a "Scrape now" trigger). Effective trust = override ?? computed.
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+// Deep import, not the package root: this is a client component and @labprice/shared's index pulls in
+// the zod schemas and auth helpers it has no use for (same reasoning as lib/ga4-data.ts's re-export).
+import { CATALOG_ADAPTERS } from '@labprice/shared/src/constants/catalog-adapters';
 
 type TrustLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -744,23 +747,13 @@ They are added without prices — price them in one crawl afterwards. You can re
             <div className="mt-3 grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>Catalog source (adapter)</label>
+                {/* Options come from CATALOG_ADAPTERS, not a hand-written list: this dropdown used to
+                    be hardcoded and quietly fell three adapters behind the code, and picking a name
+                    the build doesn't have crawls goodlabs.com instead of failing. */}
                 <select className="admin-input" value={config.catalogAdapter} onChange={(e) => setC('catalogAdapter', e.target.value)}>
-                  <option value="goodlabs">GoodLabs (goodlabs.com)</option>
-                  <option value="ownyourlabs">Own Your Labs (ownyourlabs.com)</option>
-                  <option value="dirtcheaplabs">Dirt Cheap Labs (dirtcheaplabs.com)</option>
-                  <option value="mitohealth">Mito Health (mitohealth.com)</option>
-                  <option value="anabolicinsights">Anabolic Insights (anabolicinsights.ai)</option>
-                  <option value="algorx">AlgoRx (algorx.com)</option>
-                  <option value="walkinlab">Walk-In Lab (walkinlab.com)</option>
-                  <option value="personalabs">Personalabs (personalabs.com)</option>
-                  <option value="healthlabs">HealthLabs.com (healthlabs.com)</option>
-                  <option value="privatemdlabs">Private MD Labs (privatemdlabs.com)</option>
-                  <option value="requestatest">Request A Test (requestatest.com)</option>
-                  <option value="directlabs">DirectLabs (directlabs.com)</option>
-                  <option value="discountedlabs">Discounted Labs (discountedlabs.com)</option>
-                  <option value="truehealthlabs">True Health Labs (truehealthlabs.com)</option>
-                  <option value="questhealth">Quest Health (questhealth.com)</option>
-                  <option value="labcorpondemand">LabCorp OnDemand (ondemand.labcorp.com)</option>
+                  {CATALOG_ADAPTERS.map((a) => (
+                    <option key={a.name} value={a.name}>{a.label} ({a.site})</option>
+                  ))}
                 </select>
               </div>
               <div>

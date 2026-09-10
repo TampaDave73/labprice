@@ -19,12 +19,25 @@ export async function POST() {
 
   const configs = await prisma.scrapeVendorConfig.findMany({
     where: { isEnabled: true, vendor: { deletedAt: null, isActive: true } },
-    select: { vendorId: true, selectors: true, vendor: { select: { name: true } } },
+    select: { vendorId: true, selectors: true, frequencyDays: true, vendor: { select: { name: true } } },
   });
-  const catalogVendors = configs.filter((c) => isCatalogMode(c.selectors));
+  const catalogConfigs = configs.filter((c) => isCatalogMode(c.selectors));
+  // `frequencyDays: 0` means "Manual only", which on this project means ONE specific thing: the
+  // vendor's WAF blocks Railway's datacenter IP, so it's scraped from a residential connection with
+  // scripts/scrape-vendor-local.ts instead. Queueing it here anyway (which this route used to do)
+  // bought a guaranteed FAILED ScrapeRun every click — and a failed run counts against the vendor's
+  // computed trust (packages/database/src/vendor-trust.ts), so the bulk button was quietly pushing
+  // exactly these vendors toward LOW trust, which then forces manual review of their real prices.
+  // The daily scheduler and the weekly digest both already filter on frequencyDays > 0; this route
+  // was the one place that didn't.
+  const catalogVendors = catalogConfigs.filter((c) => c.frequencyDays > 0);
+  const skipped = catalogConfigs.filter((c) => c.frequencyDays === 0).map((c) => c.vendor.name).sort();
 
   if (catalogVendors.length === 0) {
-    return NextResponse.json({ error: { code: 'no_catalog_vendors', message: 'No active catalog-mode vendors to scrape.' } }, { status: 400 });
+    const message = skipped.length
+      ? `No cloud-scrapable catalog vendors — the ${skipped.length} active catalog vendor(s) are all "Manual only" (${skipped.join(', ')}). Run them locally with scrape-blocked-vendors.ps1.`
+      : 'No active catalog-mode vendors to scrape.';
+    return NextResponse.json({ error: { code: 'no_catalog_vendors', message } }, { status: 400 });
   }
 
   const connection = new IORedis(redisConnectionOptions());
@@ -44,6 +57,6 @@ export async function POST() {
   }
 
   return NextResponse.json({
-    data: { queued: catalogVendors.length, vendors: catalogVendors.map((c) => c.vendor.name).sort() },
+    data: { queued: catalogVendors.length, vendors: catalogVendors.map((c) => c.vendor.name).sort(), skipped },
   });
 }

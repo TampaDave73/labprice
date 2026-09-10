@@ -28,6 +28,13 @@ chromium.use(stealth());
  * visitor, then returns the fully-rendered HTML. One browser instance is reused across calls within a
  * single crawl (via the returned closure) rather than launching per-request.
  */
+/**
+ * Titles Cloudflare/AWS WAF interstitials use. Checked in the page (via `.source`, so there is one
+ * definition rather than a copy per side) and again in Node before returning, so an interstitial that
+ * never clears becomes a named error instead of 28KB of challenge markup.
+ */
+const INTERSTITIAL_TITLE = /just a moment|attention required|checking your browser|verify you are human/i;
+
 export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<string> {
   let browserPromise: ReturnType<typeof chromium.launch> | null = null;
   const getBrowser = () => (browserPromise ??= chromium.launch({ headless: true }));
@@ -39,18 +46,35 @@ export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<s
     });
     try {
       const page = await context.newPage();
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
       // Cloudflare interstitials take a variable amount of time (worse from datacenter IPs than the
       // fixed 2s we used to wait) — poll until the challenge title clears, then settle briefly.
+      let cleared = true;
       try {
         await page.waitForFunction(
-          () => !/just a moment|attention required|checking your browser/i.test(document.title),
+          (src: string) => !new RegExp(src, 'i').test(document.title),
+          INTERSTITIAL_TITLE.source,
           { timeout: 15_000 },
         );
       } catch {
-        // Challenge never cleared — return what we have; the parser yielding 0 products surfaces it.
+        cleared = false;
       }
       await page.waitForTimeout(1500);
+      // An unresolved challenge used to be returned as-is, on the theory that "the parser yielding 0
+      // products surfaces it". It doesn't: `runVendorDiscovery`'s 0-products guard can't tell a block
+      // from a stale selector, so the run failed with a message that only GUESSED at WAF blocking —
+      // and three vendors were wrongly written off as blocked on the strength of that guess (see
+      // CLAUDE.md gotcha 16). Diagnose it here, where the title and HTTP status are actually known.
+      if (!cleared) {
+        const title = (await page.title().catch(() => '')) || '(no title)';
+        if (INTERSTITIAL_TITLE.test(title)) {
+          throw new Error(
+            `WAF interstitial never cleared for ${url} — HTTP ${response?.status() ?? '?'}, title "${title}" after 16.5s in headless Chromium. ` +
+              `This host's IP is blocked, not the parser: scrape this vendor from a residential connection ` +
+              `(scripts/scrape-vendor-local.ts) and leave its schedule on "Manual only".`,
+          );
+        }
+      }
       // XML documents (vendor sitemaps): Chromium renders them inside its XML-viewer DOM, so
       // page.content() would return the viewer wrapper, not the sitemap. The original markup is
       // preserved under this well-known element — return it verbatim when present.

@@ -235,6 +235,33 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
   };
 }
 
+/**
+ * Turn "0 products" into a statement of what was observed, for the ScrapeError row an admin reads days
+ * later. Deliberately says nothing about WHY — it names the failing boundary and the first underlying
+ * error, and leaves blocked-vs-layout-change to whoever instruments it (the browser fetcher already
+ * diagnoses a real WAF interstitial itself, and `httpFetchHtml` reports the HTTP status).
+ */
+function describeEmptyCatalog(
+  vendorName: string,
+  cfg: CatalogScrapeConfig,
+  entries: number,
+  detailsAttempted: number,
+  detailErrors: string[],
+): string {
+  const where = `${cfg.baseUrl}${cfg.catalogPath}`;
+  if (entries === 0) {
+    return cfg.adapter?.fetchAll
+      ? `catalog crawl returned 0 products for ${vendorName} — the API at ${cfg.apiBase ?? where} responded but yielded no products. Check the endpoint's live response shape against its parser before assuming a block.`
+      : `catalog crawl returned 0 products for ${vendorName} — the catalog LISTING at ${where} parsed 0 entries, so no product pages were even attempted. Fetch that URL and run the adapter's parseCatalog on exactly those bytes to tell a block from a changed listing layout.`;
+  }
+  const sample = detailErrors.slice(0, 3).join('; ');
+  return (
+    `catalog crawl returned 0 products for ${vendorName} — the listing at ${where} parsed ${entries} entries fine, ` +
+    `but all ${detailsAttempted} product page(s) fetched from it yielded nothing` +
+    (sample ? `. First failures: ${sample}` : '. No per-page errors were recorded, so the product parser matched nothing.')
+  );
+}
+
 export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<DiscoverySummary> {
   const log = opts.onLog ?? (() => {});
   const vendor = await prisma.vendor.findUnique({ where: { id: opts.vendorId }, include: { scrapeConfig: true } });
@@ -329,12 +356,14 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       matches = result.matches;
       catalogProducts = result.products;
       catalogEntries = result.entries;
-      // A real catalog is never empty — 0 products means the crawl was silently blocked (an
-      // unresolved WAF challenge page parses as "no products") or the site layout changed. Treat it
-      // as a FAILED run so it alerts/digests as a failure instead of masquerading as a successful
-      // scrape that matched nothing.
+      // A real catalog is never empty, so 0 products is always a failure — but WHICH failure matters,
+      // and this guard used to assert "likely blocked (WAF/challenge page)" for all of them. That guess
+      // cost us three vendors written off as blocked when the real causes were a too-strict regex, a
+      // stale needsBrowser flag and a missing spinner (CLAUDE.md gotcha 16). So report the boundary that
+      // actually failed: an empty LISTING (nothing to crawl) and a listing that crawled fine while every
+      // DETAIL page failed are different bugs in different files.
       if (catalogProducts.length === 0) {
-        throw new Error(`catalog crawl returned 0 products for ${vendor.name} — likely blocked (WAF/challenge page) or the site layout changed`);
+        throw new Error(describeEmptyCatalog(vendor.name, cfg, result.entries.length, result.detailsAttempted, result.detailErrors));
       }
     }
   } catch (e) {

@@ -26,3 +26,5 @@ export const ROLE_HIERARCHY: Record<string, number> = {
   ADMIN: 2,
   SUPER_ADMIN: 3,
 };
+
+export * from './catalog-adapters';

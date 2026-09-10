@@ -94,6 +94,47 @@ describe('discover() — narrowTests vs tests', () => {
   });
 });
 
+// The crawl has to report what it FAILED to fetch, not just what it got: `runVendorDiscovery`'s
+// 0-products guard uses these counts to say whether the listing or the detail pages broke, instead of
+// guessing "likely blocked (WAF)" for both (CLAUDE.md gotcha 16).
+describe('discover() — detail-fetch failure reporting', () => {
+  it('counts and names every detail page that failed, while still returning the others', async () => {
+    const { fetchHtml, cfg } = makeFakeVendor(entries, new Map([['alpha', product('alpha', 'Alpha Marker', 10)]]));
+    const result = await discover([alphaTest, betaTest], { fetchHtml }, cfg);
+
+    expect(result.products.map((p) => p.slug)).toEqual(['alpha']); // one dead page doesn't abort the crawl
+    expect(result.detailsAttempted).toBe(2);
+    expect(result.detailErrors).toEqual(['beta: no fixture for slug beta']);
+  });
+
+  it('reports an empty listing as 0 entries with no detail pages attempted', async () => {
+    const { fetchHtml, cfg } = makeFakeVendor([], products);
+    const result = await discover([alphaTest], { fetchHtml }, cfg);
+
+    expect(result.entries).toEqual([]);
+    expect(result.detailsAttempted).toBe(0);
+    expect(result.detailErrors).toEqual([]);
+  });
+
+  it('reports a listing that crawled fine but parsed no products, with no fetch errors', async () => {
+    // Every detail fetch succeeds and returns an empty body — parseProduct yields null, which is a
+    // product-parser problem, not a blocked request, and must not look like one.
+    const adapter: CatalogAdapter = {
+      name: 'fake',
+      parseCatalog: (html) => JSON.parse(html) as CatalogEntry[],
+      parseProduct: () => null,
+      productUrl: (baseUrl, slug) => `${baseUrl}/p/${slug}`,
+    };
+    const fetchHtml = async (url: string) => (url === CATALOG_URL ? JSON.stringify(entries) : '<html></html>');
+    const result = await discover([alphaTest], { fetchHtml }, { baseUrl: 'https://fake.test', catalogPath: '/catalog', adapter, rateLimitMs: 0 });
+
+    expect(result.products).toEqual([]);
+    expect(result.entries.length).toBe(3);
+    expect(result.detailsAttempted).toBe(1);
+    expect(result.detailErrors).toEqual(['alpha: parsed no product data']);
+  });
+});
+
 // Locks in the fix for the 2 code matches narrowing lost: vendors listing "Complete Blood Count
 // (CBC) Test" only name-match our test via a bare "CBC" alias (none of the other CBC aliases —
 // "CBC with Differential" etc. — tokenize down to just {cbc}, so none were a token-subset match).

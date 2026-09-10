@@ -53,8 +53,13 @@ export default function VendorsListPage() {
       if (!res.ok) {
         setBulkMsg(json.error?.message ?? 'Bulk scrape failed to queue.');
       } else {
-        const { queued, vendors: names } = json.data as { queued: number; vendors: string[] };
-        setBulkMsg(`Queued ${queued} vendor scrape${queued === 1 ? '' : 's'} (${names.join(', ')}) — the worker processes them in the background.`);
+        const { queued, vendors: names, skipped } = json.data as { queued: number; vendors: string[]; skipped?: string[] };
+        // Name the skipped vendors explicitly: they're the WAF-blocked ones that only scrape from a
+        // residential connection, and silently omitting them is how they go stale unnoticed.
+        const tail = skipped?.length
+          ? ` Skipped ${skipped.length} "Manual only" vendor${skipped.length === 1 ? '' : 's'} (${skipped.join(', ')}) — Cloudflare blocks these from the cloud; run scrape-blocked-vendors.ps1 from home.`
+          : '';
+        setBulkMsg(`Queued ${queued} vendor scrape${queued === 1 ? '' : 's'} (${names.join(', ')}) — the worker processes them in the background.${tail}`);
       }
     } catch {
       setBulkMsg('Bulk scrape failed to queue — is the site reachable?');

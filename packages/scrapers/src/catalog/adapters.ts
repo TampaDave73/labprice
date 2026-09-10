@@ -158,13 +158,18 @@ export const drSaysAdapter: CatalogAdapter = {
   // sitemap.xml — see drsays-parser.ts's module comment for why.
 };
 
-/** Registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors. */
-export const ADAPTERS: Record<string, CatalogAdapter> = {
+/**
+ * Canonical registry keyed by the `adapter` string stored in ScrapeVendorConfig.selectors.
+ *
+ * Every key here must also appear in `CATALOG_ADAPTERS` (@labprice/shared) — that's the list the admin
+ * vendor dropdown renders, and `adapters.test.ts` fails the build if the two drift. An adapter that
+ * exists only here is unselectable in the admin UI; a name that exists only there silently crawls
+ * GoodLabs (see `getAdapter`'s fallback).
+ */
+export const CANONICAL_ADAPTERS: Record<string, CatalogAdapter> = {
   goodlabs: goodlabsAdapter,
   ownyourlabs: ownYourLabsAdapter,
-  oyl: ownYourLabsAdapter,
   dirtcheaplabs: dirtCheapLabsAdapter,
-  dcl: dirtCheapLabsAdapter,
   mitohealth: mitoHealthAdapter,
   anabolicinsights: anabolicInsightsAdapter,
   algorx: algoRxAdapter,
@@ -182,6 +187,20 @@ export const ADAPTERS: Record<string, CatalogAdapter> = {
   jasonhealth: jasonHealthAdapter,
   drsays: drSaysAdapter,
 };
+
+/** Short aliases kept for rows written before the canonical names settled. Not offered in the admin UI. */
+export const ADAPTER_ALIASES: Record<string, string> = {
+  oyl: 'ownyourlabs',
+  dcl: 'dirtcheaplabs',
+};
+
+/** Everything `selectors.adapter` may legally say: canonical names plus the legacy aliases. */
+export const ADAPTERS: Record<string, CatalogAdapter> = Object.entries(ADAPTER_ALIASES).reduce(
+  // A typo'd alias target is dropped rather than stored as undefined, so a lookup takes getAdapter's
+  // fallback instead of crashing; adapters.test.ts is what actually catches the typo.
+  (acc, [alias, target]) => (CANONICAL_ADAPTERS[target] ? { ...acc, [alias]: CANONICAL_ADAPTERS[target] } : acc),
+  { ...CANONICAL_ADAPTERS },
+);
 
 export function getAdapter(name: string | undefined | null): CatalogAdapter {
   return (name && ADAPTERS[name]) || goodlabsAdapter;

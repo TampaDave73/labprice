@@ -88,6 +88,18 @@ export async function buildCatalogIndex(
 }
 
 /**
+ * What a catalog crawl saw, including what it FAILED to see. `detailsAttempted`/`detailErrors` exist so
+ * an empty `products` can be explained rather than guessed at — see `runVendorDiscovery`'s 0-products
+ * guard. Both are 0/empty for `fetchAll` (API) adapters, which have no per-product pages at all.
+ */
+export interface CatalogIndex {
+  products: CatalogProduct[];
+  entries: CatalogEntry[];
+  detailsAttempted: number;
+  detailErrors: string[];
+}
+
+/**
  * Like `buildCatalogIndex`, but also returns the FULL catalog listing (`entries`) — every product
  * the vendor sells, not just the narrowed/detail-fetched subset. The ingest layer (VendorProduct)
  * persists all of them, so nothing the crawl saw is discarded even on a narrow run. For API vendors
@@ -97,14 +109,14 @@ export async function buildCatalogIndexDetailed(
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
   candidateTests?: TestKey[],
-): Promise<{ products: CatalogProduct[]; entries: CatalogEntry[] }> {
+): Promise<CatalogIndex> {
   const adapter = cfg.adapter ?? goodlabsAdapter;
 
   // API vendors (Dirt Cheap Labs): one fetch returns the whole priced catalog — no per-product pages,
   // and no name-narrowing (matching is by code, so we keep every product).
   if (adapter.fetchAll) {
     const products = await adapter.fetchAll(deps, cfg);
-    return { products, entries: products.map((p) => ({ name: p.name, slug: p.slug, url: p.url })) };
+    return { products, entries: products.map((p) => ({ name: p.name, slug: p.slug, url: p.url })), detailsAttempted: 0, detailErrors: [] };
   }
 
   const entries = await fetchCatalogEntries(deps, cfg);
@@ -120,6 +132,10 @@ export async function buildCatalogIndexDetailed(
   }
 
   const products: CatalogProduct[] = [];
+  // Per-page failures are logged and then swallowed so one dead product page can't abort a crawl — but
+  // they also have to be COUNTED, or "every detail page 403'd" and "the listing was empty" both arrive
+  // at the caller as a bare `products.length === 0` and get the same wrong diagnosis.
+  const detailErrors: string[] = [];
   const delay = cfg.rateLimitMs ?? 800;
   for (let i = 0; i < selected.length; i++) {
     const entry = selected[i]!;
@@ -131,14 +147,19 @@ export async function buildCatalogIndexDetailed(
     try {
       const product = await fetchProduct(deps, cfg, entry.slug);
       if (product) products.push(product);
-      else deps.onLog?.(`  ! no product data: ${entry.slug}`);
+      else {
+        deps.onLog?.(`  ! no product data: ${entry.slug}`);
+        detailErrors.push(`${entry.slug}: parsed no product data`);
+      }
     } catch (e) {
-      deps.onLog?.(`  ! fetch failed: ${entry.slug} (${e instanceof Error ? e.message : String(e)})`);
+      const message = e instanceof Error ? e.message : String(e);
+      deps.onLog?.(`  ! fetch failed: ${entry.slug} (${message})`);
+      detailErrors.push(`${entry.slug}: ${message}`);
     }
     if (i < selected.length - 1 && delay > 0) await sleep(delay);
   }
   deps.onLog?.(`indexed ${products.length}/${selected.length} product page(s)`);
-  return { products, entries };
+  return { products, entries, detailsAttempted: selected.length, detailErrors };
 }
 
 /** Match each of our tests against an already-built product index. */
@@ -164,11 +185,10 @@ export async function discover(
   deps: FetchDeps,
   cfg: CatalogScrapeConfig,
   opts: { narrow?: boolean; narrowTests?: TestKey[] } = {},
-): Promise<{ products: CatalogProduct[]; matches: OfferingMatch[]; entries: CatalogEntry[] }> {
+): Promise<CatalogIndex & { matches: OfferingMatch[] }> {
   const narrow = opts.narrow ?? true;
-  const { products, entries } = await buildCatalogIndexDetailed(deps, cfg, narrow ? (opts.narrowTests ?? tests) : undefined);
-  const matches = matchOfferings(tests, products, cfg.matchOptions);
-  return { products, matches, entries };
+  const index = await buildCatalogIndexDetailed(deps, cfg, narrow ? (opts.narrowTests ?? tests) : undefined);
+  return { ...index, matches: matchOfferings(tests, index.products, cfg.matchOptions) };
 }
 
 /** Default HTTP fetcher: plain GET with a browser-ish UA and a timeout. No JS execution needed. */

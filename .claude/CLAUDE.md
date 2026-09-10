@@ -172,9 +172,11 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     a `Vendor` + `ScrapeConfig` naming an adapter the deployed build doesn't have yet, then hitting
     "Scrape now", silently crawls **goodlabs.com** and attaches its products to the wrong vendor. Ship
     the code first, confirm the adapter appears in the `/admin/vendors/[id]` dropdown, *then* create the
-    vendor row. (Related: that dropdown is a **hardcoded `<option>` list**, not generated from
-    `ADAPTERS` — it's currently missing `marekdiagnostics`, `jasonhealth`, and `drsays`, which exist as
-    real adapters. Add new adapters in both places.) **"Scrape now" can't bootstrap a brand-new vendor
+    vendor row. (The dropdown is no longer hand-written: it renders `CATALOG_ADAPTERS` from
+    `@labprice/shared/src/constants/catalog-adapters`, and `packages/scrapers/src/__tests__/adapters.test.ts`
+    fails the build if that list and `CANONICAL_ADAPTERS` drift apart. A new adapter still needs adding in
+    **both** places — the registry and that list — the test just tells you when you forgot.)
+    **"Scrape now" can't bootstrap a brand-new vendor
     either**: `api/v1/admin/vendors/[id]/scrape` returns 400 `no_offerings` and bails *before* running
     discovery when the vendor has no linked tests — so a fresh catalog vendor needs its offerings
     seeded first, via `apps/worker/scripts/discover-<vendor>.ts` (the established pattern) or by
@@ -209,9 +211,14 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     "Validation Error" — the committed scripts don't need this since they `import 'dotenv/config'`
     themselves.
 
-16. **A "likely blocked (WAF/challenge page)" crawl failure is a GUESS, not a diagnosis.** The 0-products
-    guard in `runVendorDiscovery` fires for any empty catalog — a real block, a stale selector, or a
-    forced-and-failing browser path all look identical. Three vendors were written off as blocked in
+16. **A crawl failure message is only as good as the boundary that produced it.** The 0-products guard in
+    `runVendorDiscovery` fires for any empty catalog — a real block, a stale selector, or a
+    forced-and-failing browser path. It used to call all of them "likely blocked (WAF/challenge page)",
+    a pure guess; since 2026-09-10 it reports what it observed instead (empty *listing* vs. a listing that
+    parsed fine while every *detail* page failed, plus the first few underlying errors — `discover()`
+    returns `detailsAttempted`/`detailErrors` for this), and `browserFetchHtml` throws a named error with
+    the HTTP status and page title when a WAF interstitial never clears rather than returning the
+    challenge markup as content. **Don't re-widen either back into a guess.** Three vendors were written off as blocked in
     one day and none of them were: Private MD Labs was a regex pinning single spaces between HTML
     attributes, `truehealthlabs` was a stale `needsBrowser` flag whose WAF block had lifted, and one
     was a missing UI spinner. Diagnose by instrumenting the boundaries separately — raw fetch bytes,
@@ -306,6 +313,20 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     payload and paints on hydration instead of being server-rendered. The status code is right, which
     is what governs indexing, and a browser shows the page — but `curl` sees an empty body. Don't
     "fix" it by reintroducing a loading boundary.
+
+24. **`ScrapeVendorConfig.frequencyDays = 0` ("Manual only") is not a preference — it means the cloud
+    physically can't scrape this vendor.** It's set for vendors whose WAF blocks Railway's datacenter IP,
+    which are scraped from a residential connection instead (`scripts/scrape-vendor-local.ts`, or the
+    `scrape-blocked-vendors.ps1` wrapper; that script's default vendor set IS `frequencyDays: 0`). So
+    **every cloud-side path that enumerates vendors to scrape must filter `frequencyDays > 0`** — the daily
+    scheduler and the weekly digest always did, but `vendors/scrape-all` didn't until 2026-09-10, and each
+    click therefore bought a guaranteed FAILED `ScrapeRun` for those vendors. That's not just noise: a
+    failed run counts against computed vendor trust (gotcha 6), so the bulk button was walking the
+    blocked vendors toward LOW trust and forcing manual review of their genuinely-fine prices.
+    Currently `frequencyDays: 0`: **request-a-test** (verified still blocked 2026-09-10 from inside the
+    container — 403 on plain HTTP, unclearable `cf_chl` interstitial in stealth Chromium) and
+    **true-health-labs** (which *did* succeed from Railway in that same run, so its flag looks stale —
+    worth re-testing before leaving it off the schedule).
 
 ## Verifying changes
 
