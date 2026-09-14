@@ -77,10 +77,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, slug, websiteUrl, affiliateUrlTemplate, logoUrl, trustLevel, isActive } = body;
+  const { name, slug, websiteUrl, affiliateUrlTemplate, logoUrl, notes, trustLevel, isActive } = body;
 
   const vendor = await prisma.vendor.create({
-    data: { name, slug, websiteUrl, affiliateUrlTemplate, logoUrl, trustLevel, isActive },
+    data: { name, slug, websiteUrl, affiliateUrlTemplate, logoUrl, notes, trustLevel, isActive },
   });
 
   return NextResponse.json({ data: vendor }, { status: 201 });

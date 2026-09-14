@@ -378,6 +378,10 @@ model Vendor {
   logoUrl              String?    @map("logo_url")
   // Short note about this vendor's membership program shown next to member prices, e.g. "$9/mo membership".
   membershipNote       String?    @map("membership_note")
+  // Private admin scratchpad, never shown publicly. Its reason for existing is the negative case the
+  // catalog can't record: an offering says "sells this test", but nothing says "asked, they don't
+  // carry Zinc" — so that gets rediscovered on every unmatched-test review. Free text on purpose.
+  notes                String?    @map("notes")
   isActive             Boolean    @default(true) @map("is_active")
   trustLevel           TrustLevel @default(MEDIUM) @map("trust_level")
   // Manual pin for trust. When null, effective trust = auto-computed from scraper health.

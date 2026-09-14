@@ -1,8 +1,10 @@
 'use client';
 
-// Vendor editor. Five sections, each saving independently: Details (+ trust override), Catalog
-// (test<->vendor links with product URL/price), Scraper Health (read-only computed trust metrics),
-// and Scraper Configuration (+ a "Scrape now" trigger). Effective trust = override ?? computed.
+// Vendor editor. Sections save independently: Details (+ trust override), Catalog (test<->vendor links
+// with product URL/price, plus free-text admin Notes), Scraper Health (read-only computed trust
+// metrics), Recent Runs, and Scraper Configuration (+ a "Scrape now" trigger). Effective trust =
+// override ?? computed. The three scraper panels are collapsed by default (see `Section`) — they're
+// diagnostics, and open-by-default they buried the Catalog, which is the part edited day to day.
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 // Deep import, not the package root: this is a client component and @labprice/shared's index pulls in
@@ -29,6 +31,7 @@ type VendorData = {
   websiteUrl: string | null;
   affiliateUrlTemplate: string | null;
   logoUrl: string | null;
+  notes: string | null;
   isActive: boolean;
   trustOverride: TrustLevel | null;
   effectiveTrust: TrustLevel;
@@ -105,6 +108,39 @@ const TRUST_BADGE: Record<TrustLevel, string> = {
 };
 
 const labelCls = 'mb-1 block text-sm font-medium text-brand-700';
+
+// Collapsible section wrapper for the diagnostic panels (health / runs / config). These are reference
+// material an admin opens deliberately, not things to read top-to-bottom, and stacked open they pushed
+// the Catalog — the part actually edited day to day — far off screen.
+// Conditional rendering (rather than always-mount + [hidden]) is deliberate and safe HERE: /admin is
+// noindex + robots-Disallowed, so the SEO rule about collapsed content never reaching the HTML
+// (CLAUDE.md gotcha 18) doesn't apply. Every field below is a controlled input whose state lives in
+// the parent, so unmounting loses nothing.
+function Section({ title, children, defaultOpen = false, right }: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  right?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="admin-card max-w-2xl p-6">
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex flex-1 items-center gap-2 text-left"
+          aria-expanded={open}
+        >
+          <span className={`text-brand-400 transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden>▶</span>
+          <h2 className="admin-h2">{title}</h2>
+        </button>
+        {open && right}
+      </div>
+      {open && <div className="mt-4 space-y-3">{children}</div>}
+    </div>
+  );
+}
 
 export default function VendorEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
@@ -279,6 +315,19 @@ They are added without prices — price them in one crawl afterwards. You can re
       body: JSON.stringify({ offeringId, ...patch }),
     });
     setMsg(res.ok ? 'Catalog saved.' : 'Could not save catalog change.');
+  };
+
+  // Notes save on blur, independently of the Details card's Save — they live under the Catalog and an
+  // admin editing them has no reason to scroll back up. Kept in local state too so the textarea's
+  // defaultValue stays correct if the vendor reloads (e.g. after Save refreshes effective trust).
+  const saveNotes = async (notes: string) => {
+    if ((vendor?.notes ?? '') === notes) return; // no-op blur — don't flash a false "saved"
+    setV('notes', notes);
+    const res = await fetch(`/api/v1/admin/vendors/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    });
+    setMsg(res.ok ? 'Notes saved.' : 'Could not save notes.');
   };
 
   const unlink = async (offeringId: string) => {
@@ -642,11 +691,27 @@ They are added without prices — price them in one crawl afterwards. You can re
             </button>
           </div>
         )}
+
+        {/* Admin-only notes. Sits under the catalog because that's the context it's about: the catalog
+            records what a vendor DOES sell, and this is where the negative findings go ("asked, they
+            don't carry Zinc") so they aren't rediscovered on every unmatched-test review. Saves on
+            blur like the rows above, so there's no second Save button to forget. */}
+        <div className="border-t border-brand-100 pt-4">
+          <label className={labelCls} htmlFor="vendorNotes">Notes</label>
+          <textarea
+            id="vendorNotes"
+            className="admin-input"
+            rows={3}
+            placeholder="e.g. Doesn't carry Zinc or Ferritin. Phone support only, no online order changes."
+            defaultValue={vendor.notes ?? ''}
+            onBlur={(e) => saveNotes(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-brand-400">Private to the admin panel — never shown on the public site. Saves when you click away.</p>
+        </div>
       </div>
 
       {/* Scraper health */}
-      <div className="admin-card max-w-2xl space-y-3 p-6">
-        <h2 className="admin-h2">Scraper Health</h2>
+      <Section title="Scraper Health">
         {!t.hasData ? (
           <p className="text-sm text-brand-400">No scrape runs yet — trust defaults to a neutral MEDIUM until the scraper has run.</p>
         ) : (
@@ -668,15 +733,11 @@ They are added without prices — price them in one crawl afterwards. You can re
           </div>
         )}
         <p className="text-xs text-brand-400">Trust is computed from recent run success rate, how recently a run succeeded, and how often staged changes get rejected. LOW trust sends every price change to the Change Queue; HIGH trust auto-approves a wider range.</p>
-      </div>
+      </Section>
 
       {/* Recent runs / error log — live insight into scraping, so a failure's actual cause (e.g. an
           HTTP status or a parse error) is visible here instead of requiring a DB query. */}
-      <div className="admin-card max-w-2xl space-y-3 p-6">
-        <div className="flex items-center justify-between">
-          <h2 className="admin-h2">Recent Runs</h2>
-          <button onClick={loadRuns} className="admin-btn admin-btn-ghost text-xs">Refresh</button>
-        </div>
+      <Section title="Recent Runs" right={<button onClick={loadRuns} className="admin-btn admin-btn-ghost text-xs">Refresh</button>}>
         {runs.length === 0 ? (
           <p className="text-sm text-brand-400">No scrape runs yet.</p>
         ) : (
@@ -717,11 +778,10 @@ They are added without prices — price them in one crawl afterwards. You can re
             </table>
           </div>
         )}
-      </div>
+      </Section>
 
       {/* Scraper config */}
-      <div className="admin-card max-w-2xl space-y-4 p-6">
-        <h2 className="admin-h2">Scraper Configuration</h2>
+      <Section title="Scraper Configuration">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Engine</label>
@@ -809,7 +869,7 @@ They are added without prices — price them in one crawl afterwards. You can re
           <button onClick={runScrape} disabled={scraping} className="admin-btn admin-btn-ghost">{scraping ? 'Scraping…' : 'Scrape now'}</button>
           <span className="text-xs text-brand-400">Prices every linked test now. Catalog vendors run inline; clean matches publish immediately, ambiguous ones go to the Change Queue.</span>
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

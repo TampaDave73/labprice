@@ -47,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const body = await req.json();
 
-  const fields = ['name', 'slug', 'websiteUrl', 'affiliateUrlTemplate', 'logoUrl', 'isActive', 'trustOverride'] as const;
+  const fields = ['name', 'slug', 'websiteUrl', 'affiliateUrlTemplate', 'logoUrl', 'notes', 'isActive', 'trustOverride'] as const;
   const data: Record<string, unknown> = {};
   for (const f of fields) {
     if (f in body) data[f] = f === 'trustOverride' && !body[f] ? null : body[f];

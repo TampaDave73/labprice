@@ -9,6 +9,42 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Added (2026-09-14, vendor admin: affiliate at a glance, collapsed diagnostics, notes)
+- **Vendors list**: dropped the Slug column (it's derivable from the name and was never the thing being
+  looked up) and put an **Affiliate** indicator in its place — green dot when `Vendor.affiliateUrlTemplate`
+  is set, hollow when it isn't. The distinction is money: `buildOrderUrl` only wraps the outbound Order
+  link when a template exists, so a hollow dot is a vendor whose clicks currently earn nothing.
+- **Vendor editor**: Scraper Health, Recent Runs and Scraper Configuration are now collapsed accordions
+  (local `Section` component). They're reference panels, and stacked open they pushed the Catalog — the
+  section actually edited day to day — well below the fold.
+- **`Vendor.notes`** (new nullable column) — free-text admin-only notes under the Catalog table, saved on
+  blur. Records what the schema otherwise can't: an `Offering` states that a vendor *sells* a test, but
+  there was nowhere to write *"asked, they don't carry Zinc"*, so that was rediscovered on every
+  unmatched-test review. Not shown anywhere public.
+- **MitoHealth affiliate program wired up**: `Vendor.affiliateUrlTemplate` set to the Awin deep link
+  (`https://www.awin1.com/cread.php?awinmid=119269&awinaffid=3092991&clickref=labtestcompare&p={url}`).
+  `buildOrderUrl`'s `{url}` placeholder substitutes the offering's own product URL, so each Order button
+  lands on that specific test's MitoHealth page rather than their homepage. Verified live: the `/api/v1/go/…`
+  302 now points at `awin1.com` with the CBC product URL encoded in `p=`. Data-only change, no code needed —
+  the wrapper layer already existed.
+
+### Infra (2026-09-14, Cloudflare email + hardening)
+Set up inbound email and tightened Cloudflare config for `labtestcompare.com` (registered directly
+with Cloudflare Registrar). Done via the dashboard, not code — noted here since it affects the live
+domain and prod DNS/TLS posture.
+
+- **Email Routing** enabled: added the MX/SPF/DKIM records, verified a destination address, and turned
+  on the Catch-all rule so any `@labtestcompare.com` address forwards to an inbox. (Separate from the
+  existing Resend setup on `send.labtestcompare.com`, which only sends.)
+- Added the missing `www` CNAME (proxied) — `middleware.ts` already 301s it to the apex, per gotcha #21;
+  the record just didn't exist yet.
+- SSL/TLS: Minimum TLS Version raised 1.0 → 1.2; HSTS enabled (6mo max-age, include subdomains, preload
+  left off deliberately — hard to reverse); mode was already Full (strict).
+- DNSSEC enabled (self-provisioning DS record via Cloudflare Registrar, no external registrar step).
+- Speed: enabled Web Analytics (RUM), Speed Brain, 0-RTT, Early Hints. Caching: enabled Crawler Hints.
+- Deliberately left off: Rocket Loader (breaks React/Next hydration), Always Online (would serve stale
+  prices from an archived copy during an outage).
+
 ### Fixed (2026-09-14, a vendor not selling a test was being reported as a scrape failure)
 The 2026-09-13 run failed Discounted Labs and Personalabs with `0 products`. Neither was broken. Linking
 the new **Zinc Blood Test** to 18 vendors requeued a one-test discovery per vendor; those two don't list

@@ -11,6 +11,7 @@ type Vendor = {
   name: string;
   slug: string;
   websiteUrl: string | null;
+  affiliateUrlTemplate: string | null;
   effectiveTrust: TrustLevel;
   isActive: boolean;
   createdAt: string;
@@ -118,7 +119,7 @@ export default function VendorsListPage() {
           <thead>
             <tr className="border-b border-brand-100 bg-brand-50 text-left text-brand-600">
               <th className={thCls} onClick={() => toggleSort('name')}>Name{arrow('name')}</th>
-              <th className="p-3">Slug</th>
+              <th className="p-3" title="Green = an affiliate URL template is set, so Order clicks route through the affiliate network">Affiliate</th>
               <th className="p-3">Website</th>
               <th className={thCls} onClick={() => toggleSort('trust')}>Trust{arrow('trust')}</th>
               <th className={`${thCls} text-right`} onClick={() => toggleSort('offerings')} title="Tests with a product URL / total linked. Amber = some are missing a URL and need review.">Tests{arrow('offerings')}</th>
@@ -137,7 +138,16 @@ export default function VendorsListPage() {
               vendors.map((v) => (
                 <tr key={v.id} className="border-b border-brand-100 hover:bg-brand-50/50">
                   <td className="p-3"><Link href={`/admin/vendors/${v.id}`} className="font-medium text-brand-900 hover:text-brand-600">{v.name}</Link></td>
-                  <td className="p-3 font-mono text-xs text-brand-400">{v.slug}</td>
+                  {/* Affiliate program indicator. Presence of a template IS the program: buildOrderUrl
+                      only wraps the outbound Order link when this is set, so an empty one means those
+                      clicks earn nothing — worth seeing at a glance across the whole vendor list. */}
+                  <td className="p-3">
+                    {v.affiliateUrlTemplate ? (
+                      <span className="text-success-600" title="Affiliate program active — Order links are wrapped">●</span>
+                    ) : (
+                      <span className="text-brand-200" title="No affiliate program — Order links go direct to the vendor">○</span>
+                    )}
+                  </td>
                   <td className="p-3 text-brand-600 truncate max-w-48">{v.websiteUrl ?? '—'}</td>
                   <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TRUST_BADGE[v.effectiveTrust]}`}>{v.effectiveTrust}</span></td>
                   <td className="p-3 text-right">

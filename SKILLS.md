@@ -290,7 +290,10 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
     once instead of clicking each checkbox.
 - **Categories** — dedicated CRUD (add / rename / reorder / delete). **Delete is blocked if it would
   orphan a test**; otherwise the display pointer of affected tests is auto-reassigned.
-- **Vendors** — list (sortable incl. by trust) + **Add Vendor** + **Scrape all catalog vendors**
+- **Vendors** — list (sortable incl. by trust; columns are Name / **Affiliate** / Website / Trust /
+  Tests / Active / Created — the Affiliate dot is green when `Vendor.affiliateUrlTemplate` is set,
+  i.e. Order clicks for that vendor are wrapped by `buildOrderUrl`, hollow when they go direct and
+  earn nothing) + **Add Vendor** + **Scrape all catalog vendors**
   (one click queues a `scrape-discover` job for every active catalog-mode vendor via
   `POST /api/v1/admin/vendors/scrape-all` — all via the worker, nothing inline: 15 sequential
   catalog crawls in one request would time out; per-URL vendors are excluded on purpose, and so are
@@ -302,9 +305,17 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   /api/v1/admin/vendors/[id]/runs` — the live insight into scraping failures, so an admin doesn't need
   a DB query to see e.g. `"HTTP 403 for https://..."`), **Scraper Configuration** (engine/base URL/
   selectors/schedule + a **Catalog mode** toggle, **Catalog source (adapter)** dropdown, and catalog
-  path for catalog-scraper vendors), **Catalog** (link/unlink tests + product URL + price), and
+  path for catalog-scraper vendors), **Catalog** (link/unlink tests + product URL + price + **Notes**), and
   **Scrape now** (runs inline for most catalog vendors; queues to the `scrape-discover` worker and
   shows a "queued" message for `needsBrowser` vendors like Request A Test).
+  **Scraper Health / Recent Runs / Scraper Configuration are collapsed accordions** (the local
+  `Section` component in that page) — they're diagnostics, and open-by-default they pushed the Catalog,
+  the part actually edited day to day, off screen. Conditional rendering is fine there specifically
+  because /admin is noindex + robots-Disallowed (the gotcha-18 SEO rule is about public routes).
+  - **Notes** (`Vendor.notes`, added 2026-09-14) — free-text admin-only field under the Catalog table,
+    saved on blur via the normal vendor `PATCH`. It exists for the negative case the catalog structurally
+    can't record: an `Offering` says "this vendor sells this test", but nothing says *"asked, they don't
+    carry Zinc"* — so that finding got rediscovered on every unmatched-test review. Never rendered publicly.
   - **Catalog Excel round-trip** (added 2026-07-24) — `Export Excel`/`Import Excel` above the Catalog
     table (`GET`/`POST /api/v1/admin/vendors/[id]/offerings/export`|`import`). Unlike the one-by-one
     table (which only lists tests already linked), the export lists **every test in the system** —
