@@ -328,6 +328,17 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     **true-health-labs** (which *did* succeed from Railway in that same run, so its flag looks stale —
     worth re-testing before leaving it off the schedule).
 
+25. **"Vendor doesn't sell this test" is not a scrape failure.** Linking a new test to N vendors requeues
+    a one-test discovery per vendor (`offeringIds`), and for a vendor that doesn't carry it, narrowing
+    selects **0** candidate pages — so the crawl fetches nothing and returns 0 products, even though it
+    read the vendor's catalog listing perfectly. The 0-products guard failed those runs until 2026-09-14:
+    a new Zinc test attached to 18 vendors produced FAILED runs for Discounted Labs and Personalabs
+    (confirmed by instrumenting: 100 and 267 listing entries parsed, 0 blank names, neither catalog
+    contains the word "zinc"), complete with failure alerts and a dent in computed trust. The guard now
+    distinguishes *nothing fetched* (fine — tests come out `unmatched`) from *fetched and got nothing*
+    (a real failure). The tell in an error message is `all 0 product page(s)` — if you ever see that
+    phrasing again, the guard has regressed.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

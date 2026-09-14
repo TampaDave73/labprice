@@ -9,6 +9,23 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-14, a vendor not selling a test was being reported as a scrape failure)
+The 2026-09-13 run failed Discounted Labs and Personalabs with `0 products`. Neither was broken. Linking
+the new **Zinc Blood Test** to 18 vendors requeued a one-test discovery per vendor; those two don't list
+zinc, so narrowing selected 0 candidate pages, nothing was fetched, and the 0-products guard failed a
+crawl that had worked perfectly — sending a failure alert and denting computed vendor trust for it.
+Verified by instrumenting the listings directly rather than trusting the message: 100 and 267 entries
+parsed, 0 blank names, and no entry containing "zinc" in either catalog.
+
+- `emptyCatalogFailure()` (extracted, exported, unit-tested) now separates the three ways a crawl reaches
+  0 products: empty **listing** → failure; listing fine but every fetched **detail** page empty → failure,
+  quoting the first errors; listing fine and **no** detail pages fetched → not a failure, the requested
+  tests simply come out `unmatched`, which is the honest answer to "does this vendor sell this?".
+- The giveaway phrasing in the old message — `all 0 product page(s) fetched ... yielded nothing`, which
+  also claimed "the product parser matched nothing" when no product page had been fetched at all — is
+  now impossible; a test asserts the three cases.
+- No trust repair needed: both vendors are still computed HIGH (Discounted Labs 89, Personalabs 73).
+
 ### Fixed (2026-09-10, "Scrape all catalog vendors" run: 17/18 clean, and the three things that made the 18th hard to read)
 Ran the full bulk scrape against production (18 active catalog vendors, sequentially through the
 `scrape-discover` worker). **17 SUCCESS**, 1 FAILED — Request A Test, `0 products` after 32s. Diagnosed

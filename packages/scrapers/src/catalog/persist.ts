@@ -236,28 +236,38 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
 }
 
 /**
- * Turn "0 products" into a statement of what was observed, for the ScrapeError row an admin reads days
- * later. Deliberately says nothing about WHY — it names the failing boundary and the first underlying
- * error, and leaves blocked-vs-layout-change to whoever instruments it (the browser fetcher already
- * diagnoses a real WAF interstitial itself, and `httpFetchHtml` reports the HTTP status).
+ * Decide whether a crawl that produced 0 products is actually a FAILURE, and if so say what was
+ * observed. Returns null when it isn't one.
+ *
+ * The distinction that matters (learned the hard way 2026-09-13): a crawl that fetched product pages
+ * and got nothing back is broken, but a crawl that fetched NO product pages — because narrowing found
+ * none of the requested tests in the vendor's catalog — worked perfectly and simply has nothing to
+ * price. That is the routine answer to "does this vendor sell the test we just linked?", and it happens
+ * every time a new test is attached to vendors that don't carry it. Failing it marked a FAILED
+ * ScrapeRun, sent a failure alert, and docked the vendor's computed trust (which then forces manual
+ * review of its perfectly good prices) — for two vendors whose catalogs we had read flawlessly.
+ *
+ * When it IS a failure this deliberately says nothing about WHY: it names the failing boundary and the
+ * first underlying errors, and leaves blocked-vs-layout-change to whoever instruments it (the browser
+ * fetcher already diagnoses a real WAF interstitial itself, and `httpFetchHtml` reports HTTP status).
  */
-function describeEmptyCatalog(
+export function emptyCatalogFailure(
   vendorName: string,
-  cfg: CatalogScrapeConfig,
-  entries: number,
-  detailsAttempted: number,
-  detailErrors: string[],
-): string {
+  cfg: Pick<CatalogScrapeConfig, 'baseUrl' | 'catalogPath' | 'apiBase' | 'adapter'>,
+  index: { entries: unknown[]; detailsAttempted: number; detailErrors: string[] },
+): string | null {
   const where = `${cfg.baseUrl}${cfg.catalogPath}`;
-  if (entries === 0) {
+  if (index.entries.length === 0) {
     return cfg.adapter?.fetchAll
       ? `catalog crawl returned 0 products for ${vendorName} — the API at ${cfg.apiBase ?? where} responded but yielded no products. Check the endpoint's live response shape against its parser before assuming a block.`
       : `catalog crawl returned 0 products for ${vendorName} — the catalog LISTING at ${where} parsed 0 entries, so no product pages were even attempted. Fetch that URL and run the adapter's parseCatalog on exactly those bytes to tell a block from a changed listing layout.`;
   }
-  const sample = detailErrors.slice(0, 3).join('; ');
+  // Listing read fine and nothing was worth fetching from it — not a failure. See above.
+  if (index.detailsAttempted === 0) return null;
+  const sample = index.detailErrors.slice(0, 3).join('; ');
   return (
-    `catalog crawl returned 0 products for ${vendorName} — the listing at ${where} parsed ${entries} entries fine, ` +
-    `but all ${detailsAttempted} product page(s) fetched from it yielded nothing` +
+    `catalog crawl returned 0 products for ${vendorName} — the listing at ${where} parsed ${index.entries.length} entries fine, ` +
+    `but all ${index.detailsAttempted} product page(s) fetched from it yielded nothing` +
     (sample ? `. First failures: ${sample}` : '. No per-page errors were recorded, so the product parser matched nothing.')
   );
 }
@@ -356,14 +366,14 @@ export async function runVendorDiscovery(opts: DiscoveryOptions): Promise<Discov
       matches = result.matches;
       catalogProducts = result.products;
       catalogEntries = result.entries;
-      // A real catalog is never empty, so 0 products is always a failure — but WHICH failure matters,
-      // and this guard used to assert "likely blocked (WAF/challenge page)" for all of them. That guess
-      // cost us three vendors written off as blocked when the real causes were a too-strict regex, a
-      // stale needsBrowser flag and a missing spinner (CLAUDE.md gotcha 16). So report the boundary that
-      // actually failed: an empty LISTING (nothing to crawl) and a listing that crawled fine while every
-      // DETAIL page failed are different bugs in different files.
+      // 0 products is usually a failure — but not always, and WHICH failure matters. This guard used to
+      // assert "likely blocked (WAF/challenge page)" for every empty result, a guess that cost us three
+      // vendors wrongly written off as blocked (CLAUDE.md gotcha 16) and then failed two more whose
+      // crawls had worked perfectly (gotcha 25). `emptyCatalogFailure` separates the three cases.
       if (catalogProducts.length === 0) {
-        throw new Error(describeEmptyCatalog(vendor.name, cfg, result.entries.length, result.detailsAttempted, result.detailErrors));
+        const failure = emptyCatalogFailure(vendor.name, cfg, result);
+        if (failure) throw new Error(failure);
+        log(`none of the ${tests.length} requested test(s) appear in this vendor's ${result.entries.length}-entry catalog — nothing to price`);
       }
     }
   } catch (e) {

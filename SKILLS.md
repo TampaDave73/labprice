@@ -410,6 +410,13 @@ What the system does (feature catalog) and how to work on it (workflows/recipes)
   the name tier and by catalog narrowing, so confirming a vendor's odd naming once makes that test
   price automatically on later crawls (verified: CSV-imported test auto-matched by exact name on the
   next fixture run).
+- **When a crawl yields 0 products** (`emptyCatalogFailure()` in `persist.ts`) there are three cases and
+  only two are failures: an empty **listing** (the crawl got nothing to work with — what a WAF block
+  actually looks like) and a listing that parsed fine while every **detail** page it fetched came back
+  empty (`detailErrors` names the first few). The third — listing fine, *no* detail pages fetched because
+  narrowing matched none of the requested tests — is the normal answer to "does this vendor sell the test
+  we just linked?", and the run completes with those tests `unmatched`. Don't re-collapse these into one
+  guard; see CLAUDE.md gotchas 16 and 25 for what each mistake cost.
 - Two scrape strategies:
   - **Per-URL** (`scrape-execute.ts`): each offering stores a product `externalUrl`; the engine fetches
     it and reads the price via the vendor's CSS selectors. Original path; for vendors with stable
