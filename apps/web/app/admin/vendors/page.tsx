@@ -142,8 +142,11 @@ export default function VendorsListPage() {
                       only wraps the outbound Order link when this is set, so an empty one means those
                       clicks earn nothing — worth seeing at a glance across the whole vendor list. */}
                   <td className="p-3">
+                    {/* text-success-500, not -600: only 50/500/700 are defined in globals.css, and an
+                        undefined Tailwind token doesn't error — it just drops, so the dot silently
+                        rendered black instead of green (same failure family as gotcha 1). */}
                     {v.affiliateUrlTemplate ? (
-                      <span className="text-success-600" title="Affiliate program active — Order links are wrapped">●</span>
+                      <span className="text-success-500" title="Affiliate program active — Order links are wrapped">●</span>
                     ) : (
                       <span className="text-brand-200" title="No affiliate program — Order links go direct to the vendor">○</span>
                     )}
