@@ -26,6 +26,13 @@ parsed, 0 blank names, and no entry containing "zinc" in either catalog.
   now impossible; a test asserts the three cases.
 - No trust repair needed: both vendors are still computed HIGH (Discounted Labs 89, Personalabs 73).
 
+### Changed (2026-09-14, True Health Labs back on the cloud schedule)
+- `frequencyDays` 0 → **7** (production data change, no code). It had been "Manual only" since its
+  Cloudflare block on 2026-09-09, but it has since succeeded from Railway twice (09-10, 71s; 09-13), so
+  the block has lifted and it no longer needs a hand-run from a residential connection. Its
+  `needsBrowser: true` flag stays — that is what clears the challenge. Request A Test remains the only
+  "Manual only" vendor, and `scrape-blocked-vendors.ps1` now covers just that one.
+
 ### Fixed (2026-09-10, "Scrape all catalog vendors" run: 17/18 clean, and the three things that made the 18th hard to read)
 Ran the full bulk scrape against production (18 active catalog vendors, sequentially through the
 `scrape-discover` worker). **17 SUCCESS**, 1 FAILED — Request A Test, `0 products` after 32s. Diagnosed
