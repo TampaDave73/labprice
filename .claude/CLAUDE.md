@@ -341,6 +341,18 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     (a real failure). The tell in an error message is `all 0 product page(s)` — if you ever see that
     phrasing again, the guard has regressed.
 
+26. **An empty candidate list means "fetch nothing", and used to mean "fetch everything".**
+    `buildCatalogIndexDetailed`'s narrowing was gated on `candidateTests.length > 0`, so a discovery run
+    with zero tests to price — a `scrape-discover` job whose `offeringIds` were unlinked before it ran, or
+    any vendor with no active offerings — skipped narrowing entirely and crawled the **whole catalog**.
+    On a browser-rendered vendor that is hundreds of page loads (267 against Personalabs on 2026-09-14,
+    delivered twice because the first attempt stalled), for the question "price these zero offerings".
+    Fixed by narrowing whenever `candidateTests` is defined, empty included; `narrow: false` remains the
+    way to ask for a full crawl. The listing is still fetched, so `VendorProduct` ingest is unaffected.
+    Related hazard when reproducing a scrape bug: **pass offering ids you have confirmed are still
+    `isActive`/not soft-deleted**, or the run you're "reproducing" takes a completely different path than
+    the one that failed.
+
 ## Verifying changes
 
 Typecheck the web app before finishing: `cd apps/web && npx tsc --noEmit`. The `apps/worker` package

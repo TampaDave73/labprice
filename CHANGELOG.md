@@ -26,6 +26,15 @@ parsed, 0 blank names, and no entry containing "zinc" in either catalog.
   now impossible; a test asserts the three cases.
 - No trust repair needed: both vendors are still computed HIGH (Discounted Labs 89, Personalabs 73).
 
+### Fixed (2026-09-14, zero tests to price meant "crawl everything")
+- `buildCatalogIndexDetailed` narrowed only when `candidateTests.length > 0`, so an empty candidate list
+  — a `scrape-discover` job whose `offeringIds` had been unlinked before it ran, or any vendor with no
+  active offerings — silently became an **exhaustive crawl**. Found by triggering exactly that: two
+  repro jobs carrying since-deleted offering ids each launched a full 267-page browser-rendered crawl of
+  Personalabs. Narrowing now happens whenever `candidateTests` is defined; `narrow: false` is still how a
+  caller asks for everything, and the catalog listing is still fetched so `VendorProduct` ingest is
+  unchanged.
+
 ### Changed (2026-09-14, True Health Labs back on the cloud schedule)
 - `frequencyDays` 0 → **7** (production data change, no code). It had been "Manual only" since its
   Cloudflare block on 2026-09-09, but it has since succeeded from Railway twice (09-10, 71s; 09-13), so

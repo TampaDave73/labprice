@@ -123,7 +123,13 @@ export async function buildCatalogIndexDetailed(
   deps.onLog?.(`catalog: ${entries.length} products`);
 
   let selected = entries;
-  if (candidateTests && candidateTests.length > 0) {
+  // NOTE the condition: `undefined` means "don't narrow", but an EMPTY ARRAY means "narrow to these
+  // zero tests" — i.e. fetch nothing. This used to be `candidateTests.length > 0`, which quietly
+  // inverted the empty case into an exhaustive crawl of the entire catalog. That is how a
+  // scrape-discover job whose `offeringIds` had since been unlinked turned into a 267-page
+  // browser-rendered crawl of Personalabs, twice (2026-09-14) — the most expensive possible response to
+  // "price these zero offerings". A caller that genuinely wants everything passes `narrow: false`.
+  if (candidateTests) {
     // Candidate = an entry whose name is a token-subset match of a linked test's name OR a confirmed
     // alias (same logic as the name-match tier). Tighter than "shares any token", so we don't fetch
     // every "…Panel" page.

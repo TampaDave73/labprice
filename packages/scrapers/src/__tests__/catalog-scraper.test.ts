@@ -107,6 +107,18 @@ describe('discover() — detail-fetch failure reporting', () => {
     expect(result.detailErrors).toEqual(['beta: no fixture for slug beta']);
   });
 
+  it('fetches NOTHING when there are zero tests to narrow by — not everything', async () => {
+    // The dangerous inversion: "price these zero offerings" must not mean "crawl the whole catalog".
+    // A job holding offeringIds that were since unlinked lands here, and on a browser-rendered vendor
+    // an accidental exhaustive crawl is hundreds of page loads.
+    const { fetchedSlugs, fetchHtml, cfg } = makeFakeVendor(entries, products);
+    const result = await discover([], { fetchHtml }, cfg);
+
+    expect(fetchedSlugs).toEqual([]);
+    expect(result.detailsAttempted).toBe(0);
+    expect(result.entries.length).toBe(3); // the listing is still crawled, so ingest still records it
+  });
+
   it('reports an empty listing as 0 entries with no detail pages attempted', async () => {
     const { fetchHtml, cfg } = makeFakeVendor([], products);
     const result = await discover([alphaTest], { fetchHtml }, cfg);
