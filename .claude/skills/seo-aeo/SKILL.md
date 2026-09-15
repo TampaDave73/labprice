@@ -59,6 +59,12 @@ and link to the pages it talks about. Everything below is a specific case of tha
 
 - [ ] **Answer first.** The opening paragraph states the answer in full — a reader, or a model, that
       reads nothing else should still have it. Context comes after, never before.
+- [ ] **Say it once.** On articles the excerpt IS that opening paragraph (the page renders it as the
+      lead), so the body must start somewhere new. Every AI draft restated it, and three printed the
+      identical paragraph twice. The same goes across articles: link to the article that already
+      explains something rather than re-explaining it, and don't give every article the same sections.
+- [ ] **No em dashes in article copy.** They are the most recognizable tell of generated prose and read
+      that way to visitors; use a period, comma, colon or parentheses.
 - [ ] **Headings are questions people actually type**, not labels. "How do you prepare for a Ferritin
       test?" beats "Preparation". Headings are the unit search and answer engines segment a page by.
 - [ ] **Never render content conditionally inside a disclosure.** `{isOpen && <div>…</div>}` deletes

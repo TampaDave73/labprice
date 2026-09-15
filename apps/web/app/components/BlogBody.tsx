@@ -6,7 +6,7 @@
 //   ### Heading           → <h3>
 //   - item                → <ul>
 //   1. item               → <ol>
-//   | a | b |             → <table>, first row is the header, a |---| separator row is ignored
+//   | a | b |             → <table>, first row is the header, a |---| or | --- | separator row is ignored
 //   > text                → callout
 //   [FIG:name]            → a diagram from BlogFigures
 //   [PRICE-CHART:a,b,c]   → a live bar chart of the price spread for those test slugs
@@ -19,7 +19,7 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
 import BlogFigure from './BlogFigures';
-import { renderPriceToken, priceChartSlugs, type PriceFacts } from '@/lib/blog';
+import { renderPriceToken, priceChartSlugs, stripRestatedOpening, type PriceFacts } from '@/lib/blog';
 import PriceRangeChart from './PriceRangeChart';
 
 const INK = 'oklch(0.2 0.04 260)';
@@ -128,8 +128,12 @@ function TableBlock({ lines, k, prices }: { lines: string[]; k: string; prices: 
 
 export type Prices = Record<string, PriceFacts>;
 
-export default function BlogBody({ body, prices = {} }: { body: string; prices?: Prices }) {
-  const blocks = body.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+export default function BlogBody({ body, prices = {}, excerpt }: { body: string; prices?: Prices; excerpt?: string }) {
+  // The page renders the excerpt as the lead paragraph, so a body opening that restates it would
+  // print the same answer twice in a row. Stripped here as well as at draft time, so a hand edit in
+  // /admin/blog can't reintroduce it.
+  const source = excerpt ? stripRestatedOpening(body, excerpt) : body;
+  const blocks = source.replace(/\r\n/g, '\n').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
 
   return (
     <Fragment>
@@ -170,7 +174,9 @@ export default function BlogBody({ body, prices = {} }: { body: string; prices?:
             </aside>
           );
         }
-        if (lines.every((l) => l.startsWith('| '))) {
+        // `|` alone, not `| `: the conventional `|---|---|` separator has no space after its pipe, and
+        // requiring one sent two whole published tables to the paragraph fallback as literal pipes.
+        if (lines.every((l) => l.startsWith('|'))) {
           return <TableBlock key={k} lines={lines} k={k} prices={prices} />;
         }
         if (lines.every((l) => l.startsWith('- '))) {

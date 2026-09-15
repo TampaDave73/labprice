@@ -287,7 +287,7 @@ export default async function BlogPostPage({ params }: Props) {
             {post.excerpt}
           </p>
 
-          <BlogBody body={post.body} prices={prices} />
+          <BlogBody body={post.body} prices={prices} excerpt={post.excerpt} />
 
           {faqs.length > 0 && (
             <section aria-labelledby="faq-heading" style={{ marginTop: 44 }}>

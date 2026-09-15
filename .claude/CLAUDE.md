@@ -266,6 +266,14 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     on production as `railway ssh --service scrape-worker "pnpm --filter @labprice/worker exec tsx
     scripts/<name>.ts"` (the prod `DATABASE_URL` is `postgres.railway.internal`, so it is only
     reachable from inside a Railway service — not from your machine).
+    Three more, all learned 2026-09-15 on published articles: **the excerpt is rendered as the article's
+    lead paragraph**, so a body that opens by restating it prints the same answer twice
+    (`stripRestatedOpening` now drops it at draft and render time, but write bodies that open with a
+    heading, figure or new point). **A table block is lines starting `|`**, not `| `; the stricter check
+    sent `|---|`-separated tables to the page as literal pipes. **House style bans em dashes** in article
+    copy, and the drafting prompt (`lib/ai/article-draft.ts`) must not use them either, because the
+    model copies its instructions' punctuation. Published AI drafts get pulled into `seed-blog.ts` once
+    edited, so that file stays the single source for every live article.
 
 20. **Public pages must follow the `seo-aeo` skill** (`.claude/skills/seo-aeo/SKILL.md`). Invoke it
     before adding or changing any public route, template, metadata block, JSON-LD, or article copy —

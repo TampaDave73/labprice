@@ -9,6 +9,30 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-15, blog: raw table pipes, doubled openings, em dashes, template-shaped articles)
+- **Tables printed as literal pipes** on `/blog/order-blood-work-without-a-doctor` and
+  `/blog/what-blood-tests-do-bodybuilders-track`. `BlogBody` only recognized a table when every line began
+  `| ` (pipe + space), and the conventional `|---|---|` separator row has no space, so the whole table fell
+  through to a paragraph. Detection is now any line starting `|`.
+- **The first paragraph repeated the excerpt.** The article page renders `Post.excerpt` as its lead, and
+  the AI drafter also opened every body with it: three articles printed the same paragraph twice verbatim,
+  others reworded it. `isRestatement()`/`stripRestatedOpening()` (`lib/blog.ts`) now drop a restated opening
+  both at draft time and at render time, and the drafting prompt forbids it.
+- **Em dashes everywhere** (106 across 10 articles). All ten articles rewritten without them; the drafting
+  prompt bans them (and no longer uses them itself, since the model copied its punctuation), and
+  `replaceEmDashes()` cleans any that slip into a new draft.
+- **AI drafts read as generated**: the same disclaimer-callout opening, "how do you get this test" / "how are
+  results read" / generic cost sections, and diagrams reused off-topic (the CMP diagram in an article about
+  ordering without a doctor). The five AI-drafted articles are rewritten with their own structure, each
+  linking to the others instead of repeating them; `order-blood-work-without-a-doctor` now covers who signs
+  the order, state exclusions and getting results to your doctor rather than re-covering
+  `lab-tests-without-insurance`. The drafter now receives every published article's title and headings with
+  instructions not to repeat their ground, plus voice rules (no stock phrasing, no opening disclaimer).
+- **Redraft guidance was silently ignored**: `generateArticleDraft` accepted `guidance` and never sent it.
+- All ten articles now live in `apps/worker/scripts/seed-blog.ts`, the edit path for published posts.
+  Also fixed there: a dead MedlinePlus FSH citation, remaining British spellings in the launch articles, a
+  `*your*` that printed its asterisks, and a literal dollar price in a callout.
+
 ### Added (2026-09-14, vendor admin: affiliate at a glance, collapsed diagnostics, notes)
 - **Vendors list**: dropped the Slug column (it's derivable from the name and was never the thing being
   looked up) and put an **Affiliate** indicator in its place — green dot when `Vendor.affiliateUrlTemplate`

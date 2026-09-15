@@ -96,12 +96,26 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     orderBy: { name: 'asc' },
   });
 
+  // Published articles, with their headings, so the draft links to what exists instead of writing a
+  // near-copy of it (a "without a doctor" draft had re-covered the "without insurance" article).
+  const published = await prisma.post.findMany({
+    where: { isPublished: true, deletedAt: null },
+    select: { slug: true, title: true, body: true },
+    orderBy: { publishedAt: 'desc' },
+  });
+  const existingArticles = published.map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    headings: p.body.split('\n').filter((l) => l.startsWith('## ') && l !== '## Sources').map((l) => l.slice(3).trim()),
+  }));
+
   try {
     const draft = await generateArticleDraft(
       candidate.title,
       candidate.origin ?? 'an online health community',
       tests,
       candidate.guidance,
+      existingArticles,
     );
     const slug = await uniqueSlug(draft.slug);
 

@@ -131,6 +131,51 @@ export function renderPriceToken(token: string, facts: PriceFacts | undefined): 
   }
 }
 
+// ─────────────────────────── Copy hygiene ───────────────────────────
+
+function wordSet(s: string): Set<string> {
+  return new Set(s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2));
+}
+
+/**
+ * True when `paragraph` is the excerpt said again. The article page renders the excerpt as its lead
+ * paragraph, so a body that opens by restating it prints the same answer twice in a row — which is
+ * what every AI draft did (three verbatim, the rest reworded). Word-overlap rather than equality so
+ * a light rewording is caught too, while two genuinely different paragraphs on the same subject stay
+ * well under the 0.6 threshold.
+ */
+export function isRestatement(paragraph: string, excerpt: string): boolean {
+  const a = wordSet(paragraph);
+  const b = wordSet(excerpt);
+  if (a.size === 0 || b.size === 0) return false;
+  let shared = 0;
+  for (const w of a) if (b.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.6;
+}
+
+/**
+ * Drops a leading body paragraph that restates the excerpt. Only a plain paragraph is a candidate —
+ * a figure, heading, table or callout in first position is left alone.
+ */
+export function stripRestatedOpening(body: string, excerpt: string): string {
+  const blocks = body.replace(/\r\n/g, '\n').split(/\n\s*\n/);
+  const firstIdx = blocks.findIndex((b) => b.trim() !== '');
+  const first = blocks[firstIdx]?.trim() ?? '';
+  if (firstIdx === -1 || /^(#|\||>|-\s|\d+\.\s|\[(FIG|PRICE-CHART):)/.test(first)) return body;
+  if (!isRestatement(first, excerpt)) return body;
+  return blocks.slice(firstIdx + 1).join('\n\n').trimStart();
+}
+
+/**
+ * Last-resort em-dash removal for generated copy. The drafting prompt forbids them, but a draft that
+ * slips one through should not reach the editor with it: em dashes are the most recognizable tell of
+ * machine-written prose. A spaced or unspaced dash becomes a comma, which reads correctly for the
+ * common aside/appositive use; a human still reads every draft before publishing.
+ */
+export function replaceEmDashes(s: string): string {
+  return s.replace(/\s*—\s*/g, ', ').replace(/,\s*([.,;:!?])/g, '$1');
+}
+
 /**
  * Hero images are stored as `<name>-1600.webp` with an 800px sibling beside them. Deriving the
  * srcset from the stored URL keeps the database to one column while still serving a phone the
