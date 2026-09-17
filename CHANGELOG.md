@@ -9,6 +9,15 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-09-17, blog: restatement detector missed a reworded duplicate opening)
+- The 2026-09-15 `isRestatement()` fix (below) used containment (`shared / smaller set`) with a 0.6
+  threshold. A drafted-but-unpublished article, `5-essential-baseline-lab-tests-annually`, opened its
+  body by reworking the excerpt around the same test list and scored 0.55, just under the threshold, so
+  it rendered as a doubled opening anyway. Switched the metric to Jaccard (`shared / union`) at a 0.32
+  threshold, which scores that pair 0.38 against 0.27 for a genuinely distinct opening on the same
+  subject, and fixed the paragraph and its em dash in the DB directly. The post is now also in
+  `seed-blog.ts` so its content is version-controlled going forward.
+
 ### Fixed (2026-09-15, blog: raw table pipes, doubled openings, em dashes, template-shaped articles)
 - **Tables printed as literal pipes** on `/blog/order-blood-work-without-a-doctor` and
   `/blog/what-blood-tests-do-bodybuilders-track`. `BlogBody` only recognized a table when every line began

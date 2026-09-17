@@ -140,9 +140,11 @@ function wordSet(s: string): Set<string> {
 /**
  * True when `paragraph` is the excerpt said again. The article page renders the excerpt as its lead
  * paragraph, so a body that opens by restating it prints the same answer twice in a row — which is
- * what every AI draft did (three verbatim, the rest reworded). Word-overlap rather than equality so
- * a light rewording is caught too, while two genuinely different paragraphs on the same subject stay
- * well under the 0.6 threshold.
+ * what every AI draft did (three verbatim, the rest reworded). Jaccard (shared / union), not
+ * containment (shared / smaller set): containment let a real miss through (2026-09 "5 essential
+ * baseline tests annually" draft scored 0.55 against a 0.6 containment threshold — the same test
+ * list in both, reworded around it — because containment ignores each set's non-shared words).
+ * Jaccard scored that pair 0.38 against 0.27 for a genuinely distinct opening on the same subject.
  */
 export function isRestatement(paragraph: string, excerpt: string): boolean {
   const a = wordSet(paragraph);
@@ -150,7 +152,8 @@ export function isRestatement(paragraph: string, excerpt: string): boolean {
   if (a.size === 0 || b.size === 0) return false;
   let shared = 0;
   for (const w of a) if (b.has(w)) shared += 1;
-  return shared / Math.min(a.size, b.size) >= 0.6;
+  const union = a.size + b.size - shared;
+  return shared / union >= 0.32;
 }
 
 /**

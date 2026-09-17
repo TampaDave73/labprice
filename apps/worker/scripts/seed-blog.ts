@@ -825,6 +825,98 @@ A: No. Blood hormone tests describe the signals behind sperm production, not the
 Q: Why might a semen analysis be repeated?
 A: Sperm counts vary from one sample to the next, so a single result is often confirmed with a second sample.`,
   },
+
+  {
+    slug: '5-essential-baseline-lab-tests-annually',
+    title: 'What Are the 5 Common Baseline Lab Tests?',
+    excerpt:
+      'Five blood tests are frequently described as a general "baseline" health check: a complete blood count (CBC), a comprehensive metabolic panel (CMP), a lipid panel, hemoglobin A1c, and a thyroid-stimulating hormone (TSH) test. Together they survey blood cells, organ chemistry, cholesterol, blood sugar, and thyroid function. This article explains what each one measures. It is educational and not a recommendation about your own care.',
+    heroUrl: '/blog/generic-lab-supplies-1600.webp',
+    heroAlt: 'Laboratory sample collection supplies on a white surface.',
+    heroCredit: 'Photo: Unsplash',
+    relatedTests: [
+      'complete-blood-count-w-differential-platelets',
+      'comprehensive-metabolic-panel-14',
+      'lipid-panel',
+      'hemoglobin-a1c',
+      'tsh-thyroid-stimulating-hormone',
+    ],
+    body: `These five show up on the same "baseline" checkup order again and again, and for a practical reason: they are inexpensive, widely available, and together touch blood cells, organ chemistry, cholesterol, blood sugar, and thyroid function in a single draw. What follows is what each one actually measures.
+
+## What are the 5 tests usually included in a baseline panel?
+
+These five are the ones most often grouped as a general check-up set because they are inexpensive, widely available, and cover several body systems at once.
+
+| Test | What it broadly looks at |
+| --- | --- |
+| Complete Blood Count (CBC) | Red cells, white cells, and platelets |
+| Comprehensive Metabolic Panel (CMP) | Kidney and liver chemistry, electrolytes, blood sugar |
+| Lipid Panel | Cholesterol and triglycerides |
+| Hemoglobin A1c | Average blood sugar over roughly 3 months |
+| TSH | A signal the pituitary sends to the thyroid |
+
+Why these five come up so often is coverage: a lot of ground for a small number of tubes.
+
+## What does a CBC measure?
+
+A [Complete Blood Count w/ Differential & Platelets (CBC)](/test/complete-blood-count-w-differential-platelets) measures the cells in your blood. It reports the count of red blood cells, white blood cells, and platelets, plus details like hemoglobin, hematocrit, and the breakdown ("differential") of white cell types.
+
+- **Red blood cells and hemoglobin** carry oxygen around the body.
+- **White blood cells** are part of the immune system.
+- **Platelets** help blood clot.
+
+## What does a metabolic panel measure?
+
+A [Comprehensive Metabolic Panel (CMP)](/test/comprehensive-metabolic-panel-14) is 14 measurements that report on kidney function, liver function, electrolytes, blood proteins, and a glucose (blood sugar) value. It is a chemistry snapshot rather than a cell count.
+
+[FIG:cmp-groups]
+
+The 14 numbers sort into groups by the organ system they relate to, which is why one panel can touch kidneys, liver, and fluid balance at the same time.
+
+## What do the lipid panel and A1c cover?
+
+The lipid panel covers cholesterol and triglycerides, while hemoglobin A1c reflects average blood sugar over about three months.
+
+[FIG:lipid-breakdown]
+
+A [Lipid Panel](/test/lipid-panel) typically reports four numbers: total cholesterol, LDL cholesterol, HDL cholesterol, and triglycerides. A [Hemoglobin A1c](/test/hemoglobin-a1c) estimates a longer-term blood-sugar average because it measures the fraction of hemoglobin with glucose attached, useful because a single glucose reading only captures one moment.
+
+## Why is TSH on the list?
+
+[Thyroid Stimulating Hormone (TSH)](/test/tsh-thyroid-stimulating-hormone) is the most common first-line thyroid test. The pituitary gland releases TSH to tell the thyroid how much thyroid hormone to make, so this one value is a common starting point for looking at thyroid activity.
+
+## How much do the 5 baseline tests cost self-pay?
+
+Prices vary by ordering service, and because these five are common they are often among the least expensive tests available. The live chart below compares what each costs across services.
+
+[PRICE-CHART:complete-blood-count-w-differential-platelets,comprehensive-metabolic-panel-14,lipid-panel,hemoglobin-a1c,tsh-thyroid-stimulating-hormone]
+
+> Reference ranges for all of these tests vary by laboratory, and by a person's sex and age. A result outside a printed range is not automatically a problem, and one inside it is not automatically reassuring, interpretation belongs with a clinician.
+
+## Do the reference ranges mean the same thing everywhere?
+
+No. Each laboratory sets its own reference intervals based on its equipment and the population it tests, and many ranges differ by sex and age. Always read a result against the range printed on that specific report.
+
+## Sources
+
+- [Blood Tests (MedlinePlus)](https://medlineplus.gov/bloodtests.html)
+- [Complete Blood Count (MedlinePlus)](https://medlineplus.gov/lab-tests/complete-blood-count-cbc/)
+- [Comprehensive Metabolic Panel (MedlinePlus)](https://medlineplus.gov/lab-tests/comprehensive-metabolic-panel-cmp/)`,
+    faq: `Q: What are the 5 baseline blood tests people mention most?
+A: A complete blood count (CBC), a comprehensive metabolic panel (CMP), a lipid panel, hemoglobin A1c, and a TSH thyroid test. Together they survey blood cells, organ chemistry, cholesterol, blood sugar, and thyroid function.
+
+Q: Do I need to fast for these tests?
+A: Fasting is often requested for a lipid panel and glucose-related tests, while a CBC and TSH usually do not require it. Follow the instructions from the service that orders your test.
+
+Q: Is hemoglobin A1c the same as a regular blood sugar test?
+A: No. A1c reflects average blood sugar over roughly three months, while a glucose value captures a single moment. The CMP includes a glucose measurement.
+
+Q: Does one panel cover kidney and liver at once?
+A: Yes, the comprehensive metabolic panel includes measurements related to both kidney and liver function along with electrolytes and glucose.
+
+Q: Should everyone get these tests every year?
+A: How often to test is an individual decision made with a clinician. This article explains what the tests measure and is not a recommendation about your own testing schedule.`,
+  },
 ];
 
 async function main() {
