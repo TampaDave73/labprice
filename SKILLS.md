@@ -596,7 +596,9 @@ cd apps/worker && DOTENV_CONFIG_PATH=../../.env npx tsx scripts/discover-goodlab
   worker's `scrape-discover` queue still exists for scheduled/background runs (Redis storm fixed).
 - **Three live adapters** (`catalog/adapters.ts`), pick per vendor via the admin **Catalog source**
   dropdown (`selectors.adapter`):
-  - `goodlabs` — JSON-LD + Next.js flight chunks, `/tests/<slug>`.
+  - `goodlabs` — JSON-LD + Next.js flight chunks, `/tests/<slug>`. Uses `cheapestLabOfProduct`: a code
+    hit identifies the product, then the cheapest Quest/LabCorp price on it wins (a Quest-code mismatch
+    used to let the pricier LabCorp tier win alone; Zinc $11 → $13, 2026-09-21).
   - `ownyourlabs` — Phoenix HTML, `/shop` → `/test/<UUID>`; single Order Code vs both codes
     (`codeMatchAnyProvider`).
   - `dirtcheaplabs` — **API vendor** (`CatalogAdapter.fetchAll`): pulls both lab catalogs from

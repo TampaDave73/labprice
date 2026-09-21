@@ -20,7 +20,8 @@ interface VendorRow {
   name: string;
   state: State;
   statusLabel: string;
-  lastRun: string; // YYYY-MM-DD or '—'
+  lastRun: string; // YYYY-MM-DD or '—' — latest job of ANY kind (incl. one-test requeues)
+  oldestCheck: string; // YYYY-MM-DD the STALEST live price was last verified (the site's "checked N ago")
   priced: string; // "33 of 35" or '—'
   changes: string; // price changes in the last run
   unmatchedNames: string[]; // tests the last run could not price
@@ -56,6 +57,7 @@ export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChang
       <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#111827;white-space:nowrap;">${esc(r.name)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;white-space:nowrap;"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${s.dot};margin-right:6px;"></span>${esc(r.statusLabel)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;white-space:nowrap;">${esc(r.lastRun)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;white-space:nowrap;">${esc(r.oldestCheck)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;text-align:center;">${esc(r.priced)}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;color:#374151;text-align:center;">${esc(r.changes)}</td>
     </tr>`;
@@ -85,7 +87,7 @@ export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChang
 
   const overdueNote = meta.counts.overdue > 0
     ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:8px;background:#fffbeb;border:1px solid #fde68a;font-size:13px;color:#92400e;">
-        ⏰ <strong>${meta.counts.overdue} scraper(s) are overdue</strong> — they haven't run within their scheduled window. If this persists past the next daily run (6:00 UTC), check that the worker service is up on Railway.
+        ⏰ <strong>${meta.counts.overdue} scraper(s) are overdue</strong> — their oldest price is over 8 days old, so the Monday 06:00 UTC run missed them. If this persists past next Monday, check that the worker service is up on Railway.
       </p>`
     : '';
 
@@ -108,6 +110,7 @@ export function renderHtml(rows: VendorRow[], meta: { date: string; pendingChang
           <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Vendor</th>
           <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Status</th>
           <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Last run</th>
+          <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Oldest price</th>
           <th style="padding:8px 12px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Priced</th>
           <th style="padding:8px 12px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;border-bottom:2px solid #e5e7eb;">Changes</th>
         </tr>
@@ -131,7 +134,7 @@ function renderText(rows: VendorRow[], meta: { date: string; pendingChanges: num
     `Scraper status ${meta.date} (last 7 days):`,
     '',
     ...rows.map((r) => {
-      const bits = [`[${STATE_STYLE[r.state].label}] ${r.name} — last run ${r.lastRun}, priced ${r.priced}, ${r.changes} change(s)`];
+      const bits = [`[${STATE_STYLE[r.state].label}] ${r.name} — last run ${r.lastRun}, oldest price check ${r.oldestCheck}, priced ${r.priced}, ${r.changes} change(s)`];
       if (r.unmatchedNames.length) bits.push(`  couldn't price ${r.unmatchedNames.length}: ${r.unmatchedNames.slice(0, 5).join(', ')}${r.unmatchedNames.length > 5 ? ', …' : ''}`);
       if (r.detail) bits.push(`  ${r.detail}`);
       return bits.join('\n');
@@ -160,7 +163,7 @@ export function createReportWorker() {
         const name = config.vendor.name;
 
         if (!config.isEnabled || config.frequencyDays === 0) {
-          rows.push({ name, state: 'manual', statusLabel: !config.isEnabled ? 'Disabled' : 'Manual only', lastRun: '—', priced: '—', changes: '—', unmatchedNames: [] });
+          rows.push({ name, state: 'manual', statusLabel: !config.isEnabled ? 'Disabled' : 'Manual only', lastRun: '—', oldestCheck: '—', priced: '—', changes: '—', unmatchedNames: [] });
           continue;
         }
 
@@ -171,20 +174,30 @@ export function createReportWorker() {
         });
 
         if (!lastJob) {
-          rows.push({ name, state: 'never', statusLabel: 'Never ran', lastRun: '—', priced: '—', changes: '—', unmatchedNames: [], detail: 'Due on the next daily run.' });
+          rows.push({ name, state: 'never', statusLabel: 'Never ran', lastRun: '—', oldestCheck: '—', priced: '—', changes: '—', unmatchedNames: [], detail: 'Due on the next daily run.' });
           continue;
         }
 
         const run = lastJob.runs[0];
         const ranAt = (lastJob.startedAt ?? lastJob.createdAt).toISOString().slice(0, 10);
-        const ageDays = Math.floor((now - lastJob.createdAt.getTime()) / DAY_MS);
-        // Overdue = the scheduler should have re-run it by now but hasn't (worker down, Redis down,
-        // or enqueue failing) — the exact condition this report exists to catch.
-        const overdue = ageDays > config.frequencyDays + 1;
+        // Staleness comes from the OLDEST live price's verification, not the latest job. A job is not
+        // proof of freshness: linking a test requeues a one-test job per vendor, and for a vendor that
+        // doesn't carry it that job "runs" yesterday while every real price is 10 days old (Discounted
+        // Labs, 2026-09-21: report said 09-14, the site said 10 days).
+        const oldest = await prisma.offering.aggregate({
+          where: { vendorId: config.vendorId, isActive: true, deletedAt: null, currentPrice: { not: null } },
+          _min: { lastCheckedAt: true },
+        });
+        const oldestAt = oldest._min.lastCheckedAt;
+        const oldestCheck = oldestAt ? oldestAt.toISOString().slice(0, 10) : '—';
+        const ageDays = Math.floor((now - (oldestAt ?? lastJob.createdAt).getTime()) / DAY_MS);
+        // Overdue = the scheduler should have re-verified prices by now but hasn't (worker down, Redis
+        // down, enqueue failing, or the vendor silently pricing nothing) — what this report exists to catch.
+        const overdue = ageDays > 8; // everything is scraped weekly (Mondays), so 8+ days means a missed run
 
         if (lastJob.status === 'FAILED' || run?.status === 'FAILED') {
           rows.push({
-            name, state: 'failed', statusLabel: 'Failed', lastRun: ranAt, priced: '—', changes: '—', unmatchedNames: [],
+            name, state: 'failed', statusLabel: 'Failed', lastRun: ranAt, oldestCheck, priced: '—', changes: '—', unmatchedNames: [],
             detail: lastJob.errorMessage ?? 'see scrape errors on the vendor page',
           });
           continue;
@@ -206,6 +219,7 @@ export function createReportWorker() {
           state,
           statusLabel: overdue ? `Overdue (${ageDays}d)` : unmatchedNames.length > 0 ? 'OK, with gaps' : 'OK',
           lastRun: ranAt,
+          oldestCheck,
           priced: totalLinked > 0 ? `${pricedCount} of ${totalLinked}` : '—',
           changes: String(run?.pricesUpdated ?? 0),
           unmatchedNames,

@@ -101,6 +101,17 @@ export function matchTestToProducts(
     if (hits.length === 0) continue;
 
     const candidates = hits.map(toCandidate);
+
+    // Same product, several labs: the code only identified the product, so take the cheapest lab.
+    // Restricted to quest/labcorp (a BioReference listing can be a different specimen variant).
+    if (opts.cheapestLabOfProduct && new Set(hits.map((h) => h.product)).size === 1) {
+      const product = hits[0]!.product;
+      const labs = flat
+        .filter((f) => f.product === product && (f.provider.labProvider === 'quest' || f.provider.labProvider === 'labcorp') && f.provider.price != null)
+        .sort((a, b) => a.provider.price! - b.provider.price!);
+      if (labs.length > 0) return matched(tier, labs[0]!, labs.map(toCandidate));
+    }
+
     const distinctPrices = new Set(hits.map((h) => h.provider.price).filter((p) => p != null));
 
     // Optional tie-break: if several providers of the SAME product matched, prefer a configured lab.

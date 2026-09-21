@@ -115,6 +115,14 @@ export interface MatchOptions {
    * labs at different prices (Dirt Cheap Labs), where the customer picks the cheaper lab.
    */
   mergeCodeTiers?: boolean;
+  /**
+   * When a tier's hits all sit on ONE product, price it at the cheapest Quest/LabCorp provider of that
+   * product — not just the provider whose code happened to match. The code identifies the product; the
+   * customer picks whichever lab is cheaper. Without this, a Quest-code miss (our code differs from the
+   * vendor's) lets the LabCorp tier win alone and publishes the pricier lab (Good Labs Zinc, 2026-09-21:
+   * Quest $11 ignored, LabCorp $13 shown). Single price only; unlike mergeCodeTiers no alt-lab fields.
+   */
+  cheapestLabOfProduct?: boolean;
 }
 
 /**

@@ -9,6 +9,29 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Changed (2026-09-21, one weekly scrape, True Health Labs manual)
+- **All vendors now scrape together every Monday 06:00 UTC** (digest 12:00 UTC the same day). The daily
+  tick + per-vendor `frequencyDays` "is it due" arithmetic is gone; it scattered last-checked dates
+  across the week. `frequencyDays = 0` still means Manual only. Digest "overdue" = oldest price > 8 days.
+- **True Health Labs set to Manual only** (Cloudflare blocks Railway's IP again). Run
+  `scrape-blocked-vendors.bat` (repo root, double-click) weekly from a home connection; it covers both
+  manual vendors (Request A Test, True Health Labs).
+
+### Fixed (2026-09-21, Good Labs priced the pricier lab; digest freshness and traffic were misleading)
+- **Good Labs Zinc went $11 → $13.** Good Labs lists one price per lab on a product (Quest $11, LabCorp
+  $13, BioReference $14). Our Zinc Quest code (5217) differs from theirs (945), so the Quest tier missed,
+  the LabCorp tier hit alone, and first-tier-wins published $13. New `MatchOptions.cheapestLabOfProduct`
+  (on for `goodlabs`): once the code identifies ONE product, price it at the cheapest Quest/LabCorp lab
+  on that product. BioReference is excluded (can be a different specimen variant). Test in `matcher.test.ts`.
+- **Digest "Last run" looked fresh while the site said 3–10 days.** "Last run" is the latest `ScrapeJob`
+  of any kind, including the one-test requeue a newly linked test fires at every vendor, so a vendor that
+  doesn't carry the test showed a recent run with nothing priced. The digest now also shows **Oldest
+  price** (min `lastCheckedAt` of the vendor's live offerings, what the site's "checked N ago" reads) and
+  overdue is judged on that. Other vendors' 3/7-day dates were their normal `frequencyDays` cadence.
+- **Digest "0 visitors, 117 page views".** Different counters: GA4 counts real browsers running its tag;
+  our own `PageView` log counts every tracking call, bots included. The email now labels both and
+  explains a GA4-zero week.
+
 ### Fixed (2026-09-17, blog: restatement detector missed a reworded duplicate opening)
 - The 2026-09-15 `isRestatement()` fix (below) used containment (`shared / smaller set`) with a 0.6
   threshold. A drafted-but-unpublished article, `5-essential-baseline-lab-tests-annually`, opened its

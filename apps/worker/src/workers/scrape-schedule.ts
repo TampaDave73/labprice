@@ -1,6 +1,7 @@
-// `scrape-schedule` worker: the DAILY TICK that drives automatic scraping. Fires once a day (job
-// scheduler registered in index.ts), finds vendors that are DUE (per-vendor frequencyDays vs their
-// latest ScrapeJob), and enqueues the right kind of work per vendor:
+// `scrape-schedule` worker: the WEEKLY TICK that drives automatic scraping. Fires Mondays 06:00 UTC (job
+// scheduler in index.ts) and scrapes EVERY enabled vendor — no per-vendor "is it due" arithmetic, which
+// used to scatter last-checked dates across the week. frequencyDays only matters as 0 = Manual only.
+// It enqueues the right kind of work per vendor:
 //   - catalog-mode vendors  → one `scrape-discover` job (crawl catalog, match all linked tests)
 //   - per-URL vendors       → one `scrape-execute` job per active offering (staggered)
 // The `scrape_enabled` system setting is the master kill switch. A manual "Scrape now" also resets
@@ -10,11 +11,6 @@ import { Worker, type Job } from 'bullmq';
 import { prisma, getScrapeSettings } from '@labprice/database';
 import { redisConnection } from '../redis';
 import { scrapeExecuteQueue, scrapeDiscoverQueue } from '../queues';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-// Grace window so a weekly vendor scraped AT tick time isn't perpetually "not quite due" the next
-// week (elapsed would be 7d minus queue latency). Anything within 6h of its interval counts as due.
-const DUE_SLACK_MS = 6 * 60 * 60 * 1000;
 
 // Same rule as apps/web/lib/catalog-mode.ts (kept dependency-free there; 3 lines, duplicated here).
 function isCatalogMode(selectors: unknown): boolean {
@@ -39,26 +35,12 @@ export function createScheduleWorker() {
         include: { vendor: { select: { name: true, slug: true } } },
       });
 
-      // Latest job per vendor (any trigger/status — a failed run still counts as an attempt; BullMQ
-      // retries cover transient failures, and persistent ones surface in the report, not by hammering
-      // the vendor daily).
-      const lastJobs = await prisma.scrapeJob.groupBy({
-        by: ['vendorId'],
-        where: { vendorId: { in: configs.map((c) => c.vendorId) } },
-        _max: { createdAt: true },
-      });
-      const lastByVendor = new Map(lastJobs.map((j) => [j.vendorId, j._max.createdAt]));
-
-      const now = Date.now();
       const today = new Date().toISOString().slice(0, 10);
       let discoverEnqueued = 0;
       let executeEnqueued = 0;
       const dueVendors: string[] = [];
 
       for (const config of configs) {
-        const last = lastByVendor.get(config.vendorId);
-        const due = !last || now - last.getTime() >= config.frequencyDays * DAY_MS - DUE_SLACK_MS;
-        if (!due) continue;
         dueVendors.push(config.vendor.name);
 
         if (isCatalogMode(config.selectors)) {

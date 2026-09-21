@@ -331,12 +331,12 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
     click therefore bought a guaranteed FAILED `ScrapeRun` for those vendors. That's not just noise: a
     failed run counts against computed vendor trust (gotcha 6), so the bulk button was walking the
     blocked vendors toward LOW trust and forcing manual review of their genuinely-fine prices.
-    Currently `frequencyDays: 0`: **request-a-test** only (verified still blocked 2026-09-10 from inside
+    **Scheduling (2026-09-21):** every non-manual vendor scrapes together Mondays 06:00 UTC (no per-vendor
+    due-date math); the digest is Mondays 12:00 UTC. `scrape-blocked-vendors.bat` runs the manual ones.
+    Currently `frequencyDays: 0`: **true-health-labs** (blocked again 2026-09-21) and **request-a-test** (verified still blocked 2026-09-10 from inside
     the container — 403 on plain HTTP, unclearable `cf_chl` interstitial in stealth Chromium).
-    **true-health-labs was moved back to the 7-day cloud schedule 2026-09-14** after succeeding from
-    Railway on 09-10 and 09-13; its Cloudflare block has lifted, but it keeps `needsBrowser: true` — that
-    flag is what gets it through, so don't remove it. If it starts failing from the cloud again, set
-    `frequencyDays: 0` rather than deleting the vendor's schedule.
+    True Health Labs was on the cloud 09-14..09-20 (its block had lifted) and failed again 09-21, so it is
+    back to manual. It keeps `needsBrowser: true`; don't delete its schedule, just leave `frequencyDays: 0`.
 
 25. **"Vendor doesn't sell this test" is not a scrape failure.** Linking a new test to N vendors requeues
     a one-test discovery per vendor (`offeringIds`), and for a vendor that doesn't carry it, narrowing

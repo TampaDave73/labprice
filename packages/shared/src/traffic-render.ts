@@ -36,7 +36,8 @@ export function renderTrafficHtml(t: TrafficSummary): string {
     `<span style="display:inline-block;margin:0 8px 8px 0;padding:6px 14px;border-radius:14px;background:#2563eb18;color:#2563eb;font-weight:600;font-size:13px;">${esc(String(n))} ${esc(label)}</span>`;
 
   const head = t.ga4
-    ? `${chip(t.ga4.users, 'visitors')}${chip(t.ga4.sessions, 'sessions')}${chip(t.totalPageViews, 'page views')}`
+    ? `${chip(t.ga4.users, 'visitors (GA4)')}${chip(t.ga4.sessions, 'sessions (GA4)')}${chip(t.totalPageViews, 'page views (our log)')}
+       <p style="margin:8px 0;font-size:12px;color:#6b7280;">Two different counters: GA4 counts only real browsers that ran its tag (bots and ad-blocked visits excluded); our own log counts every page load that reached our tracking call, bots and crawlers included.${t.ga4.users === 0 && t.totalPageViews > 0 ? ' GA4 saw nobody this week, so these page views are likely crawlers or your own visits.' : ''}</p>`
     : `${chip(t.totalPageViews, 'page views')}<p style="margin:8px 0;font-size:13px;color:#6b7280;">Google Analytics is not configured for the worker, so visitor and traffic-source figures are unavailable this week. The figures below come from our own database.</p>`;
 
   return `<h2 style="margin:32px 0 4px;font-size:18px;color:#111827;">Site traffic — last ${t.days} days</h2>

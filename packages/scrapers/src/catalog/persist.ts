@@ -80,6 +80,7 @@ const ADAPTER_DEFAULTS: Record<
     matchPriority?: MatchTier[];
     codeMatchAnyProvider?: boolean;
     mergeCodeTiers?: boolean;
+    cheapestLabOfProduct?: boolean;
     extraHeaders?: Record<string, string>;
     /**
      * Documentation-only flag (not consumed here): this vendor is gated behind a JS challenge a plain
@@ -90,7 +91,8 @@ const ADAPTER_DEFAULTS: Record<
     needsBrowser?: boolean;
   }
 > = {
-  goodlabs: { baseUrl: 'https://goodlabs.com', catalogPath: '/book-tests?step=PANEL_SELECTION' },
+  // cheapestLabOfProduct: Good Labs lists a price per lab on one product page; price at the cheapest.
+  goodlabs: { baseUrl: 'https://goodlabs.com', catalogPath: '/book-tests?step=PANEL_SELECTION', cheapestLabOfProduct: true },
   ownyourlabs: { baseUrl: 'https://ownyourlabs.com', catalogPath: '/shop', codeMatchAnyProvider: true },
   dirtcheaplabs: { baseUrl: 'https://dirtcheaplabs.com', catalogPath: '/alacarte', apiBase: 'https://api.dirtcheaplabs.com', mergeCodeTiers: true },
   mitohealth: { baseUrl: 'https://mitohealth.com', catalogPath: '/shop', apiBase: 'https://trpc-bdhnb7m5vq-uc.a.run.app', matchPriority: ['name'] },
@@ -230,6 +232,7 @@ function buildConfig(dbBaseUrl: string | null, websiteUrl: string | null, select
       flagAmbiguous: true,
       codeMatchAnyProvider: defaults.codeMatchAnyProvider ?? false,
       mergeCodeTiers: defaults.mergeCodeTiers ?? false,
+      cheapestLabOfProduct: defaults.cheapestLabOfProduct ?? false,
       ...(typeof selectors.preferredProvider === 'string' ? { preferredProvider: selectors.preferredProvider } : {}),
     },
   };

@@ -20,6 +20,7 @@ export const goodlabsCatalogConfig: CatalogScrapeConfig = {
     includePanels: false,
     // Per product owner: when a test resolves to more than one price, flag it — don't guess.
     flagAmbiguous: true,
-    // No auto lab preference — leaving this unset keeps multi-price matches in "ambiguous".
+    // Same product at several labs: price at the cheapest Quest/LabCorp one (see MatchOptions).
+    cheapestLabOfProduct: true,
   },
 };

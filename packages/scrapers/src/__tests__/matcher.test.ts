@@ -146,3 +146,27 @@ describe('normalizeLabCode', () => {
     expect(normalizeLabCode('17306ABC')).toBe('17306');
   });
 });
+
+describe('cheapestLabOfProduct', () => {
+  // Live Good Labs Zinc 2026-09-21: Quest 945 $11, LabCorp 001800 $13, BioReference $14. Our Quest code
+  // (5217) differs from theirs, so only the LabCorp tier hits — it used to win alone at $13.
+  const zinc: CatalogProduct = {
+    slug: 'zinc-serum-or-plasma', name: 'Zinc, Serum or Plasma', url: 'https://goodlabs.com/tests/zinc-serum-or-plasma',
+    providers: [
+      { labProvider: 'quest', labTestIDs: ['945'], price: 11, isPanel: false, name: 'Zinc, Serum or Plasma' },
+      { labProvider: 'labcorp', labTestIDs: ['001800'], price: 13, isPanel: false, name: 'Zinc, Serum or Plasma' },
+      { labProvider: 'bioreference', labTestIDs: ['0285-7'], price: 14, isPanel: false, name: 'Zinc, Serum' },
+    ],
+  };
+  const t: TestKey = { id: 'z', name: 'Zinc Blood Test (Serum/Plasma)', questCode: '5217', labcorpCode: '001800' };
+
+  it('without the option, the LabCorp tier wins alone at $13 (the bug)', () => {
+    expect(matchTestToProducts(t, [zinc]).price).toBe(13);
+  });
+  it('with the option, prices at the cheapest Quest/LabCorp lab ($11), ignoring BioReference', () => {
+    const r = matchTestToProducts(t, [zinc], { cheapestLabOfProduct: true });
+    expect(r.status).toBe('matched');
+    expect(r.price).toBe(11);
+    expect(r.provider).toBe('quest');
+  });
+});

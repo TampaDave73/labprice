@@ -25,10 +25,10 @@ async function main() {
   console.log('[worker] Queues: scrape-schedule, scrape-execute, scrape-discover, scrape-publish, partition-maintain, scrape-report');
 
   // Recurring jobs (idempotent upserts — safe on every startup). The daily tick decides per vendor
-  // whether it's actually due (frequencyDays), so firing daily does NOT mean scraping daily.
-  await scrapeScheduleQueue.upsertJobScheduler('daily-tick', { pattern: '0 6 * * *' }, { name: 'tick' });
+  // whether to run: every enabled non-manual vendor is scraped on MONDAYS only (see scrape-schedule.ts).
+  await scrapeScheduleQueue.upsertJobScheduler('daily-tick', { pattern: '0 6 * * 1' }, { name: 'tick' });
   await scrapeReportQueue.upsertJobScheduler('weekly-digest', { pattern: '0 12 * * 1' }, { name: 'digest' });
-  console.log('[worker] Schedulers: daily scrape tick @ 06:00 UTC, weekly digest Mondays @ 12:00 UTC');
+  console.log('[worker] Schedulers: weekly scrape tick Mondays @ 06:00 UTC, digest Mondays @ 12:00 UTC');
 
   startHealthServer();
 
