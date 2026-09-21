@@ -37,7 +37,15 @@ const INTERSTITIAL_TITLE = /just a moment|attention required|checking your brows
 
 export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<string> {
   let browserPromise: ReturnType<typeof chromium.launch> | null = null;
-  const getBrowser = () => (browserPromise ??= chromium.launch({ headless: true }));
+  // SCRAPE_HEADED=1 (set by scrape-blocked-vendors.ps1) opens a VISIBLE, real Google Chrome. Cloudflare
+  // fingerprints headless Chromium even from a residential IP (True Health Labs failed from a home PC
+  // 2026-09-21 in headless mode), so the local blocked-vendor run must look like a person's browser.
+  // Cloud runs stay headless. Falls back to bundled Chromium (still headed) if Chrome isn't installed.
+  const headed = process.env.SCRAPE_HEADED === '1';
+  const getBrowser = () =>
+    (browserPromise ??= headed
+      ? chromium.launch({ headless: false, channel: 'chrome' }).catch(() => chromium.launch({ headless: false }))
+      : chromium.launch({ headless: true }));
 
   return async (url: string) => {
     const browser = await getBrowser();
@@ -69,9 +77,9 @@ export function browserFetchHtml(timeoutMs = 30_000): (url: string) => Promise<s
         const title = (await page.title().catch(() => '')) || '(no title)';
         if (INTERSTITIAL_TITLE.test(title)) {
           throw new Error(
-            `WAF interstitial never cleared for ${url} — HTTP ${response?.status() ?? '?'}, title "${title}" after 16.5s in headless Chromium. ` +
-              `This host's IP is blocked, not the parser: scrape this vendor from a residential connection ` +
-              `(scripts/scrape-vendor-local.ts) and leave its schedule on "Manual only".`,
+            `WAF interstitial never cleared for ${url} — HTTP ${response?.status() ?? '?'}, title "${title}" after 16.5s in ${headed ? 'headed' : 'headless'} Chromium. ` +
+              `The WAF is blocking this browser/IP, not the parser. From the cloud: run it locally instead ` +
+              `(scrape-blocked-vendors.bat, which uses a visible Chrome) and leave the schedule on "Manual only".`,
           );
         }
       }

@@ -17,6 +17,14 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   `scrape-blocked-vendors.bat` (repo root, double-click) weekly from a home connection; it covers both
   manual vendors (Request A Test, True Health Labs).
 
+### Fixed (2026-09-21, blocked-vendor script)
+- `scrape-blocked-vendors.ps1` now uses `npx` (this PC's Device Guard blocks `pnpm.exe`) and opens a visible
+  real Chrome (`SCRAPE_HEADED=1`) instead of headless Chromium. **True Health Labs still fails even so:**
+  Cloudflare answers `cf-mitigated: challenge` (403) for the whole site, homepage included, to plain curl
+  from the home PC too. It is a site-wide managed challenge, not an IP-reputation or API-path issue.
+  Request A Test scrapes 94 detail pages per run by design (869-product catalog narrowed to candidates
+  for our 31 tests; prices only exist on the detail pages).
+
 ### Fixed (2026-09-21, Good Labs priced the pricier lab; digest freshness and traffic were misleading)
 - **Good Labs Zinc went $11 → $13.** Good Labs lists one price per lab on a product (Quest $11, LabCorp
   $13, BioReference $14). Our Zinc Quest code (5217) differs from theirs (945), so the Quest tier missed,

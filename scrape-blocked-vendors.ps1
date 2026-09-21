@@ -29,5 +29,7 @@ npx playwright install chromium
 Pop-Location
 
 Write-Host "Scraping blocked vendors from this PC into the LIVE site..." -ForegroundColor Cyan
+# Visible real Chrome: Cloudflare blocks headless Chromium even from a home connection. A window will open; leave it alone.
+$env:SCRAPE_HEADED = "1"
 Set-Location (Join-Path $root "apps/worker")
 npx tsx scripts/scrape-vendor-local.ts
