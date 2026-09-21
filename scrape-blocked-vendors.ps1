@@ -23,7 +23,11 @@ Set-Location $root
 # the first time or after a Playwright version bump — this is what the "Executable doesn't exist"
 # failure was).
 Write-Host "Checking the scraper's browser is installed..." -ForegroundColor DarkGray
-pnpm --filter @labprice/scrapers exec playwright install chromium
+# npx (node), not pnpm: this PC's Device Guard policy blocks pnpm.exe.
+Push-Location (Join-Path $root "packages/scrapers")
+npx playwright install chromium
+Pop-Location
 
 Write-Host "Scraping blocked vendors from this PC into the LIVE site..." -ForegroundColor Cyan
-pnpm --filter @labprice/worker exec tsx scripts/scrape-vendor-local.ts
+Set-Location (Join-Path $root "apps/worker")
+npx tsx scripts/scrape-vendor-local.ts
