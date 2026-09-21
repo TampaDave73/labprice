@@ -22,8 +22,9 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
   real Chrome (`SCRAPE_HEADED=1`) instead of headless Chromium. **True Health Labs still fails even so:**
   Cloudflare answers `cf-mitigated: challenge` (403) for the whole site, homepage included, to plain curl
   from the home PC too. It is a site-wide managed challenge, not an IP-reputation or API-path issue.
-  Request A Test scrapes 94 detail pages per run by design (869-product catalog narrowed to candidates
-  for our 31 tests; prices only exist on the detail pages).
+  `scrape-vendor-local.ts` now prices a vendor's pinned offerings straight from their saved URLs
+  (`pinnedOnly`) when any exist: Request A Test went from a 94-page catalog crawl to 30 direct fetches
+  (30 of 31 offerings are pinned; the unpinned one is skipped in that mode). Verified live: 30 matched.
 
 ### Fixed (2026-09-21, Good Labs priced the pricier lab; digest freshness and traffic were misleading)
 - **Good Labs Zinc went $11 → $13.** Good Labs lists one price per lab on a product (Quest $11, LabCorp

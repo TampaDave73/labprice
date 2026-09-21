@@ -48,9 +48,17 @@ async function main() {
   for (const vendor of vendors) {
     console.log(`── ${vendor.name} ──`);
     try {
+      // Pinned offerings are priced straight from their saved product page (one fetch each) instead of
+      // crawling the catalog and name-narrowing to ~3 candidate pages per test (Request A Test: 94 page
+      // loads vs 30). Un-pinned offerings are skipped in this mode, so only use it when pins exist.
+      const pinnedCount = await prisma.offering.count({
+        where: { vendorId: vendor.id, isActive: true, deletedAt: null, urlPinned: true, externalUrl: { not: null } },
+      });
+      if (pinnedCount > 0) console.log(`   ${pinnedCount} pinned URL(s): pricing those directly, no catalog crawl`);
       const summary = await runVendorDiscovery({
         vendorId: vendor.id,
         triggeredBy: 'MANUAL',
+        ...(pinnedCount > 0 ? { pinnedOnly: true } : {}),
         ...(adapterNeedsBrowser(vendor.adapter) ? { fetchHtml: browserFetchHtml() } : {}),
         onLog: (m) => console.log(`   ${m}`),
       });
