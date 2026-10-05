@@ -21,7 +21,11 @@ function contentSecurityPolicy(): string {
     // NEXT_PUBLIC_GA_MEASUREMENT_ID is unset (GoogleAnalytics.tsx renders nothing, so nothing ever
     // requests these) and saves a CSP edit whenever the env var eventually gets set.
     `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com${isDev ? " 'unsafe-eval'" : ''}`,
-    `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com${isDev ? ' ws: wss:' : ''}`,
+    // Why the analytics.google.com / www.google.com entries: gtag now posts hits to
+    // analytics.google.com/g/collect and www.google.com/g/collect, not just google-analytics.com.
+    // Without them the tag loads fine but every hit is CSP-blocked, so GA shows "no data" silently.
+    // `*.analytics.google.com` does not match the bare host, so both are listed.
+    `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://www.google.com/g/collect https://www.google.com/ccm/collect https://stats.g.doubleclick.net https://www.googletagmanager.com${isDev ? ' ws: wss:' : ''}`,
   ].join('; ');
 }
 

@@ -9,6 +9,12 @@ See also `SKILLS.md` (features + workflows) and `.claude/CLAUDE.md` (conventions
 
 ## [Unreleased]
 
+### Fixed (2026-10-05, GA4 hits were CSP-blocked since ~2026-09-13)
+- **GA4 showed "No data received" because our CSP `connect-src` blocked gtag's collect endpoints.** The tag
+  loaded and initialised, but hits now go to `analytics.google.com/g/collect` and `www.google.com/g/collect`,
+  which the policy didn't allow (it only had `google-analytics.com`). Data in property 546489198 stops on
+  2026-09-13. Confirmed in-browser via `securitypolicyviolation` events; `middleware.ts` now allows those hosts.
+
 ### Changed (2026-09-21, one weekly scrape, True Health Labs manual)
 - **All vendors now scrape together every Monday 06:00 UTC** (digest 12:00 UTC the same day). The daily
   tick + per-vendor `frequencyDays` "is it due" arithmetic is gone; it scattered last-checked dates

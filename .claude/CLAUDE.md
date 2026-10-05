@@ -130,7 +130,9 @@ section of the page just falls back to a "Open Google Analytics" link-out instea
    public form should render the hidden `company` honeypot field (see `SuggestionModal`). CSP lives in
    `middleware.ts` — it allows inline styles/scripts (public pages need them); tighten the other
    directives, not those, or the site breaks. It also pre-allows `googletagmanager.com`/
-   `google-analytics.com` for the (currently inert) GA4 scaffold — harmless while unconfigured.
+   `google-analytics.com` for GA4, **plus `analytics.google.com` and `www.google.com/g/collect`** — gtag posts
+    hits there too, and when they weren't allowed GA silently showed "no data" (loaded tag, zero hits).
+    If GA goes quiet, check `securitypolicyviolation` events in the browser before suspecting the tag/ID.
 10. **Admin client-fetch pages must check `res.ok` before touching `j.data`.** A bare
     `fetch(url).then(r => r.json()).then(j => setX(j.data))` treats an error response
     (`{error:{...}}`) as if it were `{data:{...}}` — either it throws inside the `.then()` (unhandled
